@@ -14,7 +14,7 @@ export function uid(): string {
  * 優先度: 映像 > 写真 > 声 > ことば。
  */
 export function primaryKind(k: Pick<Kotozute, 'media'>): MediaKind {
-  const kinds = new Set(k.media.map((m) => m.kind))
+  const kinds = new Set((k.media ?? []).map((m) => m.kind))
   if (kinds.has('video')) return 'video'
   if (kinds.has('image')) return 'image'
   if (kinds.has('audio')) return 'audio'
@@ -23,7 +23,7 @@ export function primaryKind(k: Pick<Kotozute, 'media'>): MediaKind {
 
 /** 中身を一言で表すラベル（複数種類が混ざるときは総称） */
 export function kindLabel(k: Pick<Kotozute, 'media'>): string {
-  const kinds = new Set(k.media.map((m) => m.kind))
+  const kinds = new Set((k.media ?? []).map((m) => m.kind))
   if (kinds.size === 0) return 'ことばのことづて'
   if (kinds.size > 1) return 'いくつもの想いのことづて'
   const only = [...kinds][0]

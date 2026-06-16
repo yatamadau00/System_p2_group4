@@ -210,7 +210,7 @@ function Letter({ kotozute }: { kotozute: EnrichedKotozute }) {
 
       <div className="letter__card">
         {/* 添えられたメディアを順に表示（複数可） */}
-        {kotozute.media.map((m) => (
+        {(kotozute.media ?? []).map((m) => (
           <MediaView key={m.id} media={m} />
         ))}
         {hasBody && (

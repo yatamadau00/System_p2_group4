@@ -39,7 +39,7 @@ export function Pin({ kotozute, onClick }: PinProps) {
   const kind = primaryKind(kotozute)
   const KindIcon = KIND_ICON[kind]
   const unlockable = proximity === 'unlockable'
-  const multi = kotozute.media.length > 1
+  const multi = (kotozute.media ?? []).length > 1
 
   const label = unlockable
     ? `${KIND_NAME[kind]}のことづてを開ける`

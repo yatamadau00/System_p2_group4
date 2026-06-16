@@ -41,14 +41,23 @@ function db() {
  * IndexedDB を用いた永続化実装。
  * メディアは Blob としてそのまま格納されるため、object URL を都度生成して表示する。
  */
+/**
+ * 古いスキーマで保存されたレコード（media 配列を持たない等）を、
+ * 現行の形へ正規化する。これにより読み出し後はどこでも media を配列として扱える。
+ */
+function normalize(record: Kotozute): Kotozute {
+  return { ...record, media: Array.isArray(record.media) ? record.media : [] }
+}
+
 export const indexedDbRepository: KotozuteRepository = {
   async list() {
     const all = await (await db()).getAll('kotozute')
-    return all.sort((a, b) => b.createdAt - a.createdAt)
+    return all.map(normalize).sort((a, b) => b.createdAt - a.createdAt)
   },
 
   async get(id) {
-    return (await db()).get('kotozute', id)
+    const record = await (await db()).get('kotozute', id)
+    return record ? normalize(record) : undefined
   },
 
   async create(input: NewKotozute) {
