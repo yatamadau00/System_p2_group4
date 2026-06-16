@@ -1,0 +1,420 @@
+.open {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fade-in var(--dur-2) var(--ease-out);
+}
+
+/* 背景：ロック時は夜、開封後は和紙へと移ろう */
+.open__bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 80% at 50% 0%, #2c3543 0%, var(--c-night) 70%);
+  transition: opacity var(--dur-seal) var(--ease-soft);
+}
+
+.open--opened .open__bg {
+  opacity: 0;
+}
+
+.open__paper {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background:
+    radial-gradient(130% 90% at 50% -10%, #fffdf8 0%, var(--c-washi) 55%);
+  transition: opacity var(--dur-seal) var(--ease-soft);
+}
+
+.open--opened .open__paper {
+  opacity: 1;
+}
+
+/* ヘッダー（閉じる） */
+.open__top {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: flex-end;
+  padding: calc(var(--safe-top) + var(--sp-3)) var(--sp-4) 0;
+  flex: none;
+}
+
+.open__close {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--c-on-night);
+  backdrop-filter: blur(6px);
+  transition:
+    background var(--dur-2),
+    color var(--dur-2);
+}
+
+.open--opened .open__close {
+  background: var(--c-washi-2);
+  color: var(--c-ink);
+}
+
+.open__stage {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-5);
+  text-align: center;
+  overflow-y: auto;
+}
+
+/* ====== ロック中 ====== */
+.locked {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-5);
+  color: var(--c-on-night);
+  max-width: 360px;
+  animation: float-in var(--dur-3) var(--ease-out);
+}
+
+.locked__place {
+  font-family: var(--font-serif);
+  font-size: 1.3rem;
+  letter-spacing: 0.04em;
+}
+
+/* 距離リング */
+.ring {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  display: grid;
+  place-items: center;
+}
+
+.ring svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+
+.ring__track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 8;
+}
+
+.ring__progress {
+  fill: none;
+  stroke: var(--c-amber);
+  stroke-width: 8;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 8px var(--c-amber-glow));
+  transition: stroke-dashoffset var(--dur-3) var(--ease-soft);
+}
+
+.ring__seal {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(160deg, #79828f, #5b6470);
+  color: #e7e3da;
+  box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.18), 0 6px 16px rgba(0, 0, 0, 0.4);
+  animation: heartbeat 2s var(--ease-soft) infinite;
+}
+
+.ring__seal svg {
+  position: static;
+  transform: none;
+  width: 38px;
+  height: 38px;
+}
+
+.locked__distance {
+  display: grid;
+  gap: 2px;
+}
+
+.locked__distance b {
+  font-family: var(--font-serif);
+  font-size: 2.6rem;
+  line-height: 1;
+  color: var(--c-amber);
+  font-weight: 700;
+}
+
+.locked__hint {
+  color: #c0c5cf;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.locked__peek {
+  font-size: 0.84rem;
+  color: #99a0ac;
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: var(--r-md);
+}
+
+/* ====== 開封可能（封を開ける前） ====== */
+.ready {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-5);
+  color: var(--c-on-night);
+  animation: float-in var(--dur-3) var(--ease-out);
+}
+
+.ready__place {
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
+}
+
+/* 封蝋 */
+.seal {
+  position: relative;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 38% 32%, #f0a85f, var(--c-amber-deep) 70%);
+  box-shadow:
+    inset 0 3px 10px rgba(255, 220, 180, 0.5),
+    inset 0 -6px 14px rgba(120, 40, 10, 0.5),
+    0 10px 30px rgba(197, 97, 59, 0.45);
+  color: var(--c-on-amber);
+  cursor: pointer;
+  border: none;
+  transition: transform var(--dur-2) var(--ease-soft);
+}
+
+.seal::before {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 248, 240, 0.55);
+}
+
+.seal__glyph {
+  font-family: var(--font-serif);
+  font-size: 2.4rem;
+  font-weight: 700;
+  transform: translateY(2px);
+}
+
+.seal__halo {
+  position: absolute;
+  inset: -16px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--c-amber-glow) 0%, transparent 68%);
+  animation: halo-pulse 2.2s var(--ease-out) infinite;
+  pointer-events: none;
+}
+
+.seal:active {
+  transform: scale(0.95);
+}
+
+/* 封が割れる演出 */
+.open--opening .seal {
+  animation: seal-break var(--dur-seal) var(--ease-out) forwards;
+}
+
+@keyframes seal-break {
+  0% {
+    transform: scale(1) rotate(0);
+  }
+  30% {
+    transform: scale(1.12) rotate(-3deg);
+    box-shadow:
+      inset 0 3px 10px rgba(255, 220, 180, 0.5),
+      0 0 50px 16px var(--c-amber-glow);
+  }
+  100% {
+    transform: scale(2.4) rotate(6deg);
+    opacity: 0;
+  }
+}
+
+/* 光の閃光 */
+.flash {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: radial-gradient(circle at 50% 50%, #fff7ea 0%, transparent 60%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.open--opening .flash {
+  animation: flash var(--dur-seal) var(--ease-out) forwards;
+}
+
+@keyframes flash {
+  0% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ベールが上下に割れて晴れる */
+.veil {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50%;
+  z-index: 2;
+  background: linear-gradient(180deg, #20283400, #202834 40%);
+  pointer-events: none;
+}
+
+.veil--top {
+  top: 0;
+  background: linear-gradient(0deg, #20283400, #202834 60%);
+}
+
+.veil--bottom {
+  bottom: 0;
+}
+
+.open--opening .veil--top {
+  animation: veil-up var(--dur-seal) var(--ease-out) forwards;
+}
+
+.open--opening .veil--bottom {
+  animation: veil-down var(--dur-seal) var(--ease-out) forwards;
+}
+
+@keyframes veil-up {
+  to {
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes veil-down {
+  to {
+    transform: translateY(100%);
+  }
+}
+
+/* ====== 開封後の中身 ====== */
+.letter {
+  width: 100%;
+  max-width: 440px;
+  display: grid;
+  gap: var(--sp-4);
+  animation: float-in var(--dur-3) var(--ease-out) 120ms backwards;
+}
+
+.letter__meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  color: var(--c-ink-2);
+  font-size: 0.84rem;
+}
+
+.letter__place {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  color: var(--c-ink);
+  text-align: center;
+}
+
+.letter__card {
+  background: var(--c-surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  text-align: left;
+}
+
+.letter__media {
+  width: 100%;
+  background: #000;
+}
+
+.letter__media img,
+.letter__media video {
+  width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  margin: 0 auto;
+}
+
+.letter__audio {
+  padding: var(--sp-5);
+  display: grid;
+  gap: var(--sp-3);
+  justify-items: center;
+  background: linear-gradient(160deg, var(--c-amber-soft), #f6e6d3);
+}
+
+.letter__audio audio {
+  width: 100%;
+}
+
+.letter__message {
+  padding: var(--sp-5);
+  font-family: var(--font-serif);
+  font-size: 1.12rem;
+  line-height: 2;
+  color: var(--c-ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.letter__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  color: var(--c-amber-deep);
+  font-weight: 700;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.letter__sign {
+  text-align: right;
+  color: var(--c-ink-2);
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+}
+
+.letter__actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding-top: var(--sp-2);
+}
+
+.letter__report {
+  background: none;
+  color: var(--c-ink-3);
+  font-size: 0.8rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

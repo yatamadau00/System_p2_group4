@@ -1,0 +1,21 @@
+# dependencies
+node_modules
+.pnp
+.pnp.js
+
+# build
+dist
+dist-ssr
+*.local
+*.tsbuildinfo
+
+# env
+.env
+.env.*
+!.env.example
+
+# editor / os
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+*.log

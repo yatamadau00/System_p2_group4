@@ -1,0 +1,87 @@
+/*
+ * ことづて — デザイントークン
+ * 「デジタルでありながら、温かく、人の気配を残す」
+ * 和紙・封蝋・夕暮れの光をモチーフにした温かいパレット。
+ */
+:root {
+  /* --- 背景・面（和紙） --- */
+  --c-washi: #f7f1e6; /* 生成りの和紙 */
+  --c-washi-2: #f1e8d6; /* やや沈んだ和紙 */
+  --c-surface: #fffdf8; /* カード面 */
+  --c-surface-veil: rgba(255, 253, 248, 0.86);
+
+  /* --- 墨（文字） --- */
+  --c-ink: #33302b; /* 墨に近い茶黒 */
+  --c-ink-2: #6b6357; /* 副次テキスト */
+  --c-ink-3: #9b9183; /* 補助・プレースホルダ */
+
+  /* --- 封蝋・琥珀（主役 / 灯り） --- */
+  --c-amber: #e08d52;
+  --c-amber-deep: #c5613b;
+  --c-amber-soft: #f4d6b8;
+  --c-amber-glow: rgba(224, 141, 82, 0.45);
+
+  /* --- 苔（近接・開封可能の合図） --- */
+  --c-moss: #7a8b6f;
+  --c-moss-deep: #5c6b52;
+  --c-moss-soft: #dde3d3;
+
+  /* --- 夜（マップ・ロック背景） --- */
+  --c-night: #1e2530;
+  --c-night-2: #2a323f;
+  --c-night-veil: rgba(30, 37, 48, 0.72);
+  --c-slate: #6c7686; /* くすんだ藍鼠＝ロック中 */
+
+  /* --- 状態色 --- */
+  --c-danger: #b5524a;
+  --c-on-amber: #fff8f0;
+  --c-on-night: #f3ede1;
+
+  /* --- 影（黒ではなく温かいセピア） --- */
+  --shadow-sm: 0 1px 2px rgba(80, 50, 20, 0.08), 0 2px 6px rgba(80, 50, 20, 0.06);
+  --shadow-md: 0 4px 14px rgba(80, 50, 20, 0.12), 0 2px 6px rgba(80, 50, 20, 0.08);
+  --shadow-lg: 0 12px 38px rgba(80, 50, 20, 0.2), 0 4px 12px rgba(80, 50, 20, 0.12);
+  --shadow-amber: 0 8px 28px rgba(197, 97, 59, 0.32);
+
+  /* --- 角丸 --- */
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+
+  /* --- 余白（8pxグリッド） --- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+
+  /* --- タイポグラフィ --- */
+  --font-serif: 'Shippori Mincho', 'Hiragino Mincho ProN', 'Yu Mincho', serif;
+  --font-sans: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Hiragino Sans',
+    'Yu Gothic', sans-serif;
+
+  /* --- モーション --- */
+  --ease-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-1: 180ms;
+  --dur-2: 320ms;
+  --dur-3: 560ms;
+  --dur-seal: 1100ms;
+
+  /* --- レイヤー --- */
+  --z-map: 0;
+  --z-overlay: 20;
+  --z-fab: 30;
+  --z-sheet: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+
+  /* セーフエリア */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}

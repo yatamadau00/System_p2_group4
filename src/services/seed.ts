@@ -1,0 +1,69 @@
+import { FALLBACK_CENTER } from '../config'
+import type { SeedKotozute } from './repository'
+
+const DAY = 24 * 60 * 60 * 1000
+const now = Date.now()
+
+/**
+ * 初回体験を空っぽにしないためのサンプルことづて。
+ * FALLBACK_CENTER（東京駅周辺）の近くに散らして配置する。
+ * テキストのみで構成し、メディアの永続化に依存しないようにしている。
+ */
+export const SAMPLE_KOTOZUTE: SeedKotozute[] = [
+  {
+    location: { lat: FALLBACK_CENTER.lat + 0.0004, lng: FALLBACK_CENTER.lng + 0.0006 },
+    mediaKind: 'text',
+    placeLabel: '丸の内の歩道橋',
+    authorName: 'なまえのない人',
+    message:
+      'ここで、はじめて待ち合わせをした。十分も早く着いて、そわそわしていたのを今でも覚えています。あなたが手を振ってくれた瞬間の光を、ここに残します。',
+    createdAt: now - 2 * DAY,
+    mine: false,
+    isSample: true,
+  },
+  {
+    location: { lat: FALLBACK_CENTER.lat - 0.0007, lng: FALLBACK_CENTER.lng + 0.0009 },
+    mediaKind: 'text',
+    placeLabel: '駅の南口',
+    authorName: 'とおりすがり',
+    message:
+      'さよならを言えなかった場所。もし通りかかったら、私のかわりに少しだけ空を見上げてください。それで十分です。',
+    link: 'https://www.openstreetmap.org/',
+    createdAt: now - 9 * DAY,
+    mine: false,
+    isSample: true,
+  },
+  {
+    location: { lat: FALLBACK_CENTER.lat + 0.0011, lng: FALLBACK_CENTER.lng - 0.0005 },
+    mediaKind: 'text',
+    placeLabel: '小さな珈琲店の前',
+    authorName: 'みどり',
+    message:
+      '毎週水曜、ここで本を読んでいました。閉店してしまったけれど、淹れたての香りと、窓ぎわのあたたかい席は、ずっと忘れません。',
+    createdAt: now - 21 * DAY,
+    mine: false,
+    isSample: true,
+  },
+  {
+    location: { lat: FALLBACK_CENTER.lat - 0.0013, lng: FALLBACK_CENTER.lng - 0.0011 },
+    mediaKind: 'text',
+    placeLabel: '川沿いのベンチ',
+    authorName: 'なまえのない人',
+    message:
+      '受験の前の夜、ここで深呼吸をして、自分に「だいじょうぶ」と言いました。同じ気持ちの誰かに届きますように。',
+    createdAt: now - 40 * DAY,
+    mine: false,
+    isSample: true,
+  },
+  {
+    location: { lat: FALLBACK_CENTER.lat + 0.0018, lng: FALLBACK_CENTER.lng + 0.0017 },
+    mediaKind: 'text',
+    placeLabel: 'いつもの曲がり角',
+    authorName: 'はる',
+    message:
+      'ここを曲がると、もう家。ただいま、と言うとおかえりが返ってきた毎日が、いちばんの宝物でした。',
+    createdAt: now - 75 * DAY,
+    mine: false,
+    isSample: true,
+  },
+]

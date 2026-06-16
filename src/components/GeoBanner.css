@@ -1,0 +1,59 @@
+.geo-banner {
+  position: absolute;
+  top: calc(var(--safe-top) + 70px);
+  left: var(--sp-4);
+  right: var(--sp-4);
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(10px);
+  animation: float-in var(--dur-2) var(--ease-out);
+}
+
+.geo-banner--info {
+  background: var(--c-night-veil);
+  color: var(--c-on-night);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.geo-banner--warn {
+  background: var(--c-surface-veil);
+  color: var(--c-ink);
+  border: 1px solid rgba(197, 97, 59, 0.25);
+}
+
+.geo-banner__icon {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: var(--c-amber-deep);
+}
+
+.geo-banner__text {
+  flex: 1;
+  display: grid;
+  gap: 1px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.geo-banner__text small {
+  font-size: 0.78rem;
+  opacity: 0.78;
+}
+
+.geo-banner__action {
+  flex: none;
+  padding: 8px 14px;
+  border-radius: var(--r-pill);
+  background: var(--c-amber-deep);
+  color: var(--c-on-amber);
+  font-size: 0.82rem;
+  font-weight: 700;
+}

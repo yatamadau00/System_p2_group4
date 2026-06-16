@@ -1,0 +1,337 @@
+.map-root {
+  position: absolute;
+  inset: 0;
+  background: var(--c-night);
+}
+
+.map-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* ====== フォールバック地図（APIキー未設定 / 読み込み失敗） ====== */
+.map-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-6);
+  text-align: center;
+  color: var(--c-on-night);
+  background:
+    radial-gradient(120% 90% at 50% -10%, #2c3543 0%, var(--c-night) 60%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.025) 0 1px,
+      transparent 1px 46px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.025) 0 1px,
+      transparent 1px 46px
+    );
+}
+
+.map-fallback__inner {
+  max-width: 320px;
+  display: grid;
+  gap: var(--sp-3);
+  justify-items: center;
+}
+
+.map-fallback h2 {
+  font-size: 1.25rem;
+  color: var(--c-on-night);
+}
+
+.map-fallback p {
+  color: #aab0bc;
+  font-size: 0.92rem;
+}
+
+.map-fallback code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.85em;
+  color: var(--c-amber-soft);
+}
+
+/* フォールバック上でもピンを散らして体験を見せる */
+.map-fallback__pins {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* ====== ことづてピン ====== */
+.pin {
+  position: relative;
+  transform: translate(-50%, -100%);
+  cursor: pointer;
+  border: none;
+  background: none;
+  display: grid;
+  justify-items: center;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
+  transition: transform var(--dur-2) var(--ease-soft);
+}
+
+.pin:active {
+  transform: translate(-50%, -100%) scale(0.94);
+}
+
+.pin__body {
+  width: 44px;
+  height: 44px;
+  border-radius: 50% 50% 50% 4px;
+  transform: rotate(45deg);
+  display: grid;
+  place-items: center;
+  position: relative;
+  transition:
+    background var(--dur-2) var(--ease-soft),
+    box-shadow var(--dur-2) var(--ease-soft);
+}
+
+.pin__icon {
+  transform: rotate(-45deg);
+  width: 22px;
+  height: 22px;
+}
+
+/* 遠い＝ロック中：くすんだ藍鼠 */
+.pin--far .pin__body {
+  background: linear-gradient(160deg, #79828f, #5b6470);
+  color: #e7e3da;
+}
+
+/* 近い＝もうすぐ：脈打つ */
+.pin--near .pin__body {
+  background: linear-gradient(160deg, #e6a766, #cf7a44);
+  color: var(--c-on-amber);
+  box-shadow: 0 0 0 3px rgba(224, 141, 82, 0.25);
+  animation: heartbeat 1.8s var(--ease-soft) infinite;
+}
+
+/* 開封可能＝灯る：苔×琥珀の光 */
+.pin--unlockable .pin__body {
+  background: linear-gradient(160deg, #f0a85f, var(--c-amber-deep));
+  color: var(--c-on-amber);
+  box-shadow:
+    0 0 0 4px rgba(224, 141, 82, 0.3),
+    0 0 22px 4px var(--c-amber-glow);
+  animation: heartbeat 1.4s var(--ease-soft) infinite;
+}
+
+/* 自分が残したことづての印 */
+.pin--mine .pin__body::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 2px dashed rgba(255, 255, 255, 0.6);
+}
+
+/* 開封可能ピンの広がる光輪 */
+.pin__halo {
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--c-amber-glow) 0%, transparent 70%);
+  animation: halo-pulse 2.4s var(--ease-out) infinite;
+  pointer-events: none;
+}
+
+.pin__distance {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--c-night-veil);
+  color: var(--c-on-night);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.pin--unlockable .pin__distance {
+  background: var(--c-amber-deep);
+  color: var(--c-on-amber);
+  border-color: transparent;
+}
+
+/* ====== 現在地マーカー ====== */
+.me {
+  transform: translate(-50%, -50%);
+  position: relative;
+  width: 22px;
+  height: 22px;
+}
+
+.me__dot {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #6fb1ff;
+  border: 3px solid #fff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+.me__ring {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(111, 177, 255, 0.4);
+  animation: halo-pulse 2.6s var(--ease-out) infinite;
+}
+
+/* ====== 地図上ボタン群 ====== */
+.map-controls {
+  position: absolute;
+  right: var(--sp-4);
+  bottom: calc(var(--sp-8) + var(--safe-bottom) + 86px);
+  display: grid;
+  gap: var(--sp-3);
+  z-index: var(--z-overlay);
+}
+
+.map-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--c-surface-veil);
+  color: var(--c-ink);
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  transition: transform var(--dur-1) var(--ease-soft);
+}
+
+.map-btn:active {
+  transform: scale(0.92);
+}
+
+/* ====== 上部ブランドバー ====== */
+.topbar {
+  position: absolute;
+  top: calc(var(--safe-top) + var(--sp-4));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-pill);
+  background: var(--c-night-veil);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--c-on-night);
+  box-shadow: var(--shadow-md);
+}
+
+.topbar__mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 50% 50% 50% 3px;
+  transform: rotate(45deg);
+  background: linear-gradient(160deg, #f0a85f, var(--c-amber-deep));
+  box-shadow: 0 0 10px var(--c-amber-glow);
+}
+
+.topbar__title {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.14em;
+}
+
+.topbar__count {
+  font-size: 0.74rem;
+  color: #c0c5cf;
+  letter-spacing: 0.02em;
+}
+
+/* ====== 場所えらびモード（中央クロスヘア＋確定バー） ====== */
+.crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -100%);
+  z-index: var(--z-overlay);
+  pointer-events: none;
+  display: grid;
+  justify-items: center;
+  animation: float-in var(--dur-2) var(--ease-out);
+}
+
+.crosshair__pin {
+  width: 40px;
+  height: 40px;
+  border-radius: 50% 50% 50% 4px;
+  transform: rotate(45deg);
+  background: linear-gradient(160deg, #f0a85f, var(--c-amber-deep));
+  box-shadow: var(--shadow-amber);
+  display: grid;
+  place-items: center;
+}
+
+.crosshair__pin::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--c-on-amber);
+  transform: rotate(-45deg);
+}
+
+.crosshair__stem {
+  width: 2px;
+  height: 14px;
+  background: var(--c-amber-deep);
+  border-radius: 2px;
+  margin-top: 2px;
+  opacity: 0.5;
+}
+
+.crosshair__shadow {
+  width: 10px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  filter: blur(1px);
+}
+
+.pick-hint {
+  position: absolute;
+  top: calc(var(--safe-top) + var(--sp-6));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-overlay);
+  background: var(--c-night-veil);
+  color: var(--c-on-night);
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-pill);
+  font-size: 0.86rem;
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-md);
+  white-space: nowrap;
+}

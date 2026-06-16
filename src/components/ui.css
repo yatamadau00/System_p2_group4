@@ -1,0 +1,236 @@
+/* ====== スピナー ====== */
+.spinner {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid rgba(224, 141, 82, 0.25);
+  border-top-color: var(--c-amber);
+  animation: spin 0.9s linear infinite;
+}
+
+.spinner--ink {
+  border-color: rgba(51, 48, 43, 0.18);
+  border-top-color: var(--c-ink);
+}
+
+/* ====== ボタン ====== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 1rem;
+  padding: 14px 22px;
+  border-radius: var(--r-md);
+  transition:
+    transform var(--dur-1) var(--ease-soft),
+    box-shadow var(--dur-1) var(--ease-soft),
+    background var(--dur-1) var(--ease-soft),
+    opacity var(--dur-1);
+  min-height: 52px;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: linear-gradient(160deg, var(--c-amber), var(--c-amber-deep));
+  color: var(--c-on-amber);
+  box-shadow: var(--shadow-amber);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--c-ink-2);
+  box-shadow: none;
+}
+
+.btn--soft {
+  background: var(--c-washi-2);
+  color: var(--c-ink);
+}
+
+.btn--block {
+  width: 100%;
+}
+
+/* ====== フローティングアクションボタン（残す） ====== */
+.fab {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + var(--sp-5));
+  transform: translateX(-50%);
+  z-index: var(--z-fab);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 16px 26px 16px 20px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(160deg, var(--c-amber), var(--c-amber-deep));
+  color: var(--c-on-amber);
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 1.02rem;
+  letter-spacing: 0.04em;
+  box-shadow: var(--shadow-amber), 0 2px 8px rgba(0, 0, 0, 0.18);
+  transition: transform var(--dur-2) var(--ease-soft);
+  animation: float-in var(--dur-3) var(--ease-out);
+}
+
+.fab:active {
+  transform: translateX(-50%) scale(0.95);
+}
+
+.fab__plus {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ====== オーバーレイ（暗幕） ====== */
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-sheet);
+  background: var(--c-night-veil);
+  backdrop-filter: blur(3px);
+  animation: fade-in var(--dur-2) var(--ease-out);
+}
+
+/* ====== ボトムシート ====== */
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-sheet);
+  max-height: 92dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-washi);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  box-shadow: var(--shadow-lg);
+  padding-bottom: calc(var(--safe-bottom) + var(--sp-4));
+  animation: sheet-up var(--dur-3) var(--ease-out);
+  overflow: hidden;
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.sheet__grip {
+  width: 44px;
+  height: 5px;
+  border-radius: var(--r-pill);
+  background: var(--c-ink-3);
+  opacity: 0.4;
+  margin: var(--sp-3) auto var(--sp-1);
+  flex: none;
+}
+
+.sheet__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4) var(--sp-3);
+  flex: none;
+}
+
+.sheet__title {
+  font-size: 1.2rem;
+  flex: 1;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+.sheet__body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 var(--sp-5) var(--sp-4);
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--c-ink-2);
+  background: var(--c-washi-2);
+  flex: none;
+  transition: transform var(--dur-1) var(--ease-soft);
+}
+
+.icon-btn:active {
+  transform: scale(0.9);
+}
+
+/* ====== トースト ====== */
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + 110px);
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  background: var(--c-ink);
+  color: var(--c-washi);
+  padding: var(--sp-3) var(--sp-5);
+  border-radius: var(--r-pill);
+  font-size: 0.9rem;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  animation: float-in var(--dur-2) var(--ease-out);
+  max-width: calc(100% - 32px);
+}
+
+.toast__check {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--c-moss);
+  color: #fff;
+  flex: none;
+}
+
+/* ====== 確定バー（場所えらび） ====== */
+.confirm-bar {
+  position: absolute;
+  left: var(--sp-4);
+  right: var(--sp-4);
+  bottom: calc(var(--safe-bottom) + var(--sp-4));
+  z-index: var(--z-fab);
+  display: flex;
+  gap: var(--sp-3);
+  animation: float-in var(--dur-2) var(--ease-out);
+}
+
+.confirm-bar .btn {
+  flex: 1;
+  box-shadow: var(--shadow-lg);
+}
+
+.confirm-bar .btn--soft {
+  flex: 0 0 auto;
+  background: var(--c-surface);
+}
