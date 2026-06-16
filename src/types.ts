@@ -1,6 +1,10 @@
 /** ことづて アプリのドメイン型定義 */
 
+/** ことづての「主要な種類」を表す（ピンのアイコンや色などに使う） */
 export type MediaKind = 'text' | 'image' | 'video' | 'audio'
+
+/** 添付メディアの種類（テキストは本文 message として持つので含まない） */
+export type AttachmentKind = 'image' | 'video' | 'audio'
 
 /** 地理座標 */
 export interface LatLng {
@@ -9,13 +13,15 @@ export interface LatLng {
 }
 
 /**
- * 添付メディア。
+ * 添付メディア1点。
  * MVPでは blob を IndexedDB に保存し、表示時に object URL を生成する。
  * バックエンド差し替え時は `url` にリモートURLを入れる運用に切り替え可能。
  */
-export interface MediaPayload {
-  kind: MediaKind
-  /** image/video/audio のとき：永続化されたバイナリ */
+export interface MediaItem {
+  /** ローカル識別子（リスト描画・削除に使用） */
+  id: string
+  kind: AttachmentKind
+  /** 永続化されたバイナリ */
   blob?: Blob
   /** MIME タイプ（例: image/jpeg） */
   mimeType?: string
@@ -25,19 +31,21 @@ export interface MediaPayload {
   url?: string
 }
 
-/** 場所に残された「ことづて」 */
+/**
+ * 場所に残された「ことづて」。
+ * 1通の中に、本文・リンクに加えて複数のメディア（写真・映像・音声）を
+ * 自由に添えられる（種別を1つに絞らせない）。
+ */
 export interface Kotozute {
   id: string
   /** 残した位置 */
   location: LatLng
-  /** メディア種別 */
-  mediaKind: MediaKind
-  /** 本文・言葉（テキスト種別では主役、他種別では添え書き） */
+  /** 本文・言葉 */
   message: string
-  /** 任意のリンク（テキストに貼れる） */
+  /** 任意のリンク */
   link?: string
-  /** 添付メディア（text の場合は無し） */
-  media?: MediaPayload
+  /** 添付メディア（0件以上） */
+  media: MediaItem[]
   /** 残した人の表示名（匿名可・任意） */
   authorName?: string
   /** 残した地点の呼び名（例:「卒業した教室」）任意 */

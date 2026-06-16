@@ -65,109 +65,163 @@
   pointer-events: none;
 }
 
-/* ====== ことづてピン ====== */
+/* ====== ことづてピン（縦型しずく・伝書鳩） ====== */
 .pin {
+  /* しずくの「先端」が座標に来るよう、本体下端を基準に持ち上げる */
   position: relative;
-  transform: translate(-50%, -100%);
+  transform: translate(-50%, calc(-100% - 6px));
   cursor: pointer;
   border: none;
   background: none;
   display: grid;
   justify-items: center;
-  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
+  gap: 6px; /* 距離ラベルと本体の間に確実な余白（重なり解消） */
   transition: transform var(--dur-2) var(--ease-soft);
 }
 
 .pin:active {
-  transform: translate(-50%, -100%) scale(0.94);
+  transform: translate(-50%, calc(-100% - 6px)) scale(0.94);
 }
 
-.pin__body {
-  width: 44px;
-  height: 44px;
-  border-radius: 50% 50% 50% 4px;
-  transform: rotate(45deg);
-  display: grid;
-  place-items: center;
-  position: relative;
-  transition:
-    background var(--dur-2) var(--ease-soft),
-    box-shadow var(--dur-2) var(--ease-soft);
-}
-
-.pin__icon {
-  transform: rotate(-45deg);
-  width: 22px;
-  height: 22px;
-}
-
-/* 遠い＝ロック中：くすんだ藍鼠 */
-.pin--far .pin__body {
-  background: linear-gradient(160deg, #79828f, #5b6470);
-  color: #e7e3da;
-}
-
-/* 近い＝もうすぐ：脈打つ */
-.pin--near .pin__body {
-  background: linear-gradient(160deg, #e6a766, #cf7a44);
-  color: var(--c-on-amber);
-  box-shadow: 0 0 0 3px rgba(224, 141, 82, 0.25);
-  animation: heartbeat 1.8s var(--ease-soft) infinite;
-}
-
-/* 開封可能＝灯る：苔×琥珀の光 */
-.pin--unlockable .pin__body {
-  background: linear-gradient(160deg, #f0a85f, var(--c-amber-deep));
-  color: var(--c-on-amber);
-  box-shadow:
-    0 0 0 4px rgba(224, 141, 82, 0.3),
-    0 0 22px 4px var(--c-amber-glow);
-  animation: heartbeat 1.4s var(--ease-soft) infinite;
-}
-
-/* 自分が残したことづての印 */
-.pin--mine .pin__body::after {
-  content: '';
-  position: absolute;
-  inset: -3px;
-  border-radius: inherit;
-  border: 2px dashed rgba(255, 255, 255, 0.6);
-}
-
-/* 開封可能ピンの広がる光輪 */
-.pin__halo {
-  position: absolute;
-  top: 22px;
-  left: 50%;
-  width: 60px;
-  height: 60px;
-  margin: -30px 0 0 -30px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--c-amber-glow) 0%, transparent 70%);
-  animation: halo-pulse 2.4s var(--ease-out) infinite;
-  pointer-events: none;
-}
-
+/* 距離ラベル：本体の上に独立して置く（重ならない） */
 .pin__distance {
-  position: absolute;
-  top: -8px;
-  left: 50%;
-  transform: translateX(-50%);
   white-space: nowrap;
   font-size: 0.7rem;
   font-weight: 700;
-  padding: 2px 8px;
+  padding: 2px 9px;
   border-radius: var(--r-pill);
   background: var(--c-night-veil);
   color: var(--c-on-night);
   backdrop-filter: blur(4px);
   border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 .pin--unlockable .pin__distance {
   background: var(--c-amber-deep);
   color: var(--c-on-amber);
   border-color: transparent;
+}
+
+/* しずく本体（縦型）。border-radius の一角だけ尖らせ、回転で下向きに */
+.pin__bulb {
+  width: 42px;
+  height: 42px;
+  border-radius: 50% 50% 50% 50% / 58% 58% 42% 42%;
+  position: relative;
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.4));
+  transition:
+    background var(--dur-2) var(--ease-soft),
+    box-shadow var(--dur-2) var(--ease-soft);
+}
+
+/* 下に伸びる尖り（しずくの先端） */
+.pin__bulb::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 12px solid currentColor;
+}
+
+.pin__pigeon {
+  width: 26px;
+  height: 26px;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+/* 種別チップ（中身の種類を示す小さな印） */
+.pin__kind {
+  position: absolute;
+  right: -5px;
+  top: -5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.pin__kind svg {
+  width: 12px;
+  height: 12px;
+}
+
+.pin__kind-multi {
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* --- 中身の種類による色アクセント（チップのアイコン色） --- */
+.pin--kind-text .pin__kind {
+  color: var(--c-amber-deep);
+}
+.pin--kind-image .pin__kind {
+  color: #c2603f;
+}
+.pin--kind-video .pin__kind {
+  color: #8a5a4a;
+}
+.pin--kind-audio .pin__kind {
+  color: var(--c-moss-deep);
+}
+
+/* --- 近接状態による本体の見た目（色＝proximity、種類＝チップ） --- */
+.pin--far .pin__bulb {
+  background: linear-gradient(160deg, #79828f, #5b6470);
+  color: #5b6470; /* ::after の尖り色 */
+}
+.pin--far .pin__pigeon {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.pin--near .pin__bulb {
+  background: linear-gradient(160deg, #e6a766, #cf7a44);
+  color: #cf7a44;
+  box-shadow:
+    0 5px 8px rgba(0, 0, 0, 0.4),
+    0 0 0 3px rgba(224, 141, 82, 0.22);
+  animation: heartbeat 1.8s var(--ease-soft) infinite;
+}
+
+.pin--unlockable .pin__bulb {
+  background: linear-gradient(160deg, #f0a85f, var(--c-amber-deep));
+  color: var(--c-amber-deep);
+  box-shadow:
+    0 5px 8px rgba(0, 0, 0, 0.4),
+    0 0 0 4px rgba(224, 141, 82, 0.3),
+    0 0 22px 4px var(--c-amber-glow);
+  animation: heartbeat 1.4s var(--ease-soft) infinite;
+}
+
+/* 自分が残したことづての印 */
+.pin--mine .pin__bulb {
+  outline: 2px dashed rgba(255, 255, 255, 0.7);
+  outline-offset: 2px;
+}
+
+/* 開封可能ピンの広がる光輪 */
+.pin__halo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--c-amber-glow) 0%, transparent 70%);
+  animation: halo-pulse 2.4s var(--ease-out) infinite;
+  pointer-events: none;
 }
 
 /* ====== 現在地マーカー ====== */
@@ -268,70 +322,4 @@
   font-size: 0.74rem;
   color: #c0c5cf;
   letter-spacing: 0.02em;
-}
-
-/* ====== 場所えらびモード（中央クロスヘア＋確定バー） ====== */
-.crosshair {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -100%);
-  z-index: var(--z-overlay);
-  pointer-events: none;
-  display: grid;
-  justify-items: center;
-  animation: float-in var(--dur-2) var(--ease-out);
-}
-
-.crosshair__pin {
-  width: 40px;
-  height: 40px;
-  border-radius: 50% 50% 50% 4px;
-  transform: rotate(45deg);
-  background: linear-gradient(160deg, #f0a85f, var(--c-amber-deep));
-  box-shadow: var(--shadow-amber);
-  display: grid;
-  place-items: center;
-}
-
-.crosshair__pin::after {
-  content: '';
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--c-on-amber);
-  transform: rotate(-45deg);
-}
-
-.crosshair__stem {
-  width: 2px;
-  height: 14px;
-  background: var(--c-amber-deep);
-  border-radius: 2px;
-  margin-top: 2px;
-  opacity: 0.5;
-}
-
-.crosshair__shadow {
-  width: 10px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.35);
-  filter: blur(1px);
-}
-
-.pick-hint {
-  position: absolute;
-  top: calc(var(--safe-top) + var(--sp-6));
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: var(--z-overlay);
-  background: var(--c-night-veil);
-  color: var(--c-on-night);
-  padding: var(--sp-2) var(--sp-4);
-  border-radius: var(--r-pill);
-  font-size: 0.86rem;
-  backdrop-filter: blur(8px);
-  box-shadow: var(--shadow-md);
-  white-space: nowrap;
 }

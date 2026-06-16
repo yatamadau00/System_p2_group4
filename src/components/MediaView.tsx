@@ -1,9 +1,9 @@
-import type { MediaPayload } from '../types'
+import type { MediaItem } from '../types'
 import { useObjectUrl } from '../hooks/useObjectUrl'
 import { AudioIcon } from './icons'
 
-/** 開封後の中身でメディアを種別ごとに描画する */
-export function MediaView({ media }: { media: MediaPayload }) {
+/** 開封後の中身でメディアを種別ごとに描画する（1点ぶん） */
+export function MediaView({ media }: { media: MediaItem }) {
   const url = useObjectUrl(media.blob, media.url)
 
   if (!url) return null

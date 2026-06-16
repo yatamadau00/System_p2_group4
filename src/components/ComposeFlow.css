@@ -303,6 +303,223 @@
   backdrop-filter: blur(4px);
 }
 
+/* 現在地が未取得のときの注意カード */
+.place-missing {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border-radius: var(--r-lg);
+  background: rgba(197, 97, 59, 0.08);
+  border: 1px solid rgba(197, 97, 59, 0.22);
+  color: var(--c-ink);
+}
+
+.place-missing > div {
+  flex: 1;
+}
+
+.place-missing b {
+  font-family: var(--font-serif);
+}
+
+.place-missing small {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--c-ink-2);
+}
+
+.place-missing .btn {
+  flex: none;
+  min-height: 0;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+}
+
+/* 添付ボタン群 */
+.attach-buttons {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.attach-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  box-shadow: var(--shadow-sm);
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  color: var(--c-ink);
+  border: 1.5px solid transparent;
+  transition: transform var(--dur-1) var(--ease-soft), border-color var(--dur-1);
+}
+
+.attach-btn:active {
+  transform: scale(0.96);
+}
+
+.attach-btn[aria-pressed='true'] {
+  border-color: var(--c-amber);
+  background: var(--c-amber-soft);
+}
+
+.attach-btn svg {
+  color: var(--c-amber-deep);
+}
+
+/* 添付プレビュー一覧 */
+.attach-list {
+  list-style: none;
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.attach-item {
+  position: relative;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: #000;
+  box-shadow: var(--shadow-sm);
+}
+
+.attach-item img,
+.attach-item video {
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+}
+
+.attach-item__audio {
+  background: linear-gradient(160deg, var(--c-amber-soft), #f6e6d3);
+  padding: var(--sp-4);
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: center;
+}
+
+.attach-item__audio audio {
+  width: 100%;
+}
+
+.attach-item__remove {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-2);
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--c-night-veil);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(4px);
+}
+
+/* 録音UI */
+.recorder-wrap {
+  margin-top: var(--sp-3);
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: center;
+}
+
+.recorder {
+  width: 100%;
+  display: grid;
+  gap: var(--sp-3);
+  justify-items: center;
+  padding: var(--sp-5) var(--sp-4);
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+.recorder__mic {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--c-on-amber);
+  background: linear-gradient(160deg, var(--c-amber), var(--c-amber-deep));
+  box-shadow: var(--shadow-amber);
+  transition: transform var(--dur-1) var(--ease-soft);
+}
+
+.recorder__mic:active {
+  transform: scale(0.94);
+}
+
+.recorder__mic--rec {
+  animation: heartbeat 1.6s var(--ease-soft) infinite;
+}
+
+.recorder__stopsquare {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  background: var(--c-on-amber);
+}
+
+.recorder__timer {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  color: var(--c-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.recorder__reddot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c-danger);
+  animation: fade-in 1s ease-in-out infinite alternate;
+}
+
+.recorder__note {
+  font-size: 0.86rem;
+  color: var(--c-ink-2);
+}
+
+.recorder__audio {
+  width: 100%;
+}
+
+.recorder__actions {
+  display: flex;
+  gap: var(--sp-2);
+  width: 100%;
+}
+
+.recorder__actions .btn {
+  flex: 1;
+}
+
+.recorder__file {
+  font-size: 0.84rem;
+  color: var(--c-ink-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.compose__foot-note {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--c-ink-2);
+  margin-top: var(--sp-2);
+}
+
 /* 送信中オーバーレイ */
 .sending {
   display: grid;

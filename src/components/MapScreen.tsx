@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import {
   GoogleMap,
   OverlayView,
@@ -21,8 +21,6 @@ interface MapScreenProps {
   position: LatLng | null
   totalCount: number
   unlockableCount: number
-  pickMode: boolean
-  pickInitial: LatLng | null
   onSelectPin: (id: string) => void
   onOpenList: () => void
   onMapLoad: (map: google.maps.Map | null) => void
@@ -41,8 +39,6 @@ export function MapScreen(props: MapScreenProps) {
     position,
     totalCount,
     unlockableCount,
-    pickMode,
-    pickInitial,
     onSelectPin,
     onOpenList,
     onMapLoad,
@@ -67,14 +63,6 @@ export function MapScreen(props: MapScreenProps) {
     mapRef.current = null
     onMapLoad(null)
   }, [onMapLoad])
-
-  // 場所えらびモードに入ったら、その地点へ寄せる
-  useEffect(() => {
-    if (pickMode && mapRef.current) {
-      const target = pickInitial ?? position ?? FALLBACK_CENTER
-      mapRef.current.panTo(target)
-    }
-  }, [pickMode, pickInitial, position])
 
   const recenter = useCallback(() => {
     if (mapRef.current && position) {
@@ -157,51 +145,37 @@ export function MapScreen(props: MapScreenProps) {
           </OverlayView>
         )}
 
-        {/* ことづてピン（場所えらび中は隠す） */}
-        {!pickMode &&
-          items.map((k) => (
-            <OverlayView
-              key={k.id}
-              position={k.location}
-              mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
-              getPixelPositionOffset={() => overlayOffset}
-            >
-              <Pin kotozute={k} onClick={() => onSelectPin(k.id)} />
-            </OverlayView>
-          ))}
+        {/* ことづてピン */}
+        {items.map((k) => (
+          <OverlayView
+            key={k.id}
+            position={k.location}
+            mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+            getPixelPositionOffset={() => overlayOffset}
+          >
+            <Pin kotozute={k} onClick={() => onSelectPin(k.id)} />
+          </OverlayView>
+        ))}
       </GoogleMap>
 
-      {pickMode ? (
-        <>
-          <div className="pick-hint">残したい場所まで地図を動かしてください</div>
-          <div className="crosshair" aria-hidden>
-            <div className="crosshair__pin" />
-            <div className="crosshair__stem" />
-            <div className="crosshair__shadow" />
-          </div>
-        </>
-      ) : (
-        <>
-          {brandBar}
-          <div className="map-controls">
-            <button
-              className="map-btn"
-              onClick={onOpenList}
-              aria-label="ことづて一覧をひらく"
-            >
-              <ListIcon />
-            </button>
-            <button
-              className="map-btn"
-              onClick={recenter}
-              disabled={!position}
-              aria-label="現在地へ戻る"
-            >
-              <LocateIcon />
-            </button>
-          </div>
-        </>
-      )}
+      {brandBar}
+      <div className="map-controls">
+        <button
+          className="map-btn"
+          onClick={onOpenList}
+          aria-label="ことづて一覧をひらく"
+        >
+          <ListIcon />
+        </button>
+        <button
+          className="map-btn"
+          onClick={recenter}
+          disabled={!position}
+          aria-label="現在地へ戻る"
+        >
+          <LocateIcon />
+        </button>
+      </div>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { EnrichedKotozute } from '../lib/enrich'
 import { formatDistance } from '../lib/geo'
+import { primaryKind } from '../lib/media'
 import { Sheet } from './Sheet'
 import {
   AudioIcon,
@@ -82,7 +83,7 @@ export function ListSheet({
       ) : (
         <ul className="cz-list">
           {list.map((k) => {
-            const Icon = KIND_ICON[k.mediaKind]
+            const Icon = KIND_ICON[primaryKind(k)]
             const statusText =
               k.proximity === 'unlockable'
                 ? '開封できます'

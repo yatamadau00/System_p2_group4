@@ -12,7 +12,7 @@ const now = Date.now()
 export const SAMPLE_KOTOZUTE: SeedKotozute[] = [
   {
     location: { lat: FALLBACK_CENTER.lat + 0.0004, lng: FALLBACK_CENTER.lng + 0.0006 },
-    mediaKind: 'text',
+    media: [],
     placeLabel: '丸の内の歩道橋',
     authorName: 'なまえのない人',
     message:
@@ -23,7 +23,7 @@ export const SAMPLE_KOTOZUTE: SeedKotozute[] = [
   },
   {
     location: { lat: FALLBACK_CENTER.lat - 0.0007, lng: FALLBACK_CENTER.lng + 0.0009 },
-    mediaKind: 'text',
+    media: [],
     placeLabel: '駅の南口',
     authorName: 'とおりすがり',
     message:
@@ -35,7 +35,7 @@ export const SAMPLE_KOTOZUTE: SeedKotozute[] = [
   },
   {
     location: { lat: FALLBACK_CENTER.lat + 0.0011, lng: FALLBACK_CENTER.lng - 0.0005 },
-    mediaKind: 'text',
+    media: [],
     placeLabel: '小さな珈琲店の前',
     authorName: 'みどり',
     message:
@@ -46,7 +46,7 @@ export const SAMPLE_KOTOZUTE: SeedKotozute[] = [
   },
   {
     location: { lat: FALLBACK_CENTER.lat - 0.0013, lng: FALLBACK_CENTER.lng - 0.0011 },
-    mediaKind: 'text',
+    media: [],
     placeLabel: '川沿いのベンチ',
     authorName: 'なまえのない人',
     message:
@@ -57,7 +57,7 @@ export const SAMPLE_KOTOZUTE: SeedKotozute[] = [
   },
   {
     location: { lat: FALLBACK_CENTER.lat + 0.0018, lng: FALLBACK_CENTER.lng + 0.0017 },
-    mediaKind: 'text',
+    media: [],
     placeLabel: 'いつもの曲がり角',
     authorName: 'はる',
     message:

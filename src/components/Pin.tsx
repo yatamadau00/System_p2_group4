@@ -1,9 +1,10 @@
 import type { EnrichedKotozute } from '../lib/enrich'
 import { formatDistance } from '../lib/geo'
+import { primaryKind } from '../lib/media'
 import {
   AudioIcon,
   ImageIcon,
-  LockIcon,
+  PigeonIcon,
   TextIcon,
   VideoIcon,
 } from './icons'
@@ -15,43 +16,55 @@ const KIND_ICON = {
   audio: AudioIcon,
 }
 
+const KIND_NAME = {
+  text: 'ことば',
+  image: '写真',
+  video: '映像',
+  audio: '声',
+}
+
 interface PinProps {
   kotozute: EnrichedKotozute
   onClick: () => void
 }
 
 /**
- * ことづてのピン。近接状態（far / near / unlockable）で見た目と挙動が変わる。
- * 遠い＝くすんだ施錠、近い＝脈打つ琥珀、開封可能＝光輪をまとって灯る。
+ * ことづてのピン（縦型のしずく型・伝書鳩モチーフ）。
+ * - 近接状態（far / near / unlockable）で明るさ・脈動・光輪が変わる。
+ * - 中身の種類は色アクセントと小さな種別チップで示す（伝書鳩はそのまま）。
+ * - 距離ラベルは本体の上に余白をとって配置し、ピンと重ならない。
  */
 export function Pin({ kotozute, onClick }: PinProps) {
-  const { proximity, distance, mediaKind, mine } = kotozute
-  const KindIcon = KIND_ICON[mediaKind]
+  const { proximity, distance, mine } = kotozute
+  const kind = primaryKind(kotozute)
+  const KindIcon = KIND_ICON[kind]
   const unlockable = proximity === 'unlockable'
+  const multi = kotozute.media.length > 1
 
   const label = unlockable
-    ? 'ことづてを開ける'
+    ? `${KIND_NAME[kind]}のことづてを開ける`
     : distance != null
-      ? `ことづて（あと約${formatDistance(distance)}）`
-      : 'ことづて'
+      ? `${KIND_NAME[kind]}のことづて（あと約${formatDistance(distance)}）`
+      : `${KIND_NAME[kind]}のことづて`
 
   return (
     <button
       type="button"
-      className={`pin pin--${proximity}${mine ? ' pin--mine' : ''}`}
+      className={`pin pin--${proximity} pin--kind-${kind}${
+        mine ? ' pin--mine' : ''
+      }`}
       onClick={onClick}
       aria-label={label}
     >
-      {unlockable && <span className="pin__halo" aria-hidden />}
-      {distance != null && (
+      {distance != null && proximity !== 'far' && (
         <span className="pin__distance">{formatDistance(distance)}</span>
       )}
-      <span className="pin__body">
-        {unlockable ? (
-          <KindIcon className="pin__icon" />
-        ) : (
-          <LockIcon className="pin__icon" />
-        )}
+      <span className="pin__bulb">
+        {unlockable && <span className="pin__halo" aria-hidden />}
+        <PigeonIcon className="pin__pigeon" />
+        <span className="pin__kind" aria-hidden>
+          {multi ? <span className="pin__kind-multi">＋</span> : <KindIcon />}
+        </span>
       </span>
     </button>
   )

@@ -51,17 +51,21 @@ export function Sheet({
       >
         <div className="sheet__grip" aria-hidden />
         <header className="sheet__head">
+          {/* 左：戻る（あれば）。無ければ余白で中央タイトルを保つ */}
           {onBack ? (
             <button className="icon-btn" onClick={onBack} aria-label="戻る">
               <BackIcon />
             </button>
           ) : (
+            <span style={{ width: 40, flex: 'none' }} />
+          )}
+          {title != null && <h2 className="sheet__title">{title}</h2>}
+          {/* 右：閉じる（×）を常に同じ位置に統一 */}
+          {headerRight ?? (
             <button className="icon-btn" onClick={onClose} aria-label="閉じる">
               <CloseIcon />
             </button>
           )}
-          {title != null && <h2 className="sheet__title">{title}</h2>}
-          {headerRight ?? <span style={{ width: 40, flex: 'none' }} />}
         </header>
         <div className="sheet__body">{children}</div>
       </section>

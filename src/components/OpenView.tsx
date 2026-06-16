@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { EnrichedKotozute } from '../lib/enrich'
 import { formatDistance } from '../lib/geo'
+import { kindLabel } from '../lib/media'
 import { NEAR_RADIUS_M, UNLOCK_RADIUS_M } from '../config'
 import { MediaView } from './MediaView'
 import { CloseIcon, FlagIcon, LinkIcon, LockIcon } from './icons'
@@ -14,13 +15,6 @@ const prefersReducedMotion = () =>
 
 const RING = 92 // 半径
 const CIRC = 2 * Math.PI * RING
-
-const KIND_LABEL: Record<string, string> = {
-  text: 'ことばのことづて',
-  image: '写真のことづて',
-  video: '映像のことづて',
-  audio: '声のことづて',
-}
 
 interface OpenViewProps {
   kotozute: EnrichedKotozute
@@ -96,7 +90,18 @@ export function OpenView({ kotozute, onClose }: OpenViewProps) {
         </button>
       </div>
 
-      <div className="open__stage">
+      <div
+        className="open__stage"
+        onClick={(e) => {
+          // 開封前は、中身の外側（背景）をタップで閉じられる
+          if (
+            (phase === 'locked' || phase === 'ready') &&
+            e.target === e.currentTarget
+          ) {
+            onClose()
+          }
+        }}
+      >
         {phase === 'locked' && (
           <LockedView kotozute={kotozute} progress={progress} titleId={titleId} />
         )}
@@ -123,7 +128,7 @@ export function OpenView({ kotozute, onClose }: OpenViewProps) {
           </div>
         )}
 
-        {opened && <Letter kotozute={kotozute} onClose={onClose} />}
+        {opened && <Letter kotozute={kotozute} />}
       </div>
     </div>
   )
@@ -181,21 +186,16 @@ function LockedView({
         もう少しだけ、近づいてみてください。
       </p>
       <div className="locked__peek">
-        {KIND_LABEL[kotozute.mediaKind]}が、ここで待っています
+        {kindLabel(kotozute)}が、ここで待っています
       </div>
     </div>
   )
 }
 
-function Letter({
-  kotozute,
-  onClose,
-}: {
-  kotozute: EnrichedKotozute
-  onClose: () => void
-}) {
+function Letter({ kotozute }: { kotozute: EnrichedKotozute }) {
   const date = new Date(kotozute.createdAt)
   const dateStr = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
+  const hasBody = kotozute.message.trim().length > 0 || !!kotozute.link
 
   return (
     <div className="letter">
@@ -203,14 +203,17 @@ function Letter({
         {kotozute.placeLabel ?? 'この場所のことづて'}
       </div>
       <div className="letter__meta">
-        <span>{KIND_LABEL[kotozute.mediaKind]}</span>
+        <span>{kindLabel(kotozute)}</span>
         <span aria-hidden>・</span>
         <span>{dateStr}</span>
       </div>
 
       <div className="letter__card">
-        {kotozute.media && <MediaView media={kotozute.media} />}
-        {(kotozute.message || kotozute.link) && (
+        {/* 添えられたメディアを順に表示（複数可） */}
+        {kotozute.media.map((m) => (
+          <MediaView key={m.id} media={m} />
+        ))}
+        {hasBody && (
           <div className="letter__message">
             {kotozute.message}
             {kotozute.link && (
@@ -235,11 +238,6 @@ function Letter({
       )}
 
       <div className="letter__actions">
-        <button className="btn btn--soft" onClick={onClose}>
-          そっと閉じる
-        </button>
-      </div>
-      <div style={{ textAlign: 'center' }}>
         <button
           className="letter__report"
           onClick={() =>
