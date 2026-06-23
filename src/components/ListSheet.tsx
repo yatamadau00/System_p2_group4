@@ -10,6 +10,7 @@ import {
   TextIcon,
   TrashIcon,
   VideoIcon,
+  LockIcon,
 } from './icons'
 import './ListSheet.css'
 
@@ -102,8 +103,16 @@ export function ListSheet({
                     <Icon />
                   </span>
                   <span className="cz-row__main">
-                    <span className="cz-row__place">
-                      {k.placeLabel ?? 'この場所のことづて'}
+                    <span className="cz-row__place" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {k.placeLabel ?? 'この場所のことづて'}
+                      </span>
+                      {k.visibility === 'friends' && (
+                        <span className="friend-only-badge" style={{ flexShrink: 0 }}>
+                          <LockIcon width={10} height={10} style={{ marginRight: 2, display: 'inline-block', verticalAlign: 'middle' }} />
+                          フレンド限定
+                        </span>
+                      )}
                     </span>
                     <span className="cz-row__sub">{subText}</span>
                   </span>

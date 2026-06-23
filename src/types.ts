@@ -48,6 +48,8 @@ export interface Kotozute {
   media: MediaItem[]
   /** 残した人の表示名（匿名可・任意） */
   authorName?: string
+  /** 残した人のユーザーID（任意） */
+  authorId?: string
   /** 残した地点の呼び名（例:「卒業した教室」）任意 */
   placeLabel?: string
   /** 作成時刻（epoch ms） */
@@ -56,11 +58,34 @@ export interface Kotozute {
   mine: boolean
   /** ダミーデータ（サンプル）か */
   isSample?: boolean
+  /** 公開範囲（全体公開 or フレンド限定） */
+  visibility?: 'public' | 'friends'
 }
 
 /** 新規作成時の入力（id/createdAt はサービス層が付与） */
 export type NewKotozute = Omit<Kotozute, 'id' | 'createdAt' | 'mine'> &
   Partial<Pick<Kotozute, 'mine'>>
+
+/** ユーザー自身のプロフィール */
+export interface UserProfile {
+  id: string
+  name: string
+  bio: string
+  avatarEmoji: string
+  avatarColor: string
+  friendCode: string
+}
+
+/** 登録されたフレンド情報 */
+export interface Friend {
+  id: string
+  name: string
+  bio: string
+  avatarEmoji: string
+  avatarColor: string
+  friendCode: string
+  addedAt: number
+}
 
 /** 位置情報の取得状態 */
 export type GeoStatus =
@@ -73,3 +98,17 @@ export type GeoStatus =
 
 /** ことづての近接状態（現在地との距離から導出） */
 export type Proximity = 'far' | 'near' | 'unlockable'
+
+/** ユーザーアカウント */
+export interface User {
+  id: string
+  /** ログイン用ユーザー名（一意） */
+  username: string
+  /** 表示名 */
+  displayName: string
+  /** パスワードのSHA-256ハッシュ */
+  passwordHash: string
+  /** 作成時刻（epoch ms） */
+  createdAt: number
+}
+

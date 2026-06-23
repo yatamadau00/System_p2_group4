@@ -20,6 +20,7 @@ export const SAMPLE_KOTOZUTE: SeedKotozute[] = [
     createdAt: now - 2 * DAY,
     mine: false,
     isSample: true,
+    visibility: 'public',
   },
   {
     location: { lat: FALLBACK_CENTER.lat - 0.0007, lng: FALLBACK_CENTER.lng + 0.0009 },
@@ -32,6 +33,7 @@ export const SAMPLE_KOTOZUTE: SeedKotozute[] = [
     createdAt: now - 9 * DAY,
     mine: false,
     isSample: true,
+    visibility: 'public',
   },
   {
     location: { lat: FALLBACK_CENTER.lat + 0.0011, lng: FALLBACK_CENTER.lng - 0.0005 },
@@ -43,6 +45,8 @@ export const SAMPLE_KOTOZUTE: SeedKotozute[] = [
     createdAt: now - 21 * DAY,
     mine: false,
     isSample: true,
+    authorId: 'friend-midori',
+    visibility: 'public',
   },
   {
     location: { lat: FALLBACK_CENTER.lat - 0.0013, lng: FALLBACK_CENTER.lng - 0.0011 },
@@ -54,6 +58,7 @@ export const SAMPLE_KOTOZUTE: SeedKotozute[] = [
     createdAt: now - 40 * DAY,
     mine: false,
     isSample: true,
+    visibility: 'public',
   },
   {
     location: { lat: FALLBACK_CENTER.lat + 0.0018, lng: FALLBACK_CENTER.lng + 0.0017 },
@@ -65,5 +70,47 @@ export const SAMPLE_KOTOZUTE: SeedKotozute[] = [
     createdAt: now - 75 * DAY,
     mine: false,
     isSample: true,
+    authorId: 'friend-haru',
+    visibility: 'public',
+  },
+  /* --- 以下、フレンド限定公開のサンプルことづて --- */
+  {
+    location: { lat: FALLBACK_CENTER.lat + 0.0008, lng: FALLBACK_CENTER.lng - 0.0007 },
+    media: [],
+    placeLabel: 'みどりの秘密の裏道',
+    authorName: 'みどり',
+    message:
+      '【フレンド限定】ここ、夕方になると木漏れ日がすごく綺麗に差し込むんだよ。人通りも少なくて静かで、私の一番お気に入りの散歩道です。今度一緒に歩こうね。',
+    createdAt: now - 1 * DAY,
+    mine: false,
+    isSample: true,
+    authorId: 'friend-midori',
+    visibility: 'friends',
+  },
+  {
+    location: { lat: FALLBACK_CENTER.lat - 0.0010, lng: FALLBACK_CENTER.lng + 0.0012 },
+    media: [],
+    placeLabel: '桜の大樹の下',
+    authorName: 'はる',
+    message:
+      '【フレンド限定】春になると、ここは桜でいっぱいになるの。来年またみんなでここに集まって、美味しいお茶でも飲みながらお話ししようね。約束だよ！',
+    createdAt: now - 3 * DAY,
+    mine: false,
+    isSample: true,
+    authorId: 'friend-haru',
+    visibility: 'friends',
+  },
+  {
+    location: { lat: FALLBACK_CENTER.lat + 0.0015, lng: FALLBACK_CENTER.lng - 0.0014 },
+    media: [],
+    placeLabel: '見晴らしの良い丘',
+    authorName: 'そら',
+    message:
+      '【フレンド限定】ここは風が通り抜けて、街が一番きれいに見えるとっておきの場所なんだ。心がモヤモヤした日は、ここにきて大きく深呼吸してみて。きっと軽くなるよ。',
+    createdAt: now - 5 * DAY,
+    mine: false,
+    isSample: true,
+    authorId: 'friend-sora',
+    visibility: 'friends',
   },
 ]

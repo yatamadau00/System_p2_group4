@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import type { AttachmentKind, LatLng, MediaItem, NewKotozute } from '../types'
+import type { AttachmentKind, LatLng, MediaItem, NewKotozute, UserProfile } from '../types'
 import { uid } from '../lib/media'
 import { useObjectUrl } from '../hooks/useObjectUrl'
 import { AudioRecorder } from './AudioRecorder'
@@ -10,16 +10,20 @@ import {
   ImageIcon,
   LocateIcon,
   VideoIcon,
+  LockIcon,
 } from './icons'
 import './ComposeFlow.css'
 
 interface ComposeFlowProps {
+
   position: LatLng | null
   /** 位置情報の再取得を促す */
   onRetryLocation: () => void
   onSubmit: (input: NewKotozute) => Promise<void>
   onClose: () => void
+  profile: UserProfile
 }
+
 
 /**
  * ことづてを残す画面（1ページ完結）。
@@ -32,14 +36,18 @@ export function ComposeFlow({
   onRetryLocation,
   onSubmit,
   onClose,
+  profile,
 }: ComposeFlowProps) {
   const [message, setMessage] = useState('')
   const [link, setLink] = useState('')
-  const [authorName, setAuthorName] = useState('')
+  const [visibility, setVisibility] = useState<'public' | 'friends'>('public')
+  const [isAnonymous, setIsAnonymous] = useState(false)
+
   const [placeLabel, setPlaceLabel] = useState('')
   const [media, setMedia] = useState<MediaItem[]>([])
   const [recording, setRecording] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
 
   const imageInput = useRef<HTMLInputElement>(null)
   const videoInput = useRef<HTMLInputElement>(null)
@@ -75,10 +83,12 @@ export function ComposeFlow({
         location: position,
         message: message.trim(),
         link: link.trim() || undefined,
-        authorName: authorName.trim() || undefined,
+        authorName: visibility === 'friends' ? profile.name : (isAnonymous ? undefined : profile.name),
         placeLabel: placeLabel.trim() || undefined,
         media,
         mine: true,
+        visibility,
+        authorId: profile.id,
       })
     } catch (e) {
       console.error(e)
@@ -263,18 +273,64 @@ export function ComposeFlow({
           />
         </div>
 
-        {/* 残した人の呼び名 */}
+        {/* 公開範囲設定 */}
         <div className="field">
-          <label className="field__label" htmlFor="cz-author">
-            あなたの呼び名 <small>（任意・匿名のままでも）</small>
-          </label>
-          <input
-            id="cz-author"
-            className="input"
-            value={authorName}
-            onChange={(e) => setAuthorName(e.target.value)}
-            placeholder="なまえのない人"
-          />
+          <span className="field__label">公開範囲</span>
+          <div className="visibility-selector" role="group" aria-label="公開範囲の選択">
+            <button
+              type="button"
+              className="visibility-btn"
+              aria-pressed={visibility === 'public'}
+              onClick={() => setVisibility('public')}
+            >
+              全体公開
+            </button>
+            <button
+              type="button"
+              className="visibility-btn"
+              aria-pressed={visibility === 'friends'}
+              onClick={() => {
+                setVisibility('friends')
+                setIsAnonymous(false)
+              }}
+            >
+              <LockIcon width={16} height={16} style={{ color: 'inherit' }} />
+              フレンド限定
+            </button>
+          </div>
+          {visibility === 'friends' ? (
+            <p className="visibility-note">
+              このことづては、あなたのフレンドだけが地図上で見つけて開封できます。
+            </p>
+          ) : (
+            <p className="visibility-note">
+              このことづては、場所を訪れたすべてのユーザーが開封できます。
+            </p>
+          )}
+        </div>
+
+        {/* 投稿者の名前（プロフィール連動） */}
+        <div className="field">
+          <span className="field__label">あなたの呼び名</span>
+          {visibility === 'friends' ? (
+            <div className="visibility-note" style={{ color: 'var(--c-ink)', fontWeight: 'bold', fontSize: '0.95rem', marginTop: 4 }}>
+              {profile.avatarEmoji} {profile.name} <small style={{ fontWeight: 'normal', color: 'var(--c-ink-2)' }}>（フレンド限定公開のため匿名にできません）</small>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ fontStyle: isAnonymous ? 'italic' : 'normal', color: isAnonymous ? 'var(--c-ink-3)' : 'var(--c-ink)', fontWeight: 'bold', fontSize: '0.95rem' }}>
+                {isAnonymous ? 'なまえのない誰か' : `${profile.avatarEmoji} ${profile.name}`}
+              </div>
+              <label className="anonymous-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={isAnonymous}
+                  onChange={(e) => setIsAnonymous(e.target.checked)}
+                />
+                匿名で投稿する
+              </label>
+            </div>
+          )}
         </div>
 
         <div className="compose__footer">
