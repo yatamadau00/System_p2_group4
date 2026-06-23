@@ -323,3 +323,51 @@
   color: #c0c5cf;
   letter-spacing: 0.02em;
 }
+
+/* ユーザー認証関連のスタイリング */
+.topbar__divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 var(--sp-1);
+}
+
+.topbar__auth {
+  display: flex;
+  align-items: center;
+}
+
+.topbar__user {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.topbar__username {
+  font-size: 0.8rem;
+  font-weight: 700;
+  max-width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--c-on-night);
+}
+
+.topbar__btn {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--c-amber-soft);
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition:
+    background var(--dur-1),
+    color var(--dur-1);
+}
+
+.topbar__btn:active {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--c-amber);
+}
+

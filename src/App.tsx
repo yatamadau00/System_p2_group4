@@ -4,9 +4,11 @@ import { OpenView } from './components/OpenView'
 import { ComposeFlow } from './components/ComposeFlow'
 import { ListSheet } from './components/ListSheet'
 import { GeoBanner } from './components/GeoBanner'
+import { AuthSheet } from './components/AuthSheet'
 import { CheckIcon, PlusIcon } from './components/icons'
 import { useGeolocation } from './hooks/useGeolocation'
 import { useKotozute } from './hooks/useKotozute'
+import { useAuth } from './hooks/useAuth'
 import { enrich } from './lib/enrich'
 import type { NewKotozute } from './types'
 import './App.css'
@@ -14,10 +16,12 @@ import './App.css'
 export function App() {
   const geo = useGeolocation(true)
   const { items, loading, create, remove } = useKotozute()
+  const { currentUser, logout } = useAuth()
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [composing, setComposing] = useState(false)
   const [showList, setShowList] = useState(false)
+  const [showAuth, setShowAuth] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
   const mapRef = useRef<google.maps.Map | null>(null)
@@ -48,13 +52,16 @@ export function App() {
 
   const handleSubmit = useCallback(
     async (input: NewKotozute) => {
-      const created = await create(input)
+      const inputWithAuthor = currentUser
+        ? { ...input, authorId: currentUser.id }
+        : input
+      const created = await create(inputWithAuthor)
       setComposing(false)
       setToast('ことづてを、この場所に残しました')
       // 残した直後にその場所のピンへ意識を向ける
       if (mapRef.current) mapRef.current.panTo(created.location)
     },
-    [create],
+    [create, currentUser],
   )
 
   const handleDelete = useCallback(
@@ -66,7 +73,8 @@ export function App() {
     [remove, selectedId],
   )
 
-  const overlayOpen = composing || showList || !!selected
+  const overlayOpen = composing || showList || !!selected || showAuth
+
 
   return (
     <div className="app">
@@ -78,6 +86,9 @@ export function App() {
         onSelectPin={(id) => setSelectedId(id)}
         onOpenList={() => setShowList(true)}
         onMapLoad={handleMapLoad}
+        currentUser={currentUser}
+        onOpenAuth={() => setShowAuth(true)}
+        onLogout={logout}
       />
 
       {/* 位置情報の状態フィードバック（オーバーレイ中は隠す） */}
@@ -104,6 +115,7 @@ export function App() {
           onRetryLocation={geo.start}
           onSubmit={handleSubmit}
           onClose={() => setComposing(false)}
+          defaultAuthorName={currentUser?.displayName || ''}
         />
       )}
 
@@ -126,6 +138,11 @@ export function App() {
         <OpenView kotozute={selected} onClose={() => setSelectedId(null)} />
       )}
 
+      {/* ログイン / 新規登録 */}
+      {showAuth && (
+        <AuthSheet onClose={() => setShowAuth(false)} />
+      )}
+
       {/* トースト */}
       {toast && (
         <div className="toast" role="status" aria-live="polite">
@@ -138,3 +155,4 @@ export function App() {
     </div>
   )
 }
+

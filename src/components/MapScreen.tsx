@@ -5,7 +5,7 @@ import {
   useJsApiLoader,
 } from '@react-google-maps/api'
 import type { EnrichedKotozute } from '../lib/enrich'
-import type { LatLng } from '../types'
+import type { LatLng, User } from '../types'
 import {
   DEFAULT_ZOOM,
   FALLBACK_CENTER,
@@ -24,6 +24,9 @@ interface MapScreenProps {
   onSelectPin: (id: string) => void
   onOpenList: () => void
   onMapLoad: (map: google.maps.Map | null) => void
+  currentUser: User | null
+  onOpenAuth: () => void
+  onLogout: () => void
 }
 
 const hasKey = GOOGLE_MAPS_API_KEY.trim().length > 0
@@ -42,6 +45,9 @@ export function MapScreen(props: MapScreenProps) {
     onSelectPin,
     onOpenList,
     onMapLoad,
+    currentUser,
+    onOpenAuth,
+    onLogout,
   } = props
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -82,8 +88,34 @@ export function MapScreen(props: MapScreenProps) {
             : `この地に ${totalCount} 通`}
         </div>
       </div>
+      <span className="topbar__divider" />
+      <div className="topbar__auth">
+        {currentUser ? (
+          <div className="topbar__user">
+            <span className="topbar__username" title={currentUser.displayName}>
+              {currentUser.displayName}
+            </span>
+            <button
+              className="topbar__btn"
+              onClick={onLogout}
+              aria-label="ログアウト"
+            >
+              ログアウト
+            </button>
+          </div>
+        ) : (
+          <button
+            className="topbar__btn"
+            onClick={onOpenAuth}
+            aria-label="ログイン"
+          >
+            ログイン
+          </button>
+        )}
+      </div>
     </div>
   )
+
 
   // --- フォールバック地図（キー未設定 or 読み込み失敗） ---
   if (!hasKey || loadError) {

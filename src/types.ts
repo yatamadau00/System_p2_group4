@@ -48,6 +48,8 @@ export interface Kotozute {
   media: MediaItem[]
   /** 残した人の表示名（匿名可・任意） */
   authorName?: string
+  /** 残した人のユーザーID（任意） */
+  authorId?: string
   /** 残した地点の呼び名（例:「卒業した教室」）任意 */
   placeLabel?: string
   /** 作成時刻（epoch ms） */
@@ -73,3 +75,17 @@ export type GeoStatus =
 
 /** ことづての近接状態（現在地との距離から導出） */
 export type Proximity = 'far' | 'near' | 'unlockable'
+
+/** ユーザーアカウント */
+export interface User {
+  id: string
+  /** ログイン用ユーザー名（一意） */
+  username: string
+  /** 表示名 */
+  displayName: string
+  /** パスワードのSHA-256ハッシュ */
+  passwordHash: string
+  /** 作成時刻（epoch ms） */
+  createdAt: number
+}
+

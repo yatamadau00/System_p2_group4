@@ -19,6 +19,7 @@ interface ComposeFlowProps {
   onRetryLocation: () => void
   onSubmit: (input: NewKotozute) => Promise<void>
   onClose: () => void
+  defaultAuthorName?: string
 }
 
 /**
@@ -32,14 +33,16 @@ export function ComposeFlow({
   onRetryLocation,
   onSubmit,
   onClose,
+  defaultAuthorName = '',
 }: ComposeFlowProps) {
   const [message, setMessage] = useState('')
   const [link, setLink] = useState('')
-  const [authorName, setAuthorName] = useState('')
+  const [authorName, setAuthorName] = useState(defaultAuthorName)
   const [placeLabel, setPlaceLabel] = useState('')
   const [media, setMedia] = useState<MediaItem[]>([])
   const [recording, setRecording] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
 
   const imageInput = useRef<HTMLInputElement>(null)
   const videoInput = useRef<HTMLInputElement>(null)
