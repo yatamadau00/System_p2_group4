@@ -3,12 +3,14 @@ import { MapScreen } from './components/MapScreen'
 import { OpenView } from './components/OpenView'
 import { ComposeFlow } from './components/ComposeFlow'
 import { ListSheet } from './components/ListSheet'
+import { ProfileSheet } from './components/ProfileSheet'
 import { GeoBanner } from './components/GeoBanner'
 import { AuthSheet } from './components/AuthSheet'
 import { CheckIcon, PlusIcon } from './components/icons'
 import { useGeolocation } from './hooks/useGeolocation'
 import { useKotozute } from './hooks/useKotozute'
 import { useAuth } from './hooks/useAuth'
+import { useUserProfile, useFriends } from './services/socialService'
 import { enrich } from './lib/enrich'
 import type { NewKotozute } from './types'
 import './App.css'
@@ -17,19 +19,53 @@ export function App() {
   const geo = useGeolocation(true)
   const { items, loading, create, remove } = useKotozute()
   const { currentUser, logout } = useAuth()
+  const { profile: rawProfile, updateProfile } = useUserProfile()
+  const {
+    friends,
+    addFriendByCode,
+    addFriendDirect,
+    removeFriend,
+    isFriend,
+    suggestedFriends,
+  } = useFriends()
+
+  // ログイン中の場合はプロフィール情報をログインユーザーの情報で上書きする
+  const profile = useMemo(() => {
+    if (currentUser) {
+      return {
+        ...rawProfile,
+        id: currentUser.id,
+        name: currentUser.displayName,
+      }
+    }
+    return rawProfile
+  }, [rawProfile, currentUser])
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [composing, setComposing] = useState(false)
   const [showList, setShowList] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
   const mapRef = useRef<google.maps.Map | null>(null)
 
   const position = geo.position
 
+  // 表示可能なことづてにフィルター（全体公開 or 自分が作成 or 登録済みのフレンドが作成したもの）
+  const visibleItems = useMemo(() => {
+    return items.filter((item) => {
+      if (item.mine) return true
+      if (!item.visibility || item.visibility === 'public') return true
+      if (item.visibility === 'friends' && item.authorId && isFriend(item.authorId)) {
+        return true
+      }
+      return false
+    })
+  }, [items, isFriend])
+
   // 現在地からの距離・近接状態を付与
-  const enriched = useMemo(() => enrich(items, position), [items, position])
+  const enriched = useMemo(() => enrich(visibleItems, position), [visibleItems, position])
   const unlockableCount = useMemo(
     () => enriched.filter((k) => k.proximity === 'unlockable').length,
     [enriched],
@@ -73,15 +109,14 @@ export function App() {
     [remove, selectedId],
   )
 
-  const overlayOpen = composing || showList || !!selected || showAuth
-
+  const overlayOpen = composing || showList || showProfile || !!selected || showAuth
 
   return (
     <div className="app">
       <MapScreen
         items={enriched}
         position={position}
-        totalCount={items.length}
+        totalCount={visibleItems.length}
         unlockableCount={unlockableCount}
         onSelectPin={(id) => setSelectedId(id)}
         onOpenList={() => setShowList(true)}
@@ -89,6 +124,8 @@ export function App() {
         currentUser={currentUser}
         onOpenAuth={() => setShowAuth(true)}
         onLogout={logout}
+        profile={profile}
+        onOpenProfile={() => setShowProfile(true)}
       />
 
       {/* 位置情報の状態フィードバック（オーバーレイ中は隠す） */}
@@ -115,7 +152,7 @@ export function App() {
           onRetryLocation={geo.start}
           onSubmit={handleSubmit}
           onClose={() => setComposing(false)}
-          defaultAuthorName={currentUser?.displayName || ''}
+          profile={profile}
         />
       )}
 
@@ -130,6 +167,26 @@ export function App() {
           }}
           onDelete={handleDelete}
           onClose={() => setShowList(false)}
+        />
+      )}
+
+      {/* プロフィール & フレンド */}
+      {showProfile && (
+        <ProfileSheet
+          items={items}
+          profile={profile}
+          updateProfile={updateProfile}
+          friends={friends}
+          addFriendByCode={addFriendByCode}
+          addFriendDirect={addFriendDirect}
+          removeFriend={removeFriend}
+          suggestedFriends={suggestedFriends}
+          onSelectKotozute={(id) => {
+            setShowProfile(false)
+            setSelectedId(id)
+          }}
+          onDeleteKotozute={handleDelete}
+          onClose={() => setShowProfile(false)}
         />
       )}
 

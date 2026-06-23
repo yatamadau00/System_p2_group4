@@ -7,6 +7,7 @@ import {
   PigeonIcon,
   TextIcon,
   VideoIcon,
+  LockIcon,
 } from './icons'
 
 const KIND_ICON = {
@@ -35,11 +36,12 @@ interface PinProps {
  * - 距離ラベルは本体の上に余白をとって配置し、ピンと重ならない。
  */
 export function Pin({ kotozute, onClick }: PinProps) {
-  const { proximity, distance, mine } = kotozute
+  const { proximity, distance, mine, visibility } = kotozute
   const kind = primaryKind(kotozute)
   const KindIcon = KIND_ICON[kind]
   const unlockable = proximity === 'unlockable'
   const multi = (kotozute.media ?? []).length > 1
+  const isFriendsOnly = visibility === 'friends'
 
   const label = unlockable
     ? `${KIND_NAME[kind]}のことづてを開ける`
@@ -52,7 +54,7 @@ export function Pin({ kotozute, onClick }: PinProps) {
       type="button"
       className={`pin pin--${proximity} pin--kind-${kind}${
         mine ? ' pin--mine' : ''
-      }`}
+      }${isFriendsOnly ? ' pin--friends' : ''}`}
       onClick={onClick}
       aria-label={label}
     >
@@ -63,7 +65,13 @@ export function Pin({ kotozute, onClick }: PinProps) {
         {unlockable && <span className="pin__halo" aria-hidden />}
         <PigeonIcon className="pin__pigeon" />
         <span className="pin__kind" aria-hidden>
-          {multi ? <span className="pin__kind-multi">＋</span> : <KindIcon />}
+          {isFriendsOnly ? (
+            <LockIcon width={12} height={12} style={{ strokeWidth: 2.2 }} />
+          ) : multi ? (
+            <span className="pin__kind-multi">＋</span>
+          ) : (
+            <KindIcon />
+          )}
         </span>
       </span>
     </button>

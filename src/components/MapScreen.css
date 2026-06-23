@@ -175,6 +175,10 @@
 .pin--kind-audio .pin__kind {
   color: var(--c-moss-deep);
 }
+.pin--friends .pin__kind {
+  background: var(--c-moss);
+  color: #fff;
+}
 
 /* --- 近接状態による本体の見た目（色＝proximity、種類＝チップ） --- */
 .pin--far .pin__bulb {
@@ -369,5 +373,22 @@
 .topbar__btn:active {
   background: rgba(255, 255, 255, 0.18);
   color: var(--c-amber);
+}
+
+/* ====== プロフィールボタン ====== */
+.map-btn--profile {
+  position: absolute;
+  top: calc(var(--safe-top) + var(--sp-4));
+  right: var(--sp-4);
+  z-index: var(--z-overlay);
+  font-size: 1.4rem;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  user-select: none;
+}
+
 }
 

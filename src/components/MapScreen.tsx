@@ -12,6 +12,7 @@ import {
   GOOGLE_MAPS_API_KEY,
 } from '../config'
 import { KOTOZUTE_MAP_STYLE } from '../lib/mapStyle'
+import type { UserProfile } from '../types'
 import { Pin } from './Pin'
 import { ListIcon, LocateIcon } from './icons'
 import './MapScreen.css'
@@ -27,6 +28,8 @@ interface MapScreenProps {
   currentUser: User | null
   onOpenAuth: () => void
   onLogout: () => void
+  profile: UserProfile
+  onOpenProfile: () => void
 }
 
 const hasKey = GOOGLE_MAPS_API_KEY.trim().length > 0
@@ -48,6 +51,8 @@ export function MapScreen(props: MapScreenProps) {
     currentUser,
     onOpenAuth,
     onLogout,
+    profile,
+    onOpenProfile,
   } = props
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -116,6 +121,16 @@ export function MapScreen(props: MapScreenProps) {
     </div>
   )
 
+  const profileButton = (
+    <button
+      className="map-btn map-btn--profile"
+      onClick={onOpenProfile}
+      style={{ backgroundColor: profile.avatarColor }}
+      aria-label="プロフィールをひらく"
+    >
+      {profile.avatarEmoji}
+    </button>
+  )
 
   // --- フォールバック地図（キー未設定 or 読み込み失敗） ---
   if (!hasKey || loadError) {
@@ -123,6 +138,7 @@ export function MapScreen(props: MapScreenProps) {
       <div className="map-root">
         <FallbackMap items={items} onSelectPin={onSelectPin} />
         {brandBar}
+        {profileButton}
         <div className="map-controls">
           <button className="map-btn" onClick={onOpenList} aria-label="ことづて一覧">
             <ListIcon />
@@ -160,7 +176,7 @@ export function MapScreen(props: MapScreenProps) {
           gestureHandling: 'greedy',
           backgroundColor: '#1e2530',
           minZoom: 3,
-          maxZoom: 20,
+          maxZoom: 100,
         }}
       >
         {/* 現在地 */}
@@ -191,6 +207,7 @@ export function MapScreen(props: MapScreenProps) {
       </GoogleMap>
 
       {brandBar}
+      {profileButton}
       <div className="map-controls">
         <button
           className="map-btn"
