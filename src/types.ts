@@ -56,11 +56,36 @@ export interface Kotozute {
   mine: boolean
   /** ダミーデータ（サンプル）か */
   isSample?: boolean
+  /** 公開範囲（全体公開 or フレンド限定） */
+  visibility?: 'public' | 'friends'
+  /** 投稿者のユーザーID（モックフレンドや自ユーザーを紐付けるため） */
+  authorId?: string
 }
 
 /** 新規作成時の入力（id/createdAt はサービス層が付与） */
 export type NewKotozute = Omit<Kotozute, 'id' | 'createdAt' | 'mine'> &
   Partial<Pick<Kotozute, 'mine'>>
+
+/** ユーザー自身のプロフィール */
+export interface UserProfile {
+  id: string
+  name: string
+  bio: string
+  avatarEmoji: string
+  avatarColor: string
+  friendCode: string
+}
+
+/** 登録されたフレンド情報 */
+export interface Friend {
+  id: string
+  name: string
+  bio: string
+  avatarEmoji: string
+  avatarColor: string
+  friendCode: string
+  addedAt: number
+}
 
 /** 位置情報の取得状態 */
 export type GeoStatus =

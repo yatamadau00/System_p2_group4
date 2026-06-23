@@ -152,6 +152,15 @@ function LockedView({
         {kotozute.placeLabel ?? 'どこかの誰かのことづて'}
       </div>
 
+      {kotozute.visibility === 'friends' && (
+        <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0 -8px 0' }}>
+          <span className="friend-only-badge">
+            <LockIcon width={10} height={10} style={{ marginRight: 2, display: 'inline-block', verticalAlign: 'middle' }} />
+            フレンド限定公開
+          </span>
+        </div>
+      )}
+
       <div className="ring" role="img" aria-label="目的地までの距離">
         <svg viewBox="0 0 200 200" width="200" height="200">
           <circle className="ring__track" cx="100" cy="100" r={RING} />
@@ -202,10 +211,16 @@ function Letter({ kotozute }: { kotozute: EnrichedKotozute }) {
       <div className="letter__place">
         {kotozute.placeLabel ?? 'この場所のことづて'}
       </div>
-      <div className="letter__meta">
+      <div className="letter__meta" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
         <span>{kindLabel(kotozute)}</span>
         <span aria-hidden>・</span>
         <span>{dateStr}</span>
+        {kotozute.visibility === 'friends' && (
+          <span className="friend-only-badge" style={{ margin: 0 }}>
+            <LockIcon width={10} height={10} style={{ marginRight: 2, display: 'inline-block', verticalAlign: 'middle' }} />
+            フレンド限定
+          </span>
+        )}
       </div>
 
       <div className="letter__card">
