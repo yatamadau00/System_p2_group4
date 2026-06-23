@@ -9,7 +9,7 @@ interface NotificationContextType {
   addNotification: (
     title: string,
     message: string,
-    type: 'near' | 'unlockable' | 'system',
+    type: 'near' | 'unlockable' | 'system' | 'received',
     relatedId?: string
   ) => AppNotification
   markAsRead: (id: string) => void
@@ -62,7 +62,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     (
       title: string,
       message: string,
-      type: 'near' | 'unlockable' | 'system',
+      type: 'near' | 'unlockable' | 'system' | 'received',
       relatedId?: string
     ) => {
       const newNotif: AppNotification = {

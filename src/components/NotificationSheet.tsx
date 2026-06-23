@@ -1,6 +1,6 @@
 import { useNotifications } from '../hooks/useNotifications'
 import { Sheet } from './Sheet'
-import { BellIcon, LockIcon, PigeonIcon, TrashIcon, CheckIcon } from './icons'
+import { BellIcon, LockIcon, PigeonIcon, TrashIcon, CheckIcon, EnvelopeIcon } from './icons'
 import './NotificationSheet.css'
 
 interface NotificationSheetProps {
@@ -42,6 +42,8 @@ export function NotificationSheet({ onSelectKotozute, onClose }: NotificationShe
         return <PigeonIcon className="notif-item__icon notif-item__icon--near" />
       case 'unlockable':
         return <LockIcon className="notif-item__icon notif-item__icon--unlock" />
+      case 'received':
+        return <EnvelopeIcon className="notif-item__icon notif-item__icon--received" />
       default:
         return <BellIcon className="notif-item__icon notif-item__icon--system" />
     }

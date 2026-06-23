@@ -203,6 +203,10 @@
   color: var(--c-moss);
 }
 
+.notif-item__icon--received {
+  color: var(--c-amber-deep);
+}
+
 .notif-item__icon--system {
   color: var(--c-slate);
 }

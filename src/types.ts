@@ -117,10 +117,11 @@ export interface AppNotification {
   id: string
   title: string
   message: string
-  type: 'near' | 'unlockable' | 'system'
+  type: 'near' | 'unlockable' | 'system' | 'received'
   relatedId?: string // 関連することづてのID
   createdAt: number
   read: boolean
 }
+
 
 
