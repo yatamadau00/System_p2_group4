@@ -2,6 +2,7 @@
 -- Destructive reset: this drops existing app tables and recreates them.
 
 drop table if exists public.friends cascade;
+drop table if exists public.notifications cascade;
 drop table if exists public.kotozute cascade;
 drop table if exists public.users cascade;
 
@@ -41,14 +42,27 @@ create table public.friends (
   constraint friends_owner_friend_key unique (owner_id, friend_id)
 );
 
+create table public.notifications (
+  id text primary key,
+  recipient_id text not null references public.users(id) on delete cascade,
+  title text not null,
+  message text not null,
+  type text not null check (type in ('near', 'unlockable', 'system', 'received')),
+  related_id uuid references public.kotozute(id) on delete set null,
+  read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
 create index kotozute_author_id_idx on public.kotozute (author_id);
 create index kotozute_created_at_idx on public.kotozute (created_at desc);
 create index friends_owner_id_idx on public.friends (owner_id);
 create index friends_friend_id_idx on public.friends (friend_id);
+create index notifications_recipient_created_idx on public.notifications (recipient_id, created_at desc);
 
 alter table public.users enable row level security;
 alter table public.kotozute enable row level security;
 alter table public.friends enable row level security;
+alter table public.notifications enable row level security;
 
 -- Demo policies. This is intentionally open for the class prototype.
 -- Do not use this as-is for a production app.
@@ -63,6 +77,11 @@ create policy "kotozute_delete" on public.kotozute for delete using (true);
 create policy "friends_select" on public.friends for select using (true);
 create policy "friends_insert" on public.friends for insert with check (true);
 create policy "friends_delete" on public.friends for delete using (true);
+
+create policy "notifications_select" on public.notifications for select using (true);
+create policy "notifications_insert" on public.notifications for insert with check (true);
+create policy "notifications_update" on public.notifications for update using (true) with check (true);
+create policy "notifications_delete" on public.notifications for delete using (true);
 
 insert into storage.buckets (id, name, public)
 values ('kotozute-media', 'kotozute-media', true)

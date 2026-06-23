@@ -119,3 +119,14 @@ export interface User {
   /** 作成時刻（epoch ms） */
   createdAt: number
 }
+
+/** アプリ内通知情報 */
+export interface AppNotification {
+  id: string
+  title: string
+  message: string
+  type: 'near' | 'unlockable' | 'system' | 'received'
+  relatedId?: string // 関連することづてのID
+  createdAt: number
+  read: boolean
+}

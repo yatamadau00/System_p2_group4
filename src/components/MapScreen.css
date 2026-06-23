@@ -410,3 +410,38 @@
   cursor: pointer;
   user-select: none;
 }
+
+
+/* ====== 通知ボタン & バッジ ====== */
+.map-btn--notification {
+  position: relative;
+}
+
+.map-btn__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: var(--r-pill);
+  background-color: var(--c-danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid var(--c-surface);
+  box-shadow: var(--shadow-sm);
+  animation: badge-scale 0.25s var(--ease-soft) forwards;
+}
+
+@keyframes badge-scale {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
