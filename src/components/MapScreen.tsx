@@ -108,8 +108,8 @@ export function MapScreen(props: MapScreenProps) {
       <div className="topbar__auth">
         {currentUser ? (
           <div className="topbar__user">
-            <span className="topbar__username" title={currentUser.displayName}>
-              {currentUser.displayName}
+            <span className="topbar__username" title={profile.name}>
+              {profile.name}
             </span>
             <button
               className="topbar__btn"

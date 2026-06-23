@@ -32,6 +32,7 @@ interface Row {
   link: string | null
   author_name: string | null
   author_id: string | null
+  author: { display_name: string | null } | null
   place_label: string | null
   media: MediaJson[] | null
   visibility: string | null
@@ -75,7 +76,7 @@ function rowToKotozute(row: Row, mineIds: Set<string>): Kotozute {
       mimeType: m.mime_type,
       fileName: m.file_name,
     })),
-    authorName: row.author_name ?? undefined,
+    authorName: row.author?.display_name ?? row.author_name ?? undefined,
     authorId: row.author_id ?? undefined,
     placeLabel: row.place_label ?? undefined,
     createdAt: new Date(row.created_at).getTime(),
@@ -100,7 +101,7 @@ export const supabaseRepository: KotozuteRepository = {
   async list() {
     const { data, error } = await supabase!
       .from('kotozute')
-      .select('*')
+      .select('*, author:users!kotozute_author_id_fkey(display_name)')
       .order('created_at', { ascending: false })
     if (error) throw error
     const mine = await getMineIds()
@@ -110,7 +111,7 @@ export const supabaseRepository: KotozuteRepository = {
   async get(id) {
     const { data, error } = await supabase!
       .from('kotozute')
-      .select('*')
+      .select('*, author:users!kotozute_author_id_fkey(display_name)')
       .eq('id', id)
       .maybeSingle()
     if (error) throw error
@@ -158,14 +159,14 @@ export const supabaseRepository: KotozuteRepository = {
         lng: input.location.lng,
         message: input.message,
         link: input.link ?? null,
-        author_name: input.authorName ?? null,
+        author_name: input.authorId ? null : input.authorName ?? null,
         author_id: input.authorId ?? null,
         place_label: input.placeLabel ?? null,
         media,
         visibility: input.visibility ?? 'public',
         is_sample: false,
       })
-      .select()
+      .select('*, author:users!kotozute_author_id_fkey(display_name)')
       .single()
     if (error) throw error
 
@@ -181,7 +182,7 @@ export const supabaseRepository: KotozuteRepository = {
     if (files && files.length > 0) {
       await supabase!.storage
         .from(MEDIA_BUCKET)
-        .remove(files.map((f) => `${id}/${f.name}`))
+        .remove(files.map((f: { name: string }) => `${id}/${f.name}`))
     }
     const { error } = await supabase!.from('kotozute').delete().eq('id', id)
     if (error) throw error
@@ -202,8 +203,10 @@ export const supabaseRepository: KotozuteRepository = {
       message: s.message,
       link: s.link ?? null,
       author_name: s.authorName ?? null,
+      author_id: null,
       place_label: s.placeLabel ?? null,
       media: [],
+      visibility: s.visibility ?? 'public',
       is_sample: true,
       created_at: new Date(s.createdAt ?? Date.now()).toISOString(),
     }))

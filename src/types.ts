@@ -106,9 +106,16 @@ export interface User {
   username: string
   /** 表示名 */
   displayName: string
+  /** 自己紹介 */
+  bio?: string
+  /** アバター絵文字 */
+  avatarEmoji?: string
+  /** アバター背景色 */
+  avatarColor?: string
+  /** フレンド追加用コード */
+  friendCode?: string
   /** パスワードのSHA-256ハッシュ */
   passwordHash: string
   /** 作成時刻（epoch ms） */
   createdAt: number
 }
-

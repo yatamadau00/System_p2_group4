@@ -7,11 +7,11 @@ import './ProfileSheet.css'
 interface ProfileSheetProps {
   items: Kotozute[]
   profile: UserProfile
-  updateProfile: (updates: Partial<Omit<UserProfile, 'id' | 'friendCode'>>) => void
+  updateProfile: (updates: Partial<Omit<UserProfile, 'id' | 'friendCode'>>) => Promise<void>
   friends: Friend[]
-  addFriendByCode: (code: string) => Friend
-  addFriendDirect: (suggested: Omit<Friend, 'addedAt'>) => void
-  removeFriend: (id: string) => void
+  addFriendByCode: (code: string) => Promise<Friend>
+  addFriendDirect: (suggested: Omit<Friend, 'addedAt'>) => Promise<void>
+  removeFriend: (id: string) => Promise<void>
   suggestedFriends: Omit<Friend, 'addedAt'>[]
   onSelectKotozute: (id: string) => void
   onDeleteKotozute: (id: string) => void
@@ -47,6 +47,8 @@ export function ProfileSheet({
   const [friendError, setFriendError] = useState<string | null>(null)
   const [friendSuccess, setFriendSuccess] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [friendBusy, setFriendBusy] = useState(false)
 
   // 自分のことづて一覧
   const myItems = useMemo(() => {
@@ -54,18 +56,25 @@ export function ProfileSheet({
   }, [items])
 
   // プロフィール編集の保存
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!editName.trim()) {
       alert('名前を入力してください')
       return
     }
-    updateProfile({
-      name: editName.trim(),
-      bio: editBio.trim(),
-      avatarEmoji: editEmoji,
-      avatarColor: editColor,
-    })
-    setIsEditing(false)
+    setSavingProfile(true)
+    try {
+      await updateProfile({
+        name: editName.trim(),
+        bio: editBio.trim(),
+        avatarEmoji: editEmoji,
+        avatarColor: editColor,
+      })
+      setIsEditing(false)
+    } catch (err: any) {
+      alert(err.message || 'プロフィールの保存に失敗しました')
+    } finally {
+      setSavingProfile(false)
+    }
   }
 
   // プロフィール編集キャンセル
@@ -85,19 +94,22 @@ export function ProfileSheet({
   }
 
   // フレンドコードでの追加
-  const handleAddFriend = (e: React.FormEvent) => {
+  const handleAddFriend = async (e: React.FormEvent) => {
     e.preventDefault()
     setFriendError(null)
     setFriendSuccess(null)
     
     if (!friendCodeInput.trim()) return
 
+    setFriendBusy(true)
     try {
-      const added = addFriendByCode(friendCodeInput)
+      const added = await addFriendByCode(friendCodeInput)
       setFriendSuccess(`${added.name}さんとフレンドになりました！`)
       setFriendCodeInput('')
     } catch (err: any) {
       setFriendError(err.message || 'フレンドの追加に失敗しました。')
+    } finally {
+      setFriendBusy(false)
     }
   }
 
@@ -198,11 +210,11 @@ export function ProfileSheet({
                   </div>
 
                   <div className="profile-card__actions">
-                    <button className="btn btn--soft" onClick={handleCancelEdit}>
+                    <button className="btn btn--soft" onClick={handleCancelEdit} disabled={savingProfile}>
                       キャンセル
                     </button>
-                    <button className="btn btn--primary" onClick={handleSaveProfile}>
-                      保存する
+                    <button className="btn btn--primary" onClick={handleSaveProfile} disabled={savingProfile}>
+                      {savingProfile ? '保存中…' : '保存する'}
                     </button>
                   </div>
                 </div>
@@ -308,8 +320,8 @@ export function ProfileSheet({
                     setFriendSuccess(null)
                   }}
                 />
-                <button type="submit" className="btn btn--primary friend-form__btn">
-                  追加
+                <button type="submit" className="btn btn--primary friend-form__btn" disabled={friendBusy}>
+                  {friendBusy ? '追加中…' : '追加'}
                 </button>
               </form>
               {friendError && <p className="friend-message error">{friendError}</p>}
@@ -340,9 +352,13 @@ export function ProfileSheet({
                         </div>
                         <button
                           className="friend-item-card__remove"
-                          onClick={() => {
+                          onClick={async () => {
                             if (confirm(`${f.name}さんのフレンド登録を解除しますか？`)) {
-                              removeFriend(f.id)
+                              try {
+                                await removeFriend(f.id)
+                              } catch (err: any) {
+                                alert(err.message || 'フレンド解除に失敗しました')
+                              }
                             }
                           }}
                           aria-label="フレンド解除"
@@ -376,7 +392,13 @@ export function ProfileSheet({
                       </div>
                       <button
                         className="btn btn--soft suggested-item__btn"
-                        onClick={() => addFriendDirect(sf)}
+                        onClick={async () => {
+                          try {
+                            await addFriendDirect(sf)
+                          } catch (err: any) {
+                            alert(err.message || 'フレンド追加に失敗しました')
+                          }
+                        }}
                       >
                         追加
                       </button>
