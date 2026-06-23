@@ -6,6 +6,8 @@
 
 これは **MVP / 動くプロトタイプ** です。既定では端末内（IndexedDB）に保存しますが、**Supabase を設定すると全員で同じことづてを共有**できます（サーバ実装は不要・[SUPABASE_SETUP.md](SUPABASE_SETUP.md) 参照）。
 
+> 🚀 **公開URLで共有したい（Vercelへデプロイ）→ [DEPLOY.md](DEPLOY.md)**（リポジトリ所有者向け・作業はVercelのみ）
+
 ---
 
 ## 体験のながれ
