@@ -1,0 +1,175 @@
+import { useState } from 'react'
+import { Sheet } from './Sheet'
+import { useAuth } from '../hooks/useAuth'
+import './AuthSheet.css'
+
+interface AuthSheetProps {
+  onClose: () => void
+}
+
+type AuthMode = 'login' | 'signup'
+
+export function AuthSheet({ onClose }: AuthSheetProps) {
+  const { login, signUp, error, clearError } = useAuth()
+  const [mode, setMode] = useState<AuthMode>('login')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [displayName, setDisplayName] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [localError, setLocalError] = useState<string | null>(null)
+
+  const handleSwitchMode = () => {
+    setMode((prev) => (prev === 'login' ? 'signup' : 'login'))
+    setUsername('')
+    setPassword('')
+    setDisplayName('')
+    setLocalError(null)
+    clearError()
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLocalError(null)
+    clearError()
+
+    const cleanUsername = username.trim()
+    const cleanPassword = password.trim()
+    const cleanDisplayName = displayName.trim()
+
+    if (!cleanUsername) {
+      setLocalError('ユーザー名を入力してください')
+      return
+    }
+    if (!cleanPassword) {
+      setLocalError('パスワードを入力してください')
+      return
+    }
+    if (cleanPassword.length < 4) {
+      setLocalError('パスワードは4文字以上で入力してください')
+      return
+    }
+    if (mode === 'signup' && !cleanDisplayName) {
+      setLocalError('表示名を入力してください')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      if (mode === 'login') {
+        await login(cleanUsername, cleanPassword)
+      } else {
+        await signUp(cleanUsername, cleanDisplayName, cleanPassword)
+      }
+      onClose()
+    } catch (err) {
+      // エラーは Context の `error` または throw されたエラーから取得
+      console.error(err)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const title = mode === 'login' ? 'ログイン' : 'アカウント作成'
+  const displayError = localError || error
+
+  return (
+    <Sheet title={title} onClose={onClose}>
+      <form className="auth-form" onSubmit={handleSubmit}>
+        {displayError && <div className="auth-form__error">{displayError}</div>}
+
+        <div className="auth-form__group">
+          <label className="auth-form__label" htmlFor="username">
+            ユーザー名（英数字のみ）
+          </label>
+          <input
+            className="auth-form__input"
+            id="username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_-]/g, ''))}
+            placeholder="例: kotozute_user"
+            disabled={submitting}
+            required
+            autoFocus
+          />
+        </div>
+
+        {mode === 'signup' && (
+          <div className="auth-form__group">
+            <label className="auth-form__label" htmlFor="displayName">
+              表示名（日本語可）
+            </label>
+            <input
+              className="auth-form__input"
+              id="displayName"
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="例: コトズテ太郎"
+              disabled={submitting}
+              required
+            />
+          </div>
+        )}
+
+        <div className="auth-form__group">
+          <label className="auth-form__label" htmlFor="password">
+            パスワード
+          </label>
+          <input
+            className="auth-form__input"
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="4文字以上"
+            disabled={submitting}
+            required
+          />
+        </div>
+
+        <button
+          className="btn btn--primary btn--block"
+          type="submit"
+          disabled={submitting}
+        >
+          {submitting ? (
+            <div className="spinner spinner--ink" style={{ width: 20, height: 20, margin: '0 auto' }} />
+          ) : mode === 'login' ? (
+            'ログインする'
+          ) : (
+            '登録して始める'
+          )}
+        </button>
+
+        <div className="auth-form__footer">
+          {mode === 'login' ? (
+            <>
+              アカウントをお持ちでないですか？
+              <button
+                className="auth-form__switch-btn"
+                type="button"
+                onClick={handleSwitchMode}
+                disabled={submitting}
+              >
+                新規登録
+              </button>
+            </>
+          ) : (
+            <>
+              すでにアカウントをお持ちですか？
+              <button
+                className="auth-form__switch-btn"
+                type="button"
+                onClick={handleSwitchMode}
+                disabled={submitting}
+              >
+                ログイン
+              </button>
+            </>
+          )}
+        </div>
+      </form>
+    </Sheet>
+  )
+}

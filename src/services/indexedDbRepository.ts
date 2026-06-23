@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
-import type { Kotozute, NewKotozute } from '../types'
+import type { Kotozute, NewKotozute, User } from '../types'
 import {
   generateId,
   type KotozuteRepository,
@@ -16,10 +16,15 @@ interface KotozuteDB extends DBSchema {
     key: string
     value: boolean
   }
+  users: {
+    key: string
+    value: User
+    indexes: { username: string }
+  }
 }
 
 const DB_NAME = 'kotozute-db'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const SEEDED_KEY = 'seeded'
 
 let dbPromise: Promise<IDBPDatabase<KotozuteDB>> | null = null
@@ -27,15 +32,26 @@ let dbPromise: Promise<IDBPDatabase<KotozuteDB>> | null = null
 function db() {
   if (!dbPromise) {
     dbPromise = openDB<KotozuteDB>(DB_NAME, DB_VERSION, {
-      upgrade(database) {
-        const store = database.createObjectStore('kotozute', { keyPath: 'id' })
-        store.createIndex('createdAt', 'createdAt')
-        database.createObjectStore('meta')
+      upgrade(database, oldVersion) {
+        if (oldVersion < 1) {
+          const store = database.createObjectStore('kotozute', { keyPath: 'id' })
+          store.createIndex('createdAt', 'createdAt')
+          database.createObjectStore('meta')
+        }
+        if (oldVersion < 2) {
+          const userStore = database.createObjectStore('users', { keyPath: 'id' })
+          userStore.createIndex('username', 'username', { unique: true })
+        }
       },
     })
   }
   return dbPromise
 }
+
+export function getDb() {
+  return db()
+}
+
 
 /**
  * IndexedDB を用いた永続化実装。

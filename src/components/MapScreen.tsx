@@ -6,13 +6,14 @@ import {
   useJsApiLoader,
 } from '@react-google-maps/api'
 import type { EnrichedKotozute } from '../lib/enrich'
-import type { LatLng } from '../types'
+import type { LatLng, User } from '../types'
 import {
   DEFAULT_ZOOM,
   FALLBACK_CENTER,
   GOOGLE_MAPS_API_KEY,
 } from '../config'
 import { KOTOZUTE_MAP_STYLE } from '../lib/mapStyle'
+import type { UserProfile } from '../types'
 import { Pin } from './Pin'
 import { ListIcon, LocateIcon } from './icons'
 import './MapScreen.css'
@@ -26,6 +27,11 @@ interface MapScreenProps {
   onSelectPin: (id: string) => void
   onOpenList: () => void
   onMapLoad: (map: google.maps.Map | null) => void
+  currentUser: User | null
+  onOpenAuth: () => void
+  onLogout: () => void
+  profile: UserProfile
+  onOpenProfile: () => void
 }
 
 const hasKey = GOOGLE_MAPS_API_KEY.trim().length > 0
@@ -45,6 +51,11 @@ export function MapScreen(props: MapScreenProps) {
     onSelectPin,
     onOpenList,
     onMapLoad,
+    currentUser,
+    onOpenAuth,
+    onLogout,
+    profile,
+    onOpenProfile,
   } = props
 
   // ハイライト中のピンを最後に描画して、重なっても前面に出す
@@ -93,7 +104,43 @@ export function MapScreen(props: MapScreenProps) {
             : `この地に ${totalCount} 通`}
         </div>
       </div>
+      <span className="topbar__divider" />
+      <div className="topbar__auth">
+        {currentUser ? (
+          <div className="topbar__user">
+            <span className="topbar__username" title={currentUser.displayName}>
+              {currentUser.displayName}
+            </span>
+            <button
+              className="topbar__btn"
+              onClick={onLogout}
+              aria-label="ログアウト"
+            >
+              ログアウト
+            </button>
+          </div>
+        ) : (
+          <button
+            className="topbar__btn"
+            onClick={onOpenAuth}
+            aria-label="ログイン"
+          >
+            ログイン
+          </button>
+        )}
+      </div>
     </div>
+  )
+
+  const profileButton = (
+    <button
+      className="map-btn map-btn--profile"
+      onClick={onOpenProfile}
+      style={{ backgroundColor: profile.avatarColor }}
+      aria-label="プロフィールをひらく"
+    >
+      {profile.avatarEmoji}
+    </button>
   )
 
   // --- フォールバック地図（キー未設定 or 読み込み失敗） ---
@@ -102,6 +149,7 @@ export function MapScreen(props: MapScreenProps) {
       <div className="map-root">
         <FallbackMap items={items} onSelectPin={onSelectPin} />
         {brandBar}
+        {profileButton}
         <div className="map-controls">
           <button className="map-btn" onClick={onOpenList} aria-label="ことづて一覧">
             <ListIcon />
@@ -174,6 +222,7 @@ export function MapScreen(props: MapScreenProps) {
       </GoogleMap>
 
       {brandBar}
+      {profileButton}
       <div className="map-controls">
         <button
           className="map-btn"
