@@ -41,6 +41,10 @@ alter table public.kotozute add column if not exists visibility text not null de
 alter table public.kotozute enable row level security;
 
 -- MVP（匿名・全体公開）：誰でも読める／残せる／消せる
+-- ※ create policy には if not exists が無いため、drop→create で再実行可能にする
+drop policy if exists "kotozute_select" on public.kotozute;
+drop policy if exists "kotozute_insert" on public.kotozute;
+drop policy if exists "kotozute_delete" on public.kotozute;
 create policy "kotozute_select" on public.kotozute for select using (true);
 create policy "kotozute_insert" on public.kotozute for insert with check (true);
 create policy "kotozute_delete" on public.kotozute for delete using (true);
@@ -50,6 +54,9 @@ insert into storage.buckets (id, name, public)
 values ('kotozute-media', 'kotozute-media', true)
 on conflict (id) do nothing;
 
+drop policy if exists "media_read"   on storage.objects;
+drop policy if exists "media_write"  on storage.objects;
+drop policy if exists "media_delete" on storage.objects;
 create policy "media_read"   on storage.objects for select using (bucket_id = 'kotozute-media');
 create policy "media_write"  on storage.objects for insert with check (bucket_id = 'kotozute-media');
 create policy "media_delete" on storage.objects for delete using (bucket_id = 'kotozute-media');
