@@ -1,5 +1,15 @@
-import { createContext, useCallback, useEffect, useState, ReactNode } from 'react'
+import { createContext, useCallback, useEffect, useMemo, useState, ReactNode } from 'react'
 import type { AppNotification } from '../types'
+import { useAuthContext } from './AuthContext'
+import {
+  canUseRemoteNotifications,
+  clearRemoteNotifications,
+  createRemoteNotification,
+  listRemoteNotifications,
+  markAllRemoteNotificationsAsRead,
+  markRemoteNotificationAsRead,
+  removeRemoteNotification,
+} from '../services/notificationService'
 
 interface NotificationContextType {
   notifications: AppNotification[]
@@ -23,6 +33,13 @@ export const NotificationContext = createContext<NotificationContextType | null>
 const LOCAL_STORAGE_KEY = 'kotozute_notifications'
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
+  const { currentUser } = useAuthContext()
+  const remoteUserId = currentUser?.id ?? null
+  const useRemote = useMemo(
+    () => canUseRemoteNotifications(remoteUserId),
+    [remoteUserId],
+  )
+
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
     try {
       const stored = localStorage.getItem(LOCAL_STORAGE_KEY)
@@ -39,10 +56,36 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     return 'default'
   })
 
-  // 永続化
+  // 保存先を切り替える。ログイン中かつSupabase設定ありならDB、そうでなければ端末内。
   useEffect(() => {
+    if (!useRemote || !remoteUserId) {
+      try {
+        const stored = localStorage.getItem(LOCAL_STORAGE_KEY)
+        setNotifications(stored ? JSON.parse(stored) : [])
+      } catch {
+        setNotifications([])
+      }
+      return
+    }
+
+    let cancelled = false
+    listRemoteNotifications(remoteUserId)
+      .then((list) => {
+        if (!cancelled) setNotifications(list)
+      })
+      .catch((e) => {
+        console.warn('Remote notifications could not be loaded:', e)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [remoteUserId, useRemote])
+
+  useEffect(() => {
+    if (useRemote) return
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(notifications))
-  }, [notifications])
+  }, [notifications, useRemote])
 
   // 未読件数
   const unreadCount = notifications.filter((n) => !n.read).length
@@ -77,6 +120,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
       setNotifications((prev) => [newNotif, ...prev])
 
+      if (useRemote && remoteUserId) {
+        createRemoteNotification(remoteUserId, newNotif).catch((e) => {
+          console.warn('Remote notification could not be saved:', e)
+        })
+      }
+
       // ブラウザ標準の通知を送信する
       if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
         try {
@@ -98,7 +147,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
       return newNotif
     },
-    []
+    [remoteUserId, useRemote]
   )
 
   // 既読化
@@ -106,22 +155,42 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
     )
-  }, [])
+    if (useRemote && remoteUserId) {
+      markRemoteNotificationAsRead(remoteUserId, id).catch((e) => {
+        console.warn('Remote notification could not be marked as read:', e)
+      })
+    }
+  }, [remoteUserId, useRemote])
 
   // すべて既読
   const markAllAsRead = useCallback(() => {
     setNotifications((prev) => prev.map((n) => (n.read ? n : { ...n, read: true })))
-  }, [])
+    if (useRemote && remoteUserId) {
+      markAllRemoteNotificationsAsRead(remoteUserId).catch((e) => {
+        console.warn('Remote notifications could not be marked as read:', e)
+      })
+    }
+  }, [remoteUserId, useRemote])
 
   // 削除
   const removeNotification = useCallback((id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id))
-  }, [])
+    if (useRemote && remoteUserId) {
+      removeRemoteNotification(remoteUserId, id).catch((e) => {
+        console.warn('Remote notification could not be removed:', e)
+      })
+    }
+  }, [remoteUserId, useRemote])
 
   // すべて削除
   const clearAll = useCallback(() => {
     setNotifications([])
-  }, [])
+    if (useRemote && remoteUserId) {
+      clearRemoteNotifications(remoteUserId).catch((e) => {
+        console.warn('Remote notifications could not be cleared:', e)
+      })
+    }
+  }, [remoteUserId, useRemote])
 
   return (
     <NotificationContext.Provider
