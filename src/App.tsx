@@ -24,7 +24,7 @@ export function App() {
   const { items, loading, create, remove } = useKotozute()
   const { currentUser, logout } = useAuth()
   const { unreadCount, addNotification } = useNotifications()
-  const { profile: rawProfile, updateProfile } = useUserProfile()
+  const { profile, updateProfile } = useUserProfile(currentUser)
   const {
     friends,
     addFriendByCode,
@@ -32,19 +32,7 @@ export function App() {
     removeFriend,
     isFriend,
     suggestedFriends,
-  } = useFriends()
-
-  // ログイン中の場合はプロフィール情報をログインユーザーの情報で上書きする
-  const profile = useMemo(() => {
-    if (currentUser) {
-      return {
-        ...rawProfile,
-        id: currentUser.id,
-        name: currentUser.displayName,
-      }
-    }
-    return rawProfile
-  }, [rawProfile, currentUser])
+  } = useFriends(currentUser)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // 地図ピンと下部リストの相互ハイライト用（開封状態とは別）
@@ -371,4 +359,3 @@ export function App() {
     </div>
   )
 }
-

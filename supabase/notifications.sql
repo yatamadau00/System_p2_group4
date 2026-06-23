@@ -3,11 +3,11 @@
 
 create table if not exists public.notifications (
   id text primary key,
-  recipient_id text not null,
+  recipient_id text not null references public.users(id) on delete cascade,
   title text not null,
   message text not null,
   type text not null check (type in ('near', 'unlockable', 'system', 'received')),
-  related_id text,
+  related_id uuid references public.kotozute(id) on delete set null,
   read boolean not null default false,
   created_at timestamptz not null default now()
 );

@@ -1,125 +1,85 @@
-# Supabase セットアップ（みんなでことづてを共有する）
+# Supabase セットアップ
 
-このアプリは、Supabase を設定すると **全員が同じことづてを共有** できます。
-設定しなければ、これまで通り端末内（共有されない）で動きます。
+このアプリは、Supabase を設定すると全員で同じことづてを共有できます。
 
-所要時間：約10分。**サーバを動かす必要はありません**（`npm run dev` のまま、フロントから直接 Supabase に繋がります）。
+## 1. SQLを実行
 
----
+Supabase の SQL Editor で [`supabase/schema.sql`](supabase/schema.sql) を貼り付けて実行してください。
 
-## 1. プロジェクトを作る
+このSQLは **既存の `users` / `kotozute` / `friends` / `notifications` テーブルを削除して作り直します**。
+現在入っているデータも消えるため、必要なら先にエクスポートしてください。
 
-1. https://supabase.com にサインイン → **New project**
-2. 名前・データベースパスワード・リージョン（Tokyo 推奨）を設定して作成
-3. 作成完了まで1〜2分待つ
+既存DBを残したまま通知テーブルだけ追加したい場合は、代わりに [`supabase/notifications.sql`](supabase/notifications.sql) だけを実行してください。
 
-## 2. テーブルとストレージを作る（SQLを貼るだけ）
+## 2. テーブル構成
 
-左メニュー **SQL Editor** → **New query** に以下を貼って **Run**：
+### `users`
 
-```sql
--- ことづて本体
-create table if not exists public.kotozute (
-  id uuid primary key default gen_random_uuid(),
-  lat double precision not null,
-  lng double precision not null,
-  message text not null default '',
-  link text,
-  author_name text,
-  author_id text,
-  place_label text,
-  media jsonb not null default '[]'::jsonb,
-  visibility text not null default 'public',
-  is_sample boolean not null default false,
-  created_at timestamptz not null default now()
-);
+ユーザー登録情報を保存します。
 
--- 既にテーブルがある場合に不足列を足す（再実行しても安全）
-alter table public.kotozute add column if not exists author_id text;
-alter table public.kotozute add column if not exists visibility text not null default 'public';
+| column | meaning |
+| --- | --- |
+| `id` | ユーザーID |
+| `username` | ログイン用ユーザー名 |
+| `display_name` | 表示名 |
+| `password_hash` | パスワードハッシュ |
+| `bio` | 自己紹介 |
+| `avatar_emoji` | アバター |
+| `avatar_color` | アバター背景色 |
+| `friend_code` | フレンド追加用コード |
 
-alter table public.kotozute enable row level security;
+### `kotozute`
 
--- MVP（匿名・全体公開）：誰でも読める／残せる／消せる
--- ※ create policy には if not exists が無いため、drop→create で再実行可能にする
-drop policy if exists "kotozute_select" on public.kotozute;
-drop policy if exists "kotozute_insert" on public.kotozute;
-drop policy if exists "kotozute_delete" on public.kotozute;
-create policy "kotozute_select" on public.kotozute for select using (true);
-create policy "kotozute_insert" on public.kotozute for insert with check (true);
-create policy "kotozute_delete" on public.kotozute for delete using (true);
+ことづて本体を保存します。
 
--- メディア用の公開バケット
-insert into storage.buckets (id, name, public)
-values ('kotozute-media', 'kotozute-media', true)
-on conflict (id) do nothing;
+`author_id` は `users.id` に外部キー接続します。
+表示名は基本的に `users.display_name` から取得します。
+匿名またはサンプルのことづてだけ `author_name` を使います。
 
-drop policy if exists "media_read"   on storage.objects;
-drop policy if exists "media_write"  on storage.objects;
-drop policy if exists "media_delete" on storage.objects;
-create policy "media_read"   on storage.objects for select using (bucket_id = 'kotozute-media');
-create policy "media_write"  on storage.objects for insert with check (bucket_id = 'kotozute-media');
-create policy "media_delete" on storage.objects for delete using (bucket_id = 'kotozute-media');
+### `friends`
 
--- 通知
-create table if not exists public.notifications (
-  id text primary key,
-  recipient_id text not null,
-  title text not null,
-  message text not null,
-  type text not null check (type in ('near', 'unlockable', 'system', 'received')),
-  related_id text,
-  read boolean not null default false,
-  created_at timestamptz not null default now()
-);
+フレンド関係を保存します。
 
-create index if not exists notifications_recipient_created_idx
-  on public.notifications (recipient_id, created_at desc);
+| column | meaning |
+| --- | --- |
+| `owner_id` | フレンド登録したユーザーID |
+| `friend_id` | 登録された相手のユーザーID |
 
-alter table public.notifications enable row level security;
+どちらも `users.id` に外部キー接続します。
 
-drop policy if exists "notifications_select" on public.notifications;
-drop policy if exists "notifications_insert" on public.notifications;
-drop policy if exists "notifications_update" on public.notifications;
-drop policy if exists "notifications_delete" on public.notifications;
-create policy "notifications_select" on public.notifications for select using (true);
-create policy "notifications_insert" on public.notifications for insert with check (true);
-create policy "notifications_update" on public.notifications for update using (true) with check (true);
-create policy "notifications_delete" on public.notifications for delete using (true);
-```
+### `notifications`
 
-## 3. キーを `.env` に設定
+アプリ内通知を保存します。
 
-左メニュー **Project Settings > API** を開き、次の2つをコピー：
+| column | meaning |
+| --- | --- |
+| `recipient_id` | 通知を受け取るユーザーID |
+| `type` | `near` / `unlockable` / `system` / `received` |
+| `related_id` | 関連することづてID |
+| `read` | 既読状態 |
 
-- **Project URL** → `VITE_SUPABASE_URL`
-- **anon public** キー → `VITE_SUPABASE_ANON_KEY`
+`recipient_id` は `users.id`、`related_id` は `kotozute.id` に外部キー接続します。
 
-`.env` に貼り付け：
+## 3. `.env` を設定
 
 ```env
 VITE_SUPABASE_URL=https://xxxxxxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOi...（anon public キー）
+VITE_SUPABASE_ANON_KEY=eyJhbGciOi...
 ```
 
-> anon public キーは**ブラウザに置いて安全**な鍵です（アクセス制御は上の RLS ポリシーで実施）。
-> ⚠️ `service_role` キーは絶対に置かないでください（全権限を持つ秘密鍵）。
+Google Maps を使う場合は次も設定します。
 
-## 4. 再起動
+```env
+VITE_GOOGLE_MAPS_API_KEY=あなたのキー
+```
+
+## 4. 起動
 
 ```bash
-# Ctrl+C で止めてから
+npm install
 npm run dev
 ```
 
-これで、トンネルURL（または各自のPC）から **全員が同じことづて** を見られます。
-最初の1回だけ、サンプルことづてが自動で投入されます。
+## 注意
 
----
-
-## 補足・注意
-
-- **公開範囲**：MVPの仕様どおり「全体公開・匿名」です。誰でも閲覧・作成・削除できます（デモ向け）。
-  本番運用するなら、認証（フレンド機能など）を入れて削除ポリシーを「作成者のみ」に絞るのが望ましいです。
-- **「わたしのことづて」** は端末ごとの記録（この端末で残したID）で判定しています。別端末では「わたしの」には出ません（共有自体はされます）。
-- 設定をやめれば（`.env` の2つを空にする）、また端末内モードに戻ります。
+現在のRLSポリシーはデモ用に広く開けています。授業用プロトタイプとしては扱いやすいですが、本番運用するなら Supabase Auth に寄せ、更新・削除を本人だけに制限してください。
