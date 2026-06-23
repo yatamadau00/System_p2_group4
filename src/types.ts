@@ -112,3 +112,15 @@ export interface User {
   createdAt: number
 }
 
+/** アプリ内通知情報 */
+export interface AppNotification {
+  id: string
+  title: string
+  message: string
+  type: 'near' | 'unlockable' | 'system'
+  relatedId?: string // 関連することづてのID
+  createdAt: number
+  read: boolean
+}
+
+

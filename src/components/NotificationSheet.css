@@ -1,0 +1,256 @@
+/* 通知トレイ専用スタイル */
+
+.notif-sheet {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-bottom: var(--safe-bottom);
+}
+
+/* 通知許可プロンプトバナー */
+.notif-permission-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  background-color: var(--c-amber-soft);
+  border: 1px solid var(--c-amber);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+  margin-bottom: var(--sp-4);
+  animation: fadeIn var(--dur-2) var(--ease-soft);
+}
+
+.notif-permission-banner__text h4 {
+  margin: 0 0 var(--sp-1) 0;
+  font-family: var(--font-sans);
+  color: var(--c-amber-deep);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.notif-permission-banner__text p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--c-ink-2);
+  line-height: 1.4;
+}
+
+.notif-permission-banner__btn {
+  flex-shrink: 0;
+  background-color: var(--c-amber);
+  color: var(--c-on-amber);
+  border: none;
+  padding: var(--sp-2) var(--sp-4);
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background-color var(--dur-1) var(--ease-soft), transform var(--dur-1) var(--ease-soft);
+}
+
+.notif-permission-banner__btn:hover {
+  background-color: var(--c-amber-deep);
+}
+
+.notif-permission-banner__btn:active {
+  transform: scale(0.95);
+}
+
+/* コントロールバー */
+.notif-sheet__controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--c-washi-2);
+}
+
+.notif-control-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  background: none;
+  border: none;
+  color: var(--c-ink-2);
+  font-size: 12px;
+  cursor: pointer;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-sm);
+  transition: background-color var(--dur-1) var(--ease-soft), color var(--dur-1) var(--ease-soft);
+}
+
+.notif-control-btn:hover {
+  background-color: var(--c-washi-2);
+  color: var(--c-ink);
+}
+
+.notif-control-btn--danger:hover {
+  color: var(--c-danger);
+  background-color: rgba(181, 82, 74, 0.08);
+}
+
+/* 空状態 */
+.notif-sheet__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--sp-8) var(--sp-4);
+  color: var(--c-ink-3);
+  flex-grow: 1;
+}
+
+.notif-sheet__empty-icon {
+  margin-bottom: var(--sp-4);
+  color: var(--c-ink-3);
+  opacity: 0.6;
+}
+
+.notif-sheet__empty-title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  color: var(--c-ink-2);
+  margin: 0 0 var(--sp-2) 0;
+}
+
+.notif-sheet__empty-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 280px;
+  margin: 0;
+}
+
+/* 通知リスト */
+.notif-sheet__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  overflow-y: auto;
+  max-height: 60vh;
+  padding-right: var(--sp-1);
+}
+
+.notif-item {
+  position: relative;
+  display: flex;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border-radius: var(--r-md);
+  background-color: var(--c-surface);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--dur-1) var(--ease-soft), box-shadow var(--dur-1) var(--ease-soft), background-color var(--dur-1) var(--ease-soft);
+}
+
+.notif-item--interactive {
+  cursor: pointer;
+}
+
+.notif-item--interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  background-color: #fffdf2;
+}
+
+.notif-item--interactive:active {
+  transform: translateY(0);
+}
+
+/* 未読ドット */
+.notif-item__unread-dot {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--c-amber);
+  box-shadow: 0 0 6px var(--c-amber);
+}
+
+.notif-item--read {
+  opacity: 0.8;
+  background-color: rgba(255, 253, 248, 0.5);
+  box-shadow: none;
+  border: 1px solid var(--c-washi-2);
+}
+
+/* アイコン */
+.notif-item__icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--c-washi);
+  flex-shrink: 0;
+}
+
+.notif-item__icon {
+  width: 20px;
+  height: 20px;
+}
+
+.notif-item__icon--near {
+  color: var(--c-amber);
+}
+
+.notif-item__icon--unlock {
+  color: var(--c-moss);
+}
+
+.notif-item__icon--system {
+  color: var(--c-slate);
+}
+
+/* コンテンツ */
+.notif-item__content {
+  flex-grow: 1;
+  min-width: 0; /* text truncate のため */
+}
+
+.notif-item__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-1);
+}
+
+.notif-item__title {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notif-item__time {
+  font-size: 11px;
+  color: var(--c-ink-3);
+  flex-shrink: 0;
+}
+
+.notif-item__msg {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--c-ink-2);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
