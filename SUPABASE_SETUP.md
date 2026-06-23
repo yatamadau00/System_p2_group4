@@ -26,11 +26,17 @@ create table if not exists public.kotozute (
   message text not null default '',
   link text,
   author_name text,
+  author_id text,
   place_label text,
   media jsonb not null default '[]'::jsonb,
+  visibility text not null default 'public',
   is_sample boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+-- 既にテーブルがある場合に不足列を足す（再実行しても安全）
+alter table public.kotozute add column if not exists author_id text;
+alter table public.kotozute add column if not exists visibility text not null default 'public';
 
 alter table public.kotozute enable row level security;
 

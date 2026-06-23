@@ -31,8 +31,10 @@ interface Row {
   message: string | null
   link: string | null
   author_name: string | null
+  author_id: string | null
   place_label: string | null
   media: MediaJson[] | null
+  visibility: string | null
   is_sample: boolean | null
   created_at: string
 }
@@ -74,10 +76,15 @@ function rowToKotozute(row: Row, mineIds: Set<string>): Kotozute {
       fileName: m.file_name,
     })),
     authorName: row.author_name ?? undefined,
+    authorId: row.author_id ?? undefined,
     placeLabel: row.place_label ?? undefined,
     createdAt: new Date(row.created_at).getTime(),
     mine: mineIds.has(row.id),
     isSample: row.is_sample ?? false,
+    visibility:
+      row.visibility === 'friends' || row.visibility === 'public'
+        ? row.visibility
+        : undefined,
   }
 }
 
@@ -152,8 +159,10 @@ export const supabaseRepository: KotozuteRepository = {
         message: input.message,
         link: input.link ?? null,
         author_name: input.authorName ?? null,
+        author_id: input.authorId ?? null,
         place_label: input.placeLabel ?? null,
         media,
+        visibility: input.visibility ?? 'public',
         is_sample: false,
       })
       .select()
