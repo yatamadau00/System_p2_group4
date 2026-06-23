@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react'
 import {
   GoogleMap,
   OverlayView,
+  OverlayViewF,
   useJsApiLoader,
 } from '@react-google-maps/api'
 import type { EnrichedKotozute } from '../lib/enrich'
@@ -21,6 +22,7 @@ interface MapScreenProps {
   position: LatLng | null
   totalCount: number
   unlockableCount: number
+  highlightedId: string | null
   onSelectPin: (id: string) => void
   onOpenList: () => void
   onMapLoad: (map: google.maps.Map | null) => void
@@ -39,10 +41,19 @@ export function MapScreen(props: MapScreenProps) {
     position,
     totalCount,
     unlockableCount,
+    highlightedId,
     onSelectPin,
     onOpenList,
     onMapLoad,
   } = props
+
+  // ハイライト中のピンを最後に描画して、重なっても前面に出す
+  const orderedItems = highlightedId
+    ? [
+        ...items.filter((k) => k.id !== highlightedId),
+        ...items.filter((k) => k.id === highlightedId),
+      ]
+    : items
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'kotozute-google-maps',
@@ -128,12 +139,12 @@ export function MapScreen(props: MapScreenProps) {
           gestureHandling: 'greedy',
           backgroundColor: '#1e2530',
           minZoom: 3,
-          maxZoom: 20,
+          maxZoom: 22,
         }}
       >
-        {/* 現在地 */}
+        {/* 現在地（OverlayViewF＝再レンダリングでも消えない関数版を使用） */}
         {position && (
-          <OverlayView
+          <OverlayViewF
             position={position}
             mapPaneName={OverlayView.OVERLAY_LAYER}
             getPixelPositionOffset={() => overlayOffset}
@@ -142,19 +153,23 @@ export function MapScreen(props: MapScreenProps) {
               <span className="me__ring" />
               <span className="me__dot" />
             </div>
-          </OverlayView>
+          </OverlayViewF>
         )}
 
-        {/* ことづてピン */}
-        {items.map((k) => (
-          <OverlayView
+        {/* ことづてピン（ハイライト中は最前面に） */}
+        {orderedItems.map((k) => (
+          <OverlayViewF
             key={k.id}
             position={k.location}
             mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
             getPixelPositionOffset={() => overlayOffset}
           >
-            <Pin kotozute={k} onClick={() => onSelectPin(k.id)} />
-          </OverlayView>
+            <Pin
+              kotozute={k}
+              highlighted={k.id === highlightedId}
+              onClick={() => onSelectPin(k.id)}
+            />
+          </OverlayViewF>
         ))}
       </GoogleMap>
 

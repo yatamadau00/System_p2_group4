@@ -177,21 +177,25 @@
 }
 
 /* --- 近接状態による本体の見た目（色＝proximity、種類＝チップ） --- */
+/* 開けないピン（5m圏外）は黒く沈める */
 .pin--far .pin__bulb {
-  background: linear-gradient(160deg, #79828f, #5b6470);
-  color: #5b6470; /* ::after の尖り色 */
+  background: linear-gradient(160deg, #3a3f47, #14171c);
+  color: #14171c; /* ::after の尖り色 */
 }
 .pin--far .pin__pigeon {
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.88);
 }
 
+/* 近づいている（まだ開けない）も黒 */
 .pin--near .pin__bulb {
-  background: linear-gradient(160deg, #e6a766, #cf7a44);
-  color: #cf7a44;
+  background: linear-gradient(160deg, #3a3f47, #14171c);
+  color: #14171c;
   box-shadow:
     0 5px 8px rgba(0, 0, 0, 0.4),
-    0 0 0 3px rgba(224, 141, 82, 0.22);
-  animation: heartbeat 1.8s var(--ease-soft) infinite;
+    0 0 0 3px rgba(0, 0, 0, 0.25);
+}
+.pin--near .pin__pigeon {
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .pin--unlockable .pin__bulb {
@@ -201,13 +205,29 @@
     0 5px 8px rgba(0, 0, 0, 0.4),
     0 0 0 4px rgba(224, 141, 82, 0.3),
     0 0 22px 4px var(--c-amber-glow);
-  animation: heartbeat 1.4s var(--ease-soft) infinite;
 }
 
 /* 自分が残したことづての印 */
 .pin--mine .pin__bulb {
   outline: 2px dashed rgba(255, 255, 255, 0.7);
   outline-offset: 2px;
+}
+
+/* リスト連動のハイライト：浮き上がって最前面に */
+.pin--highlighted {
+  z-index: 20;
+  transform: translate(-50%, calc(-100% - 12px)) scale(1.2);
+}
+.pin--highlighted:active {
+  transform: translate(-50%, calc(-100% - 12px)) scale(1.12);
+}
+.pin--highlighted .pin__bulb {
+  box-shadow:
+    0 8px 14px rgba(0, 0, 0, 0.45),
+    0 0 0 4px var(--c-amber),
+    0 0 26px 6px var(--c-amber-glow);
+  /* 選択中のピンだけが脈打つ */
+  animation: heartbeat 1.4s var(--ease-soft) infinite;
 }
 
 /* 開封可能ピンの広がる光輪 */
@@ -259,7 +279,8 @@
 .map-controls {
   position: absolute;
   right: var(--sp-4);
-  bottom: calc(var(--sp-8) + var(--safe-bottom) + 86px);
+  /* FAB・カルーセルの上に来るよう持ち上げる */
+  bottom: calc(var(--safe-bottom) + 204px);
   display: grid;
   gap: var(--sp-3);
   z-index: var(--z-overlay);
