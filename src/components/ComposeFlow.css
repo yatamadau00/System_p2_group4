@@ -463,6 +463,24 @@
   animation: heartbeat 1.6s var(--ease-soft) infinite;
 }
 
+/* マイク準備中：押せない見た目＋スピナー */
+.recorder__mic--prep {
+  background: var(--c-washi-2);
+  box-shadow: none;
+  cursor: default;
+}
+
+/* 「準備OK」の緑のドット */
+.recorder__readydot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-moss);
+  margin-right: 4px;
+  vertical-align: 1px;
+}
+
 .recorder__stopsquare {
   width: 24px;
   height: 24px;

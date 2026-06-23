@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 export type RecorderStatus =
   | 'idle'
+  | 'preparing' // マイク確保中（ウォームアップ）
+  | 'ready' // マイク準備OK・即録音できる
   | 'recording'
   | 'recorded'
   | 'denied'
@@ -23,7 +25,10 @@ const isSupported = () =>
 
 /**
  * その場で音声を録音するフック（MediaRecorder）。
- * ファイル選択に頼らず、ブラウザ内でマイク録音 → プレビューできる。
+ *
+ * ラグ対策として、パネルを開いた時点で prime() でマイクを先に確保しておく。
+ * これにより録音ボタンを押した瞬間に MediaRecorder.start() でき、
+ * 「押してから録り始まるまでの待ち」を実質ゼロにする。
  */
 export function useAudioRecorder() {
   const [state, setState] = useState<RecorderState>({
@@ -50,17 +55,40 @@ export function useAudioRecorder() {
     streamRef.current = null
   }, [])
 
+  /** 既存のマイクストリームを返す。無ければ取得する。 */
+  const ensureStream = useCallback(async (): Promise<MediaStream | null> => {
+    if (streamRef.current) return streamRef.current
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    streamRef.current = stream
+    return stream
+  }, [])
+
+  /** マイクを事前に確保しておく（ウォームアップ）。 */
+  const prime = useCallback(async () => {
+    if (!isSupported()) {
+      setState((s) => ({ ...s, status: 'unsupported' }))
+      return
+    }
+    setState((s) => ({ ...s, status: 'preparing' }))
+    try {
+      await ensureStream()
+      setState((s) => (s.status === 'preparing' ? { ...s, status: 'ready' } : s))
+    } catch {
+      stopStream()
+      setState((s) => ({ ...s, status: 'denied' }))
+    }
+  }, [ensureStream, stopStream])
+
   const start = useCallback(async () => {
     if (!isSupported()) {
       setState((s) => ({ ...s, status: 'unsupported' }))
       return
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      streamRef.current = stream
+      const stream = await ensureStream()
+      if (!stream) throw new Error('no stream')
       chunksRef.current = []
 
-      // 対応する MIME を選ぶ（webm / mp4 / 既定）
       const candidates = ['audio/webm', 'audio/mp4', 'audio/ogg']
       const mimeType =
         candidates.find((t) => MediaRecorder.isTypeSupported?.(t)) ?? ''
@@ -76,13 +104,13 @@ export function useAudioRecorder() {
       recorder.onstop = () => {
         const type = recorder.mimeType || mimeType || 'audio/webm'
         const blob = new Blob(chunksRef.current, { type })
-        stopStream()
         clearTimer()
+        // ストリームは保持したままにし、「録り直す」を即時にする
         setState((s) => ({ ...s, status: 'recorded', blob, mimeType: type }))
       }
 
       recorder.start()
-      setState({ status: 'recording', blob: null, mimeType: null, seconds: 0 })
+      setState((s) => ({ ...s, status: 'recording', blob: null, seconds: 0 }))
       timerRef.current = window.setInterval(() => {
         setState((s) => ({ ...s, seconds: s.seconds + 1 }))
       }, 1000)
@@ -90,7 +118,7 @@ export function useAudioRecorder() {
       stopStream()
       setState((s) => ({ ...s, status: 'denied' }))
     }
-  }, [clearTimer, stopStream])
+  }, [ensureStream, clearTimer, stopStream])
 
   const stop = useCallback(() => {
     if (recorderRef.current && recorderRef.current.state !== 'inactive') {
@@ -98,22 +126,29 @@ export function useAudioRecorder() {
     }
   }, [])
 
+  /** 録り直し：結果を捨てて、すぐ録音できる状態へ戻す（マイクは保持）。 */
   const reset = useCallback(() => {
-    stop()
-    stopStream()
-    clearTimer()
     chunksRef.current = []
-    setState({ status: 'idle', blob: null, mimeType: null, seconds: 0 })
-  }, [stop, stopStream, clearTimer])
+    setState((s) => ({
+      ...s,
+      status: streamRef.current ? 'ready' : 'idle',
+      blob: null,
+      mimeType: null,
+      seconds: 0,
+    }))
+  }, [])
 
-  // アンマウント時の後始末
+  // アンマウント時にマイクを解放
   useEffect(
     () => () => {
+      if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+        recorderRef.current.stop()
+      }
       stopStream()
       clearTimer()
     },
     [stopStream, clearTimer],
   )
 
-  return { ...state, supported: isSupported(), start, stop, reset }
+  return { ...state, supported: isSupported(), prime, start, stop, reset }
 }

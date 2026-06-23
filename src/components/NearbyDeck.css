@@ -1,0 +1,143 @@
+.nearby-deck {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--safe-bottom) + var(--sp-2));
+  z-index: var(--z-overlay);
+  pointer-events: none; /* 空白部分は地図操作を通す */
+}
+
+/* 横スクロールのカルーセル */
+.nearby-scroll {
+  display: flex;
+  gap: var(--sp-3);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: var(--sp-2) var(--sp-4);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.nearby-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.nearby-card {
+  pointer-events: auto;
+  flex: 0 0 78%;
+  max-width: 320px;
+  scroll-snap-align: center;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+  box-shadow: var(--shadow-lg);
+  text-align: left;
+  border: 2px solid transparent;
+  transition:
+    transform var(--dur-2) var(--ease-soft),
+    border-color var(--dur-2) var(--ease-soft),
+    box-shadow var(--dur-2) var(--ease-soft);
+}
+
+.nearby-card:active {
+  transform: scale(0.98);
+}
+
+/* ハイライト（ピン側 or カード選択時） */
+.nearby-card--active {
+  border-color: var(--c-amber);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 3px var(--c-amber-glow);
+  transform: translateY(-4px);
+}
+
+.nearby-card__badge {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 50% 50% 50% 4px;
+  transform: rotate(45deg);
+  display: grid;
+  place-items: center;
+  color: var(--c-on-amber);
+  background: linear-gradient(160deg, #f0a85f, var(--c-amber-deep));
+  box-shadow: 0 0 12px var(--c-amber-glow);
+}
+
+.nearby-card__badge svg {
+  transform: rotate(-45deg);
+  width: 20px;
+  height: 20px;
+}
+
+.nearby-card__body {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.nearby-card__place {
+  font-family: var(--font-serif);
+  font-size: 1.04rem;
+  color: var(--c-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nearby-card__meta {
+  font-size: 0.82rem;
+  color: var(--c-ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nearby-card__sub {
+  font-size: 0.76rem;
+  color: var(--c-ink-3);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.nearby-card__open {
+  color: var(--c-amber-deep);
+  font-weight: 700;
+}
+
+/* 空状態 */
+.nearby-empty {
+  pointer-events: auto;
+  margin: 0 var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-lg);
+  background: var(--c-surface-veil);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-md);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.nearby-empty__mark {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--c-washi-2);
+  color: var(--c-ink-3);
+}
+
+.nearby-empty__text {
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--c-ink-2);
+}

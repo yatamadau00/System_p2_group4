@@ -1,13 +1,13 @@
 /** アプリ全体の調整可能な定数 */
 
 /** 開封可能になる距離（メートル）。ここを変えると近接判定のしきい値が変わる。 */
-export const UNLOCK_RADIUS_M = 50
+export const UNLOCK_RADIUS_M = 5
 
 /** 「もうすぐ届く」演出に入る距離（メートル）。ピンが脈打ち始める。 */
 export const NEAR_RADIUS_M = 200
 
 /** 地図の初期ズーム */
-export const DEFAULT_ZOOM = 16
+export const DEFAULT_ZOOM = 18
 
 /**
  * 現在地が取得できないときの地図の初期中心。

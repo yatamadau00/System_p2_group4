@@ -6,5 +6,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
+    // トンネル（localtunnel / cloudflare 等）経由のアクセスを許可
+    allowedHosts: true,
   },
 })

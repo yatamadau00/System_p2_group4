@@ -65,11 +65,11 @@
 }
 
 .cz-row__badge--far {
-  background: linear-gradient(160deg, #79828f, #5b6470);
+  background: linear-gradient(160deg, #3a3f47, #14171c);
 }
 
 .cz-row__badge--near {
-  background: linear-gradient(160deg, #e6a766, #cf7a44);
+  background: linear-gradient(160deg, #3a3f47, #14171c);
 }
 
 .cz-row__badge--unlockable {
@@ -114,8 +114,8 @@
 }
 
 .cz-row__status--near {
-  background: var(--c-amber-soft);
-  color: var(--c-amber-deep);
+  background: var(--c-washi-2);
+  color: var(--c-ink-2);
 }
 
 .cz-row__status--unlockable {

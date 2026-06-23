@@ -26,6 +26,8 @@ const KIND_NAME = {
 
 interface PinProps {
   kotozute: EnrichedKotozute
+  /** 下部リストと連動した選択ハイライト中か */
+  highlighted?: boolean
   onClick: () => void
 }
 
@@ -35,7 +37,7 @@ interface PinProps {
  * - 中身の種類は色アクセントと小さな種別チップで示す（伝書鳩はそのまま）。
  * - 距離ラベルは本体の上に余白をとって配置し、ピンと重ならない。
  */
-export function Pin({ kotozute, onClick }: PinProps) {
+export function Pin({ kotozute, highlighted = false, onClick }: PinProps) {
   const { proximity, distance, mine, visibility } = kotozute
   const kind = primaryKind(kotozute)
   const KindIcon = KIND_ICON[kind]
@@ -54,7 +56,7 @@ export function Pin({ kotozute, onClick }: PinProps) {
       type="button"
       className={`pin pin--${proximity} pin--kind-${kind}${
         mine ? ' pin--mine' : ''
-      }${isFriendsOnly ? ' pin--friends' : ''}`}
+      }${isFriendsOnly ? ' pin--friends' : ''}${highlighted ? ' pin--highlighted' : ''}`}
       onClick={onClick}
       aria-label={label}
     >

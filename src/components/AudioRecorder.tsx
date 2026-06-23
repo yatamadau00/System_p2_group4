@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useObjectUrl } from '../hooks/useObjectUrl'
 import { useAudioRecorder } from '../hooks/useAudioRecorder'
 import { AudioIcon } from './icons'
@@ -11,10 +12,17 @@ interface AudioRecorderProps {
 const fmt = (s: number) =>
   `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
-/** その場で声を録るインラインUI（録音→プレビュー→添付）。 */
+/** その場で声を録るインラインUI（マイク事前確保→録音→プレビュー→添付）。 */
 export function AudioRecorder({ onConfirm, onCancel }: AudioRecorderProps) {
   const rec = useAudioRecorder()
   const url = useObjectUrl(rec.blob ?? undefined)
+
+  // パネルを開いた時点でマイクを温めておく（押した瞬間に録音が始まるように）
+  useEffect(() => {
+    rec.prime()
+    // prime はマウント時に一度だけ
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (!rec.supported || rec.status === 'unsupported') {
     return (
@@ -39,7 +47,7 @@ export function AudioRecorder({ onConfirm, onCancel }: AudioRecorderProps) {
           <button className="btn btn--soft" onClick={onCancel}>
             とじる
           </button>
-          <button className="btn btn--primary" onClick={rec.start}>
+          <button className="btn btn--primary" onClick={rec.prime}>
             もう一度
           </button>
         </div>
@@ -49,12 +57,36 @@ export function AudioRecorder({ onConfirm, onCancel }: AudioRecorderProps) {
 
   return (
     <div className="recorder">
-      {rec.status === 'idle' && (
+      {rec.status === 'preparing' && (
         <>
-          <button className="recorder__mic" onClick={rec.start} aria-label="録音をはじめる">
+          <div className="recorder__mic recorder__mic--prep" aria-hidden>
+            <span className="spinner" />
+          </div>
+          <p className="recorder__note">マイクを準備しています…</p>
+          <button className="btn btn--ghost" onClick={onCancel}>
+            やめる
+          </button>
+        </>
+      )}
+
+      {(rec.status === 'idle' || rec.status === 'ready') && (
+        <>
+          <button
+            className="recorder__mic"
+            onClick={rec.start}
+            aria-label="録音をはじめる"
+          >
             <AudioIcon width={30} height={30} />
           </button>
-          <p className="recorder__note">タップして、声を録りはじめます</p>
+          <p className="recorder__note">
+            {rec.status === 'ready' ? (
+              <>
+                <span className="recorder__readydot" /> 準備OK・タップですぐ録音
+              </>
+            ) : (
+              'タップして、声を録りはじめます'
+            )}
+          </p>
           <button className="btn btn--ghost" onClick={onCancel}>
             やめる
           </button>
