@@ -1,5 +1,5 @@
 /** 軽量なインラインSVGアイコン群（currentColor で着色） */
-import type { SVGProps, CSSProperties } from 'react'
+import type { SVGProps, ImgHTMLAttributes } from 'react'
 import pigeonPng from '../assets/pigeon.png'
 
 type IconProps = SVGProps<SVGSVGElement>
@@ -126,13 +126,12 @@ export const FlagIcon = (p: IconProps) => (
 )
 
 /** 封筒をくわえた伝書鳩。PNG画像を埋め込んで表示する。 */
-export const PigeonIcon = ({ className, style }: { className?: string; style?: CSSProperties }) => (
+export const PigeonIcon = (props: ImgHTMLAttributes<HTMLImageElement>) => (
   <img
     src={pigeonPng}
     alt=""
     aria-hidden
-    className={className}
-    style={style}
+    {...props}
   />
 )
 
@@ -142,4 +141,3 @@ export const BellIcon = (p: IconProps) => (
     <path d="M13.73 21a2 2 0 0 1-3.46 0" />
   </svg>
 )
-
