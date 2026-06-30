@@ -11,9 +11,9 @@ interface ProfileSheetProps {
     updates: Partial<Omit<UserProfile, 'id' | 'friendCode'>>,
   ) => Promise<void>
   groups: Group[]
-  createGroup: (name: string) => Group
-  joinGroup: (code: string) => Group
-  leaveGroup: (id: string) => void
+  createGroup: (name: string) => Promise<Group>
+  joinGroup: (code: string) => Promise<Group>
+  leaveGroup: (id: string) => Promise<void>
   onSelectKotozute: (id: string) => void
   onDeleteKotozute: (id: string) => void
   onClose: () => void
@@ -90,22 +90,26 @@ export function ProfileSheet({
     setTimeout(() => setCopiedId((c) => (c === code ? null : c)), 2000)
   }
 
-  const handleCreateGroup = (e: React.FormEvent) => {
+  const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault()
     setGroupError(null)
     setGroupSuccess(null)
-    const g = createGroup(newGroupName)
-    setCreatedCode(g.id)
-    setNewGroupName('')
+    try {
+      const g = await createGroup(newGroupName)
+      setCreatedCode(g.id)
+      setNewGroupName('')
+    } catch (err: any) {
+      setGroupError(err.message || 'グループを作成できませんでした。')
+    }
   }
 
-  const handleJoinGroup = (e: React.FormEvent) => {
+  const handleJoinGroup = async (e: React.FormEvent) => {
     e.preventDefault()
     setGroupError(null)
     setGroupSuccess(null)
     if (!joinInput.trim()) return
     try {
-      const g = joinGroup(joinInput)
+      const g = await joinGroup(joinInput)
       setGroupSuccess(`「${g.name}」に参加しました！`)
       setJoinInput('')
     } catch (err: any) {
@@ -396,8 +400,13 @@ export function ProfileSheet({
                         </div>
                         <button
                           className="friend-item-card__remove"
-                          onClick={() => {
-                            if (confirm(`「${g.name}」から抜けますか？`)) leaveGroup(g.id)
+                          onClick={async () => {
+                            if (!confirm(`「${g.name}」から抜けますか？`)) return
+                            try {
+                              await leaveGroup(g.id)
+                            } catch (err: any) {
+                              alert(err.message || 'グループから抜けられませんでした')
+                            }
                           }}
                           aria-label="グループから抜ける"
                         >
