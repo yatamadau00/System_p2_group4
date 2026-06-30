@@ -103,11 +103,11 @@
   border-color: transparent;
 }
 
-/* しずく本体（縦型）。border-radius の一角だけ尖らせ、回転で下向きに */
+/* まるいピン本体（正円 + 下の三角ポインタ） */
 .pin__bulb {
-  width: 42px;
-  height: 42px;
-  border-radius: 50% 50% 50% 50% / 58% 58% 42% 42%;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
   position: relative;
   display: grid;
   place-items: center;
@@ -117,23 +117,24 @@
     box-shadow var(--dur-2) var(--ease-soft);
 }
 
-/* 下に伸びる尖り（しずくの先端） */
+/* 下に伸びる尖り（マップピン先端） */
 .pin__bulb::after {
   content: '';
   position: absolute;
-  bottom: -7px;
+  bottom: -10px;
   left: 50%;
   transform: translateX(-50%);
   width: 0;
   height: 0;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-top: 12px solid currentColor;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 14px solid currentColor;
 }
 
 .pin__pigeon {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
   color: rgba(255, 255, 255, 0.96);
 }
 

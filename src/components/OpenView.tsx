@@ -5,6 +5,7 @@ import { kindLabel } from '../lib/media'
 import { NEAR_RADIUS_M, UNLOCK_RADIUS_M } from '../config'
 import { MediaView } from './MediaView'
 import { CloseIcon, FlagIcon, LinkIcon, LockIcon } from './icons'
+import pigeonPng from '../assets/pigeon.png'
 import './OpenView.css'
 
 type Phase = 'locked' | 'ready' | 'opening' | 'opened'
@@ -118,7 +119,7 @@ export function OpenView({ kotozute, onClose }: OpenViewProps) {
               aria-label="封を開ける"
             >
               <span className="seal__halo" aria-hidden />
-              <span className="seal__glyph">言</span>
+              <img src={pigeonPng} alt="" aria-hidden className="seal__glyph" />
             </button>
             <p className="locked__hint">
               ここまで来てくれて、ありがとう。
