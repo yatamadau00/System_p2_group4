@@ -85,7 +85,7 @@ export const SAMPLE_KOTOZUTE: SeedKotozute[] = [
     mine: false,
     isSample: true,
     authorId: 'friend-midori',
-    visibility: 'friends',
+    visibility: 'public',
   },
   {
     location: { lat: FALLBACK_CENTER.lat - 0.0010, lng: FALLBACK_CENTER.lng + 0.0012 },
@@ -98,7 +98,7 @@ export const SAMPLE_KOTOZUTE: SeedKotozute[] = [
     mine: false,
     isSample: true,
     authorId: 'friend-haru',
-    visibility: 'friends',
+    visibility: 'public',
   },
   {
     location: { lat: FALLBACK_CENTER.lat + 0.0015, lng: FALLBACK_CENTER.lng - 0.0014 },
@@ -111,6 +111,6 @@ export const SAMPLE_KOTOZUTE: SeedKotozute[] = [
     mine: false,
     isSample: true,
     authorId: 'friend-sora',
-    visibility: 'friends',
+    visibility: 'public',
   },
 ]

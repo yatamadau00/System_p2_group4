@@ -107,10 +107,10 @@ export function ListSheet({
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {k.placeLabel ?? 'この場所のことづて'}
                       </span>
-                      {k.visibility === 'friends' && (
+                      {k.visibility === 'group' && (
                         <span className="friend-only-badge" style={{ flexShrink: 0 }}>
                           <LockIcon width={10} height={10} style={{ marginRight: 2, display: 'inline-block', verticalAlign: 'middle' }} />
-                          フレンド限定
+                          グループ限定
                         </span>
                       )}
                     </span>

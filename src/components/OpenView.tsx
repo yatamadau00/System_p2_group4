@@ -152,11 +152,11 @@ function LockedView({
         {kotozute.placeLabel ?? 'どこかの誰かのことづて'}
       </div>
 
-      {kotozute.visibility === 'friends' && (
+      {kotozute.visibility === 'group' && (
         <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0 -8px 0' }}>
           <span className="friend-only-badge">
             <LockIcon width={10} height={10} style={{ marginRight: 2, display: 'inline-block', verticalAlign: 'middle' }} />
-            フレンド限定公開
+            グループ限定公開
           </span>
         </div>
       )}
@@ -215,10 +215,10 @@ function Letter({ kotozute }: { kotozute: EnrichedKotozute }) {
         <span>{kindLabel(kotozute)}</span>
         <span aria-hidden>・</span>
         <span>{dateStr}</span>
-        {kotozute.visibility === 'friends' && (
+        {kotozute.visibility === 'group' && (
           <span className="friend-only-badge" style={{ margin: 0 }}>
             <LockIcon width={10} height={10} style={{ marginRight: 2, display: 'inline-block', verticalAlign: 'middle' }} />
-            フレンド限定
+            グループ限定
           </span>
         )}
       </div>
