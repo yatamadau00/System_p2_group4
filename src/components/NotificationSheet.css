@@ -21,6 +21,11 @@
   animation: fadeIn var(--dur-2) var(--ease-soft);
 }
 
+.notif-permission-banner--muted {
+  background-color: var(--c-washi-2);
+  border-color: rgba(107, 99, 87, 0.22);
+}
+
 .notif-permission-banner__text h4 {
   margin: 0 0 var(--sp-1) 0;
   font-family: var(--font-sans);
@@ -56,6 +61,38 @@
 
 .notif-permission-banner__btn:active {
   transform: scale(0.95);
+}
+
+.notif-permission-banner__btn:disabled {
+  cursor: wait;
+  opacity: 0.7;
+  transform: none;
+}
+
+.notif-permission-banner__dismiss {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(107, 99, 87, 0.12);
+  color: var(--c-ink-2);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-1) var(--ease-soft),
+    color var(--dur-1) var(--ease-soft),
+    transform var(--dur-1) var(--ease-soft);
+}
+
+.notif-permission-banner__dismiss:hover {
+  background: rgba(107, 99, 87, 0.2);
+  color: var(--c-ink);
+}
+
+.notif-permission-banner__dismiss:active {
+  transform: scale(0.94);
 }
 
 /* コントロールバー */
