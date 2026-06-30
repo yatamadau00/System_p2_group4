@@ -4,13 +4,22 @@
 
 ## 1. SQLを実行
 
-Supabase の SQL Editor で [`supabase/schema.sql`](supabase/schema.sql) を貼り付けて実行してください。
+### ✅ すでにデータがある場合（データを消さずに更新）
 
-このSQLは **既存の `users` / `kotozute` / `friends` / `notifications` テーブルを削除して作り直します**。
-現在入っているデータも消えるため、必要なら先にエクスポートしてください。
+すでに運用中で **データを消したくない場合は、追加だけの安全なSQLを実行**してください（テーブルは作り直しません・何度実行してもOK）。
 
-既存DBを残したまま通知テーブルだけ追加したい場合は、代わりに [`supabase/notifications.sql`](supabase/notifications.sql) だけを実行してください。
-既存DBを残したまま匿名投稿表示のカラムだけ追加したい場合は、[`supabase/anonymous-posts.sql`](supabase/anonymous-posts.sql) を実行してください。
+グループ機能を有効にする：[`supabase/groups.sql`](supabase/groups.sql) を SQL Editor に貼り付けて実行。
+- `kotozute` に `group_id` 列を追加し、`visibility` に `'group'` を許可するだけです。
+- `DROP TABLE` は一切しないので、既存のことづて・ユーザー・通知は残ります。
+
+（他の追加用SQL：通知だけ → [`supabase/notifications.sql`](supabase/notifications.sql)／匿名投稿カラムだけ → [`supabase/anonymous-posts.sql`](supabase/anonymous-posts.sql)）
+
+### ⚠️ まっさらに作り直す場合のみ（データは消えます）
+
+初期構築や、リセットして作り直したいときだけ [`supabase/schema.sql`](supabase/schema.sql) を実行します。
+このSQLは **`users` / `kotozute` / `friends` / `notifications` テーブルを削除して作り直す**ため、**現在のデータは消えます**。運用中のDBには実行しないでください。
+
+> 補足：エディタ上で `do $$ ... $$` や `::regclass` に赤線が出ることがありますが、これはエディタのSQL方言設定（SQL Server等）による誤検知で、Supabase(PostgreSQL)では正しく動きます。
 
 ## 2. テーブル構成
 
