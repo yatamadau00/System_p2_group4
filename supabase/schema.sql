@@ -1,6 +1,8 @@
 -- Kotozute Supabase schema.
 -- Destructive reset: this drops existing app tables and recreates them.
 
+drop table if exists public.group_members cascade;
+drop table if exists public.groups cascade;
 drop table if exists public.friends cascade;
 drop table if exists public.notifications cascade;
 drop table if exists public.kotozute_opens cascade;
@@ -64,6 +66,20 @@ create table public.notifications (
   created_at timestamptz not null default now()
 );
 
+create table public.groups (
+  id text primary key,
+  name text not null default '',
+  owner_id text references public.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+create table public.group_members (
+  group_id text not null references public.groups(id) on delete cascade,
+  user_id text not null references public.users(id) on delete cascade,
+  joined_at timestamptz not null default now(),
+  primary key (group_id, user_id)
+);
+
 create index kotozute_author_id_idx on public.kotozute (author_id);
 create index kotozute_created_at_idx on public.kotozute (created_at desc);
 create index friends_owner_id_idx on public.friends (owner_id);
@@ -71,12 +87,16 @@ create index friends_friend_id_idx on public.friends (friend_id);
 create index kotozute_opens_user_id_idx on public.kotozute_opens (user_id);
 create index kotozute_opens_kotozute_id_idx on public.kotozute_opens (kotozute_id);
 create index notifications_recipient_created_idx on public.notifications (recipient_id, created_at desc);
+create index group_members_user_idx on public.group_members (user_id);
+create index group_members_group_idx on public.group_members (group_id);
 
 alter table public.users enable row level security;
 alter table public.kotozute enable row level security;
 alter table public.friends enable row level security;
 alter table public.kotozute_opens enable row level security;
 alter table public.notifications enable row level security;
+alter table public.groups enable row level security;
+alter table public.group_members enable row level security;
 
 -- Demo policies. This is intentionally open for the class prototype.
 -- Do not use this as-is for a production app.
@@ -99,6 +119,15 @@ create policy "notifications_select" on public.notifications for select using (t
 create policy "notifications_insert" on public.notifications for insert with check (true);
 create policy "notifications_update" on public.notifications for update using (true) with check (true);
 create policy "notifications_delete" on public.notifications for delete using (true);
+
+create policy "groups_select" on public.groups for select using (true);
+create policy "groups_insert" on public.groups for insert with check (true);
+create policy "groups_update" on public.groups for update using (true) with check (true);
+create policy "groups_delete" on public.groups for delete using (true);
+
+create policy "group_members_select" on public.group_members for select using (true);
+create policy "group_members_insert" on public.group_members for insert with check (true);
+create policy "group_members_delete" on public.group_members for delete using (true);
 
 insert into storage.buckets (id, name, public)
 values ('kotozute-media', 'kotozute-media', true)
