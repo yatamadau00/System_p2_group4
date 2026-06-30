@@ -21,11 +21,14 @@ import './App.css'
 
 export function App() {
   const geo = useGeolocation(true)
-  const { items, loading, create, remove } = useKotozute()
   const { currentUser, logout } = useAuth()
+  const { items, loading, create, remove, markOpened } = useKotozute(
+    currentUser?.id,
+  )
   const { unreadCount, addNotification } = useNotifications()
   const { profile, updateProfile } = useUserProfile(currentUser)
-  const { groups, createGroup, joinGroup, leaveGroup, isInGroup } = useGroups()
+  const { groups, createGroup, joinGroup, leaveGroup, isInGroup } =
+    useGroups(currentUser)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // 地図ピンと下部リストの相互ハイライト用（開封状態とは別）
@@ -214,7 +217,7 @@ export function App() {
         )
       }, 15000)
     },
-    [create, currentUser, addNotification],
+    [create, currentUser],
   )
 
 
@@ -225,6 +228,18 @@ export function App() {
       setToast('ことづてを取り消しました')
     },
     [remove, selectedId],
+  )
+
+  const handleOpened = useCallback(
+    async (id: string) => {
+      if (!currentUser) return
+      try {
+        await markOpened(id)
+      } catch (e) {
+        console.warn('Failed to record kotozute open:', e)
+      }
+    },
+    [currentUser, markOpened],
   )
 
   const overlayOpen =
@@ -324,7 +339,11 @@ export function App() {
 
       {/* 受け取り / 開封 */}
       {selected && (
-        <OpenView kotozute={selected} onClose={() => setSelectedId(null)} />
+        <OpenView
+          kotozute={selected}
+          onClose={() => setSelectedId(null)}
+          onOpened={handleOpened}
+        />
       )}
 
       {/* ログイン / 新規登録 */}

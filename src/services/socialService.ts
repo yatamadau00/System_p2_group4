@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import type { User, UserProfile, Group } from '../types'
 import { generateId } from './repository'
 import { updateUserProfile } from './authService'
+import { isSupabaseConfigured, supabase } from './supabaseClient'
 
 const PROFILE_KEY = 'kotozute-user-profile'
 const GROUPS_KEY = 'kotozute-groups'
@@ -103,7 +104,8 @@ function generateGroupCode(): string {
   return `KOTO-${s}`
 }
 
-function loadGroups(): Group[] {
+// --- ローカル保存（Supabase未設定・未ログイン時のフォールバック） ---
+function loadLocalGroups(): Group[] {
   const saved = localStorage.getItem(GROUPS_KEY)
   if (saved) {
     try {
@@ -114,60 +116,176 @@ function loadGroups(): Group[] {
   }
   return []
 }
+function saveLocalGroups(list: Group[]) {
+  localStorage.setItem(GROUPS_KEY, JSON.stringify(list))
+}
+
+// --- Supabase（ユーザーに紐づくグループ） ---
+interface GroupJoinRow {
+  joined_at: string
+  groups:
+    | { id: string; name: string | null; owner_id: string | null }
+    | { id: string; name: string | null; owner_id: string | null }[]
+    | null
+}
+
+function joinRowToGroup(row: GroupJoinRow, userId: string): Group | null {
+  const g = Array.isArray(row.groups) ? row.groups[0] : row.groups
+  if (!g) return null
+  return {
+    id: g.id,
+    name: g.name || g.id,
+    owner: g.owner_id === userId,
+    joinedAt: new Date(row.joined_at).getTime(),
+  }
+}
+
+async function fetchMemberGroups(userId: string): Promise<Group[]> {
+  const { data, error } = await supabase!
+    .from('group_members')
+    .select('joined_at, groups:groups!inner(id, name, owner_id)')
+    .eq('user_id', userId)
+    .order('joined_at', { ascending: false })
+  if (error) throw error
+  return (data as unknown as GroupJoinRow[])
+    .map((r) => joinRowToGroup(r, userId))
+    .filter((g): g is Group => g !== null)
+}
 
 /**
  * 参加しているグループを管理するフック。
- * グループIDは共有コードで、作成すると発行され、入力すると参加できる。
- * 参加状態はこの端末にローカル保存する（ことづての group_id は共有DBに保存される）。
+ * ログイン中は Supabase の groups / group_members に保存し、ユーザーに紐づける
+ * （どの端末でも同じグループが見え、メンバーも記録される）。
+ * 未ログイン/未設定時は端末ローカルにフォールバックする。
  */
-export function useGroups() {
-  const [groups, setGroups] = useState<Group[]>(() => loadGroups())
+export function useGroups(currentUser: User | null) {
+  const useDb = !!currentUser && isSupabaseConfigured
+  const [groups, setGroups] = useState<Group[]>(() =>
+    useDb ? [] : loadLocalGroups(),
+  )
 
-  const persist = useCallback((list: Group[]) => {
-    localStorage.setItem(GROUPS_KEY, JSON.stringify(list))
-    setGroups(list)
-  }, [])
+  // ログイン状態に応じてグループ一覧を読み込む
+  useEffect(() => {
+    if (!useDb || !currentUser) {
+      setGroups(loadLocalGroups())
+      return
+    }
+    let cancelled = false
+    fetchMemberGroups(currentUser.id)
+      .then((list) => {
+        if (!cancelled) setGroups(list)
+      })
+      .catch((e) => console.error(e))
+    return () => {
+      cancelled = true
+    }
+  }, [useDb, currentUser])
 
-  /** グループを作成し、発行されたグループ（ID付き）を返す */
   const createGroup = useCallback(
-    (name: string): Group => {
+    async (name: string): Promise<Group> => {
+      const cleanName = name.trim() || '名もなきグループ'
+      if (useDb && currentUser) {
+        const id = generateGroupCode()
+        const { error: gErr } = await supabase!
+          .from('groups')
+          .insert({ id, name: cleanName, owner_id: currentUser.id })
+        if (gErr) throw gErr
+        const { error: mErr } = await supabase!
+          .from('group_members')
+          .insert({ group_id: id, user_id: currentUser.id })
+        if (mErr) throw mErr
+        const group: Group = {
+          id,
+          name: cleanName,
+          owner: true,
+          joinedAt: Date.now(),
+        }
+        setGroups((prev) => [group, ...prev])
+        return group
+      }
       const group: Group = {
         id: generateGroupCode(),
-        name: name.trim() || '名もなきグループ',
+        name: cleanName,
         owner: true,
         joinedAt: Date.now(),
       }
-      persist([...loadGroups(), group])
+      const next = [group, ...loadLocalGroups()]
+      saveLocalGroups(next)
+      setGroups(next)
       return group
     },
-    [persist],
+    [useDb, currentUser],
   )
 
-  /** グループIDを入力して参加する */
   const joinGroup = useCallback(
-    (code: string): Group => {
+    async (code: string): Promise<Group> => {
       const id = code.trim().toUpperCase()
       if (!id) throw new Error('グループIDを入力してください。')
-      const current = loadGroups()
-      if (current.some((g) => g.id === id)) {
+
+      if (useDb && currentUser) {
+        const { data: g, error } = await supabase!
+          .from('groups')
+          .select('id, name, owner_id')
+          .eq('id', id)
+          .maybeSingle()
+        if (error) throw error
+        if (!g) throw new Error('そのIDのグループは見つかりませんでした。')
+
+        const { data: existing } = await supabase!
+          .from('group_members')
+          .select('group_id')
+          .eq('group_id', id)
+          .eq('user_id', currentUser.id)
+          .maybeSingle()
+        if (existing) throw new Error('すでにこのグループに参加しています。')
+
+        const { error: mErr } = await supabase!
+          .from('group_members')
+          .insert({ group_id: id, user_id: currentUser.id })
+        if (mErr) throw mErr
+
+        const group: Group = {
+          id: g.id,
+          name: (g.name as string) || g.id,
+          owner: g.owner_id === currentUser.id,
+          joinedAt: Date.now(),
+        }
+        setGroups((prev) => [group, ...prev.filter((x) => x.id !== group.id)])
+        return group
+      }
+
+      const current = loadLocalGroups()
+      if (current.some((x) => x.id === id)) {
         throw new Error('すでにこのグループに参加しています。')
       }
       const group: Group = { id, name: id, owner: false, joinedAt: Date.now() }
-      persist([...current, group])
+      const next = [group, ...current]
+      saveLocalGroups(next)
+      setGroups(next)
       return group
     },
-    [persist],
+    [useDb, currentUser],
   )
 
-  /** グループから抜ける */
   const leaveGroup = useCallback(
-    (id: string) => {
-      persist(loadGroups().filter((g) => g.id !== id))
+    async (id: string): Promise<void> => {
+      if (useDb && currentUser) {
+        const { error } = await supabase!
+          .from('group_members')
+          .delete()
+          .eq('group_id', id)
+          .eq('user_id', currentUser.id)
+        if (error) throw error
+        setGroups((prev) => prev.filter((g) => g.id !== id))
+        return
+      }
+      const next = loadLocalGroups().filter((g) => g.id !== id)
+      saveLocalGroups(next)
+      setGroups(next)
     },
-    [persist],
+    [useDb, currentUser],
   )
 
-  /** このグループに参加しているか */
   const isInGroup = useCallback(
     (id: string) => groups.some((g) => g.id === id),
     [groups],

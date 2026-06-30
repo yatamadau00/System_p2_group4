@@ -64,6 +64,8 @@ export interface Kotozute {
   visibility?: 'public' | 'group'
   /** group 限定のとき、対象グループのID（共有コード） */
   groupId?: string
+  /** 現在のログインユーザーが開封済みか */
+  openedByCurrentUser?: boolean
 }
 
 /** 新規作成時の入力（id/createdAt はサービス層が付与） */

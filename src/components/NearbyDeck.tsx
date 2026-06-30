@@ -101,7 +101,8 @@ export function NearbyDeck({
                   <span className="nearby-card__sub">
                     {date.getMonth() + 1}月{date.getDate()}日
                     <span className="nearby-card__open">
-                      ✦ タップでピンを表示（{formatDistance(k.distance ?? 0)}）
+                      {k.openedByCurrentUser ? '開封済み' : 'タップでピンを表示'}
+                      （{formatDistance(k.distance ?? 0)}）
                     </span>
                   </span>
                 </span>

@@ -19,6 +19,7 @@ const CIRC = 2 * Math.PI * RING
 interface OpenViewProps {
   kotozute: EnrichedKotozute
   onClose: () => void
+  onOpened?: (id: string) => void
 }
 
 /**
@@ -26,7 +27,7 @@ interface OpenViewProps {
  * - 遠い間はロックし、距離リングと「あと◯m」を出す。
  * - 十分近づくと封蝋が灯り、タップで封が割れ→光と共にベールが晴れ→中身が現れる。
  */
-export function OpenView({ kotozute, onClose }: OpenViewProps) {
+export function OpenView({ kotozute, onClose, onOpened }: OpenViewProps) {
   const initiallyUnlockable = kotozute.proximity === 'unlockable'
   const [phase, setPhase] = useState<Phase>(
     initiallyUnlockable ? 'ready' : 'locked',
@@ -46,6 +47,7 @@ export function OpenView({ kotozute, onClose }: OpenViewProps) {
 
   const openSeal = () => {
     openedOnce.current = true
+    onOpened?.(kotozute.id)
     if (prefersReducedMotion()) {
       setPhase('opened')
       return
@@ -215,6 +217,12 @@ function Letter({ kotozute }: { kotozute: EnrichedKotozute }) {
         <span>{kindLabel(kotozute)}</span>
         <span aria-hidden>・</span>
         <span>{dateStr}</span>
+        {kotozute.openedByCurrentUser && (
+          <>
+            <span aria-hidden>・</span>
+            <span>開封済み</span>
+          </>
+        )}
         {kotozute.visibility === 'group' && (
           <span className="friend-only-badge" style={{ margin: 0 }}>
             <LockIcon width={10} height={10} style={{ marginRight: 2, display: 'inline-block', verticalAlign: 'middle' }} />
