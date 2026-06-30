@@ -86,7 +86,9 @@ export function ListSheet({
           {list.map((k) => {
             const Icon = KIND_ICON[primaryKind(k)]
             const statusText =
-              k.proximity === 'unlockable'
+              k.openedByCurrentUser
+                ? '開封済み'
+                : k.proximity === 'unlockable'
                 ? '開封できます'
                 : k.distance != null
                   ? formatDistance(k.distance)
