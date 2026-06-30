@@ -202,20 +202,7 @@ export function App() {
       // 残した直後にその場所のピンへ意識を向ける
       if (mapRef.current) mapRef.current.panTo(created.location)
 
-      // 模擬開封通知（デモ用）
-      // 15秒後に「誰かがあなたのことづてを開封した」という通知を発生させる
-      setTimeout(() => {
-        const place = created.placeLabel || 'あなたの残した場所'
-        const names = ['さくら', 'たかし', 'けんた', 'みく', 'たくみ']
-        const randomName = names[Math.floor(Math.random() * names.length)]
-        
-        addNotification(
-          'ことづてが受け取られました',
-          `${randomName}さんが、あなたが「${place}」に残したことづてを開封しました！`,
-          'received',
-          created.id
-        )
-      }, 15000)
+      
     },
     [create, currentUser],
   )
