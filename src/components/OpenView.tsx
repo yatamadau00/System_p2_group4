@@ -7,6 +7,7 @@ import { MediaView } from './MediaView'
 import { CloseIcon, FlagIcon, LinkIcon, LockIcon } from './icons'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../services/supabaseClient'
+import pigeonPng from '../assets/pigeon.png'
 import './OpenView.css'
 
 type Phase = 'locked' | 'ready' | 'opening' | 'opened'
@@ -167,7 +168,7 @@ export function OpenView({ kotozute, onClose, onOpened }: OpenViewProps) {
               aria-label="封を開ける"
             >
               <span className="seal__halo" aria-hidden />
-              <span className="seal__glyph">言</span>
+              <img src={pigeonPng} alt="" aria-hidden className="seal__glyph" />
             </button>
             <p className="locked__hint">
               ここまで来てくれて、ありがとう。
@@ -304,6 +305,10 @@ function Letter({ kotozute }: { kotozute: EnrichedKotozute }) {
   const date = new Date(kotozute.createdAt)
   const dateStr = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
   const hasBody = kotozute.message.trim().length > 0 || !!kotozute.link
+
+  function setIsReportModalOpen(arg0: boolean): void {
+    throw new Error('Function not implemented.')
+  }
 
   return (
     <div className="letter">

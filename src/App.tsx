@@ -27,8 +27,15 @@ export function App() {
   )
   const { unreadCount, addNotification } = useNotifications()
   const { profile, updateProfile } = useUserProfile(currentUser)
-  const { groups, createGroup, joinGroup, leaveGroup, isInGroup } =
-    useGroups(currentUser)
+  const {
+    groups,
+    createGroup,
+    joinGroup,
+    leaveGroup,
+    updateGroup,
+    getGroupMembers,
+    isInGroup,
+  } = useGroups(currentUser)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // 地図ピンと下部リストの相互ハイライト用（開封状態とは別）
@@ -313,6 +320,8 @@ export function App() {
           createGroup={createGroup}
           joinGroup={joinGroup}
           leaveGroup={leaveGroup}
+          updateGroup={updateGroup}
+          getGroupMembers={getGroupMembers}
           onSelectKotozute={(id) => {
             setShowProfile(false)
             setSelectedId(id)

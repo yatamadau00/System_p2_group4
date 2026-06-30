@@ -88,10 +88,25 @@ export interface Group {
   id: string
   /** グループ名（作成者が付ける。未設定ならコードを表示） */
   name: string
+  /** グループのアイコン絵文字 */
+  avatarEmoji: string
+  /** グループのアイコン背景色 */
+  avatarColor: string
   /** 自分が作成したグループか */
   owner: boolean
   /** 参加した時刻（epoch ms） */
   joinedAt: number
+}
+
+/** グループのメンバー（一覧表示用） */
+export interface GroupMember {
+  id: string
+  name: string
+  avatarEmoji: string
+  avatarColor: string
+  joinedAt: number
+  /** グループの作成者か */
+  owner: boolean
 }
 
 /** 位置情報の取得状態 */
