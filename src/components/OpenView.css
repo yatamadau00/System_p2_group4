@@ -209,10 +209,9 @@
 }
 
 .seal__glyph {
-  font-family: var(--font-serif);
-  font-size: 2.4rem;
-  font-weight: 700;
-  transform: translateY(2px);
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
 }
 
 .seal__halo {
