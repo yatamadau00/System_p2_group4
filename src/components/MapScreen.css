@@ -175,7 +175,7 @@
 .pin--kind-audio .pin__kind {
   color: var(--c-moss-deep);
 }
-.pin--friends .pin__kind {
+.pin--group .pin__kind {
   background: var(--c-moss);
   color: #fff;
 }

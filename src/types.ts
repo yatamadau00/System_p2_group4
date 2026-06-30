@@ -60,8 +60,10 @@ export interface Kotozute {
   mine: boolean
   /** ダミーデータ（サンプル）か */
   isSample?: boolean
-  /** 公開範囲（全体公開 or フレンド限定） */
-  visibility?: 'public' | 'friends'
+  /** 公開範囲（全体公開 or グループ限定） */
+  visibility?: 'public' | 'group'
+  /** group 限定のとき、対象グループのID（共有コード） */
+  groupId?: string
 }
 
 /** 新規作成時の入力（id/createdAt はサービス層が付与） */
@@ -78,15 +80,16 @@ export interface UserProfile {
   friendCode: string
 }
 
-/** 登録されたフレンド情報 */
-export interface Friend {
+/** 参加しているグループ（共有コードで出入りする） */
+export interface Group {
+  /** グループID＝共有コード（例: KOTO-AB12CD） */
   id: string
+  /** グループ名（作成者が付ける。未設定ならコードを表示） */
   name: string
-  bio: string
-  avatarEmoji: string
-  avatarColor: string
-  friendCode: string
-  addedAt: number
+  /** 自分が作成したグループか */
+  owner: boolean
+  /** 参加した時刻（epoch ms） */
+  joinedAt: number
 }
 
 /** 位置情報の取得状態 */

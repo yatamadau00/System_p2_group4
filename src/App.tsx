@@ -12,7 +12,7 @@ import { useGeolocation } from './hooks/useGeolocation'
 import { useKotozute } from './hooks/useKotozute'
 import { useAuth } from './hooks/useAuth'
 import { useNotifications } from './hooks/useNotifications'
-import { useUserProfile, useFriends } from './services/socialService'
+import { useUserProfile, useGroups } from './services/socialService'
 import { NotificationSheet } from './components/NotificationSheet'
 import { enrich } from './lib/enrich'
 import { DEFAULT_ZOOM } from './config'
@@ -25,14 +25,7 @@ export function App() {
   const { currentUser, logout } = useAuth()
   const { unreadCount, addNotification } = useNotifications()
   const { profile, updateProfile } = useUserProfile(currentUser)
-  const {
-    friends,
-    addFriendByCode,
-    addFriendDirect,
-    removeFriend,
-    isFriend,
-    suggestedFriends,
-  } = useFriends(currentUser)
+  const { groups, createGroup, joinGroup, leaveGroup, isInGroup } = useGroups()
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // 地図ピンと下部リストの相互ハイライト用（開封状態とは別）
@@ -53,12 +46,12 @@ export function App() {
     return items.filter((item) => {
       if (item.mine) return true
       if (!item.visibility || item.visibility === 'public') return true
-      if (item.visibility === 'friends' && item.authorId && isFriend(item.authorId)) {
+      if (item.visibility === 'group' && item.groupId && isInGroup(item.groupId)) {
         return true
       }
       return false
     })
-  }, [items, isFriend])
+  }, [items, isInGroup])
 
   // 現在地からの距離・近接状態を付与
   const enriched = useMemo(() => enrich(visibleItems, position), [visibleItems, position])
@@ -292,6 +285,7 @@ export function App() {
           onSubmit={handleSubmit}
           onClose={() => setComposing(false)}
           profile={profile}
+          groups={groups}
         />
       )}
 
@@ -309,17 +303,16 @@ export function App() {
         />
       )}
 
-      {/* プロフィール & フレンド */}
+      {/* プロフィール & グループ */}
       {showProfile && (
         <ProfileSheet
           items={items}
           profile={profile}
           updateProfile={updateProfile}
-          friends={friends}
-          addFriendByCode={addFriendByCode}
-          addFriendDirect={addFriendDirect}
-          removeFriend={removeFriend}
-          suggestedFriends={suggestedFriends}
+          groups={groups}
+          createGroup={createGroup}
+          joinGroup={joinGroup}
+          leaveGroup={leaveGroup}
           onSelectKotozute={(id) => {
             setShowProfile(false)
             setSelectedId(id)
