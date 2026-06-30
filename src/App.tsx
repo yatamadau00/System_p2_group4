@@ -104,7 +104,7 @@ export function App() {
     }
   }, [notifiedKeys])
 
-  // 位置情報と言伝の状態を監視し、新規近接を通知
+  // 位置情報とことづての状態を監視し、新規近接を通知
   useEffect(() => {
     if (!position || enriched.length === 0) return
 
