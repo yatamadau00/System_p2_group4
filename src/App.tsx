@@ -21,8 +21,10 @@ import './App.css'
 
 export function App() {
   const geo = useGeolocation(true)
-  const { items, loading, create, remove } = useKotozute()
   const { currentUser, logout } = useAuth()
+  const { items, loading, create, remove, markOpened } = useKotozute(
+    currentUser?.id,
+  )
   const { unreadCount, addNotification } = useNotifications()
   const { profile, updateProfile } = useUserProfile(currentUser)
   const { groups, createGroup, joinGroup, leaveGroup, isInGroup } = useGroups()
@@ -198,23 +200,8 @@ export function App() {
       setToast('ことづてを、この場所に残しました')
       // 残した直後にその場所のピンへ意識を向ける
       if (mapRef.current) mapRef.current.panTo(created.location)
-
-      // 模擬開封通知（デモ用）
-      // 15秒後に「誰かがあなたのことづてを開封した」という通知を発生させる
-      setTimeout(() => {
-        const place = created.placeLabel || 'あなたの残した場所'
-        const names = ['さくら', 'たかし', 'けんた', 'みく', 'たくみ']
-        const randomName = names[Math.floor(Math.random() * names.length)]
-        
-        addNotification(
-          '言伝が受け取られました',
-          `${randomName}さんが、あなたが「${place}」に残した言伝を開封しました！`,
-          'received',
-          created.id
-        )
-      }, 15000)
     },
-    [create, currentUser, addNotification],
+    [create, currentUser],
   )
 
 
@@ -225,6 +212,18 @@ export function App() {
       setToast('ことづてを取り消しました')
     },
     [remove, selectedId],
+  )
+
+  const handleOpened = useCallback(
+    async (id: string) => {
+      if (!currentUser) return
+      try {
+        await markOpened(id)
+      } catch (e) {
+        console.warn('Failed to record kotozute open:', e)
+      }
+    },
+    [currentUser, markOpened],
   )
 
   const overlayOpen =
@@ -324,7 +323,11 @@ export function App() {
 
       {/* 受け取り / 開封 */}
       {selected && (
-        <OpenView kotozute={selected} onClose={() => setSelectedId(null)} />
+        <OpenView
+          kotozute={selected}
+          onClose={() => setSelectedId(null)}
+          onOpened={handleOpened}
+        />
       )}
 
       {/* ログイン / 新規登録 */}

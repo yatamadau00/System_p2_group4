@@ -197,6 +197,46 @@ export const supabaseRepository: KotozuteRepository = {
     await removeMineId(id)
   },
 
+  async listOpenedIds(userId) {
+    const { data, error } = await supabase!
+      .from('kotozute_opens')
+      .select('kotozute_id')
+      .eq('user_id', userId)
+    if (error) {
+      console.warn('Kotozute open state could not be loaded:', error)
+      return new Set()
+    }
+    return new Set(
+      (data as { kotozute_id: string }[]).map((row) => row.kotozute_id),
+    )
+  },
+
+  async markOpened(kotozuteId, userId) {
+    const { data: existing, error: existingError } = await supabase!
+      .from('kotozute_opens')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('kotozute_id', kotozuteId)
+      .maybeSingle()
+    if (existingError) {
+      console.warn('Kotozute open state could not be checked:', existingError)
+      return false
+    }
+    if (existing) return false
+
+    const { error } = await supabase!
+      .from('kotozute_opens')
+      .insert({
+        user_id: userId,
+        kotozute_id: kotozuteId,
+      })
+    if (error) {
+      console.warn('Kotozute open state could not be saved:', error)
+      return false
+    }
+    return true
+  },
+
   async ensureSeed(seed: SeedKotozute[]) {
     // 共有DBなので、まだ1件も無いときだけサンプルを投入する
     const { count, error } = await supabase!

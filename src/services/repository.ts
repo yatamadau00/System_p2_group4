@@ -20,6 +20,10 @@ export interface KotozuteRepository {
   create(input: NewKotozute): Promise<Kotozute>
   /** 削除 */
   remove(id: string): Promise<void>
+  /** 指定ユーザーが開封済みのことづてID一覧を取得 */
+  listOpenedIds(userId: string): Promise<Set<string>>
+  /** 指定ユーザーの開封を記録。新規記録なら true */
+  markOpened(kotozuteId: string, userId: string): Promise<boolean>
   /** 初回起動時にサンプルを投入（既にデータがあれば何もしない） */
   ensureSeed(seed: SeedKotozute[]): Promise<void>
 }
