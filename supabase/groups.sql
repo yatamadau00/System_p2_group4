@@ -35,9 +35,15 @@ alter table public.kotozute
 create table if not exists public.groups (
   id text primary key,                 -- 共有コード（例: KOTO-AB23CD）
   name text not null default '',
+  avatar_emoji text not null default '👥',
+  avatar_color text not null default '#dceffd',
   owner_id text references public.users(id) on delete set null,
   created_at timestamptz not null default now()
 );
+
+-- 既に groups がある場合に不足列を足す（再実行しても安全）
+alter table public.groups add column if not exists avatar_emoji text not null default '👥';
+alter table public.groups add column if not exists avatar_color text not null default '#dceffd';
 
 create table if not exists public.group_members (
   group_id text not null references public.groups(id) on delete cascade,

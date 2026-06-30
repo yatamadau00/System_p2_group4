@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
-import type { UserProfile, Group, Kotozute } from '../types'
+import type { UserProfile, Group, GroupMember, Kotozute } from '../types'
 import { Sheet } from './Sheet'
+import { GroupSheet } from './GroupSheet'
 import { TrashIcon, PigeonIcon, LockIcon } from './icons'
 import './ProfileSheet.css'
 
@@ -14,6 +15,11 @@ interface ProfileSheetProps {
   createGroup: (name: string) => Promise<Group>
   joinGroup: (code: string) => Promise<Group>
   leaveGroup: (id: string) => Promise<void>
+  updateGroup: (
+    id: string,
+    updates: Partial<Pick<Group, 'name' | 'avatarEmoji' | 'avatarColor'>>,
+  ) => Promise<void>
+  getGroupMembers: (id: string) => Promise<GroupMember[]>
   onSelectKotozute: (id: string) => void
   onDeleteKotozute: (id: string) => void
   onClose: () => void
@@ -32,6 +38,8 @@ export function ProfileSheet({
   createGroup,
   joinGroup,
   leaveGroup,
+  updateGroup,
+  getGroupMembers,
   onSelectKotozute,
   onDeleteKotozute,
   onClose,
@@ -51,6 +59,7 @@ export function ProfileSheet({
   const [groupError, setGroupError] = useState<string | null>(null)
   const [groupSuccess, setGroupSuccess] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
 
   // 自分のことづて一覧
   const myItems = useMemo(() => items.filter((item) => item.mine), [items])
@@ -134,6 +143,7 @@ export function ProfileSheet({
   )
 
   return (
+    <>
     <Sheet title="プロフィール & グループ" onClose={onClose}>
       <div className="segmented" role="tablist">
         <button
@@ -376,9 +386,9 @@ export function ProfileSheet({
                       <div className="friend-item-card__header">
                         <div
                           className="friend-item-card__avatar"
-                          style={{ backgroundColor: '#dceffd' }}
+                          style={{ backgroundColor: g.avatarColor }}
                         >
-                          👥
+                          {g.avatarEmoji}
                         </div>
                         <div className="friend-item-card__info">
                           <h5>
@@ -399,18 +409,12 @@ export function ProfileSheet({
                           <CodeBadge code={g.id} />
                         </div>
                         <button
-                          className="friend-item-card__remove"
-                          onClick={async () => {
-                            if (!confirm(`「${g.name}」から抜けますか？`)) return
-                            try {
-                              await leaveGroup(g.id)
-                            } catch (err: any) {
-                              alert(err.message || 'グループから抜けられませんでした')
-                            }
-                          }}
-                          aria-label="グループから抜ける"
+                          className="btn btn--soft"
+                          style={{ minHeight: 0, padding: '8px 12px', fontSize: '0.85rem' }}
+                          onClick={() => setSelectedGroup(g)}
+                          aria-label="グループの詳細・メンバーを見る"
                         >
-                          抜ける
+                          詳細
                         </button>
                       </div>
                     </li>
@@ -422,5 +426,16 @@ export function ProfileSheet({
         )}
       </div>
     </Sheet>
+
+    {selectedGroup && (
+      <GroupSheet
+        group={selectedGroup}
+        getMembers={getGroupMembers}
+        updateGroup={updateGroup}
+        onLeave={leaveGroup}
+        onClose={() => setSelectedGroup(null)}
+      />
+    )}
+    </>
   )
 }
