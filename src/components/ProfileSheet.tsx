@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { UserProfile, Friend, Kotozute } from '../types'
+import type { UserProfile, Group, Kotozute } from '../types'
 import { Sheet } from './Sheet'
 import { TrashIcon, PigeonIcon, LockIcon } from './icons'
 import './ProfileSheet.css'
@@ -7,12 +7,13 @@ import './ProfileSheet.css'
 interface ProfileSheetProps {
   items: Kotozute[]
   profile: UserProfile
-  updateProfile: (updates: Partial<Omit<UserProfile, 'id' | 'friendCode'>>) => Promise<void>
-  friends: Friend[]
-  addFriendByCode: (code: string) => Promise<Friend>
-  addFriendDirect: (suggested: Omit<Friend, 'addedAt'>) => Promise<void>
-  removeFriend: (id: string) => Promise<void>
-  suggestedFriends: Omit<Friend, 'addedAt'>[]
+  updateProfile: (
+    updates: Partial<Omit<UserProfile, 'id' | 'friendCode'>>,
+  ) => Promise<void>
+  groups: Group[]
+  createGroup: (name: string) => Group
+  joinGroup: (code: string) => Group
+  leaveGroup: (id: string) => void
   onSelectKotozute: (id: string) => void
   onDeleteKotozute: (id: string) => void
   onClose: () => void
@@ -27,35 +28,33 @@ export function ProfileSheet({
   items,
   profile,
   updateProfile,
-  friends,
-  addFriendByCode,
-  addFriendDirect,
-  removeFriend,
-  suggestedFriends,
+  groups,
+  createGroup,
+  joinGroup,
+  leaveGroup,
   onSelectKotozute,
   onDeleteKotozute,
   onClose,
 }: ProfileSheetProps) {
-  const [tab, setTab] = useState<'profile' | 'friends'>('profile')
+  const [tab, setTab] = useState<'profile' | 'groups'>('profile')
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(profile.name)
   const [editBio, setEditBio] = useState(profile.bio)
   const [editEmoji, setEditEmoji] = useState(profile.avatarEmoji)
   const [editColor, setEditColor] = useState(profile.avatarColor)
-
-  const [friendCodeInput, setFriendCodeInput] = useState('')
-  const [friendError, setFriendError] = useState<string | null>(null)
-  const [friendSuccess, setFriendSuccess] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
   const [savingProfile, setSavingProfile] = useState(false)
-  const [friendBusy, setFriendBusy] = useState(false)
+
+  // グループ関連
+  const [newGroupName, setNewGroupName] = useState('')
+  const [createdCode, setCreatedCode] = useState<string | null>(null)
+  const [joinInput, setJoinInput] = useState('')
+  const [groupError, setGroupError] = useState<string | null>(null)
+  const [groupSuccess, setGroupSuccess] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   // 自分のことづて一覧
-  const myItems = useMemo(() => {
-    return items.filter((item) => item.mine)
-  }, [items])
+  const myItems = useMemo(() => items.filter((item) => item.mine), [items])
 
-  // プロフィール編集の保存
   const handleSaveProfile = async () => {
     if (!editName.trim()) {
       alert('名前を入力してください')
@@ -77,7 +76,6 @@ export function ProfileSheet({
     }
   }
 
-  // プロフィール編集キャンセル
   const handleCancelEdit = () => {
     setEditName(profile.name)
     setEditBio(profile.bio)
@@ -86,40 +84,53 @@ export function ProfileSheet({
     setIsEditing(false)
   }
 
-  // フレンドコードのコピー
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(profile.friendCode)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const copyCode = (code: string) => {
+    navigator.clipboard?.writeText(code)
+    setCopiedId(code)
+    setTimeout(() => setCopiedId((c) => (c === code ? null : c)), 2000)
   }
 
-  // フレンドコードでの追加
-  const handleAddFriend = async (e: React.FormEvent) => {
+  const handleCreateGroup = (e: React.FormEvent) => {
     e.preventDefault()
-    setFriendError(null)
-    setFriendSuccess(null)
-    
-    if (!friendCodeInput.trim()) return
+    setGroupError(null)
+    setGroupSuccess(null)
+    const g = createGroup(newGroupName)
+    setCreatedCode(g.id)
+    setNewGroupName('')
+  }
 
-    setFriendBusy(true)
+  const handleJoinGroup = (e: React.FormEvent) => {
+    e.preventDefault()
+    setGroupError(null)
+    setGroupSuccess(null)
+    if (!joinInput.trim()) return
     try {
-      const added = await addFriendByCode(friendCodeInput)
-      setFriendSuccess(`${added.name}さんとフレンドになりました！`)
-      setFriendCodeInput('')
+      const g = joinGroup(joinInput)
+      setGroupSuccess(`「${g.name}」に参加しました！`)
+      setJoinInput('')
     } catch (err: any) {
-      setFriendError(err.message || 'フレンドの追加に失敗しました。')
-    } finally {
-      setFriendBusy(false)
+      setGroupError(err.message || 'グループに参加できませんでした。')
     }
   }
 
-  // おすすめフレンドリスト（すでにフレンドになっている人を除く）
-  const remainingSuggestions = useMemo(() => {
-    return suggestedFriends.filter(sf => !friends.some(f => f.id === sf.id))
-  }, [friends, suggestedFriends])
+  const CodeBadge = ({ code }: { code: string }) => (
+    <div
+      className="friend-code-badge"
+      onClick={() => copyCode(code)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') copyCode(code)
+      }}
+      aria-label="グループIDをコピー"
+    >
+      <code>{code}</code>
+      <span className="copy-hint">{copiedId === code ? 'コピー完了' : 'コピー'}</span>
+    </div>
+  )
 
   return (
-    <Sheet title="プロフィール & フレンド" onClose={onClose}>
+    <Sheet title="プロフィール & グループ" onClose={onClose}>
       <div className="segmented" role="tablist">
         <button
           role="tab"
@@ -130,10 +141,10 @@ export function ProfileSheet({
         </button>
         <button
           role="tab"
-          aria-pressed={tab === 'friends'}
-          onClick={() => setTab('friends')}
+          aria-pressed={tab === 'groups'}
+          onClick={() => setTab('groups')}
         >
-          フレンド ({friends.length})
+          グループ ({groups.length})
         </button>
       </div>
 
@@ -144,7 +155,6 @@ export function ProfileSheet({
             <div className="profile-card">
               {isEditing ? (
                 <div className="profile-card__edit">
-                  {/* アバター選択 */}
                   <div className="avatar-edit-section">
                     <div
                       className="profile-card__avatar"
@@ -186,7 +196,6 @@ export function ProfileSheet({
                     </div>
                   </div>
 
-                  {/* 名前・一言 */}
                   <div className="field">
                     <label htmlFor="edit-name" className="field__label">名前</label>
                     <input
@@ -229,15 +238,11 @@ export function ProfileSheet({
                     </div>
                     <div className="profile-card__title">
                       <h3>{profile.name}</h3>
-                      <div className="friend-code-badge" onClick={handleCopyCode} role="button" tabIndex={0} aria-label="フレンドコードをコピー">
-                        <code>{profile.friendCode}</code>
-                        <span className="copy-hint">{copied ? 'コピー完了' : 'コピー'}</span>
-                      </div>
                     </div>
                   </div>
-                  
+
                   {profile.bio && <p className="profile-card__bio">{profile.bio}</p>}
-                  
+
                   <div className="profile-card__actions">
                     <button
                       className="btn btn--soft btn--block"
@@ -262,7 +267,7 @@ export function ProfileSheet({
                   {myItems.map((k) => (
                     <li key={k.id}>
                       <button className="cz-row" onClick={() => onSelectKotozute(k.id)}>
-                        <span className={`cz-row__badge cz-row__badge--unlockable`}>
+                        <span className="cz-row__badge cz-row__badge--unlockable">
                           <PigeonIcon />
                         </span>
                         <span className="cz-row__main">
@@ -271,10 +276,10 @@ export function ProfileSheet({
                           </span>
                           <span className="cz-row__sub">
                             {new Date(k.createdAt).toLocaleDateString('ja-JP')}
-                            {k.visibility === 'friends' && (
+                            {k.visibility === 'group' && (
                               <span className="friend-only-badge">
                                 <LockIcon width={10} height={10} style={{ marginRight: 2, display: 'inline-block', verticalAlign: 'middle' }} />
-                                フレンド限定
+                                グループ限定
                               </span>
                             )}
                           </span>
@@ -306,107 +311,104 @@ export function ProfileSheet({
           </div>
         ) : (
           <div className="friends-tab">
-            {/* フレンド追加フォーム */}
+            {/* グループを作成 */}
             <div className="friend-add-box">
-              <form onSubmit={handleAddFriend} className="friend-form">
+              <h4 className="section-title">グループを作成</h4>
+              <form onSubmit={handleCreateGroup} className="friend-form">
                 <input
                   type="text"
                   className="input friend-form__input"
-                  placeholder="KOTO-XXXX（フレンドコード）"
-                  value={friendCodeInput}
-                  onChange={(e) => {
-                    setFriendCodeInput(e.target.value)
-                    setFriendError(null)
-                    setFriendSuccess(null)
-                  }}
+                  placeholder="グループ名（任意）"
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  maxLength={30}
                 />
-                <button type="submit" className="btn btn--primary friend-form__btn" disabled={friendBusy}>
-                  {friendBusy ? '追加中…' : '追加'}
+                <button type="submit" className="btn btn--primary friend-form__btn">
+                  作成
                 </button>
               </form>
-              {friendError && <p className="friend-message error">{friendError}</p>}
-              {friendSuccess && <p className="friend-message success">{friendSuccess}</p>}
+              {createdCode && (
+                <div className="friend-message success" style={{ display: 'grid', gap: 6 }}>
+                  <span>グループを作りました。このIDを仲間に共有してください：</span>
+                  <CodeBadge code={createdCode} />
+                </div>
+              )}
             </div>
 
-            {/* フレンド一覧 */}
+            {/* グループに参加 */}
+            <div className="friend-add-box">
+              <h4 className="section-title">グループに参加</h4>
+              <form onSubmit={handleJoinGroup} className="friend-form">
+                <input
+                  type="text"
+                  className="input friend-form__input"
+                  placeholder="KOTO-XXXXXX（グループID）"
+                  value={joinInput}
+                  onChange={(e) => {
+                    setJoinInput(e.target.value)
+                    setGroupError(null)
+                    setGroupSuccess(null)
+                  }}
+                />
+                <button type="submit" className="btn btn--primary friend-form__btn">
+                  参加
+                </button>
+              </form>
+              {groupError && <p className="friend-message error">{groupError}</p>}
+              {groupSuccess && <p className="friend-message success">{groupSuccess}</p>}
+            </div>
+
+            {/* 参加中のグループ一覧 */}
             <div className="friends-list-section">
-              <h4 className="section-title">フレンド一覧 ({friends.length})</h4>
-              {friends.length === 0 ? (
+              <h4 className="section-title">参加中のグループ ({groups.length})</h4>
+              {groups.length === 0 ? (
                 <div className="empty-sub">
-                  <p>フレンドがまだいません。フレンドコードを入力するか、下のおすすめフレンドから登録してみてください。</p>
+                  <p>まだグループに参加していません。グループを作成してIDを共有するか、もらったIDで参加してください。</p>
                 </div>
               ) : (
                 <ul className="friend-cards">
-                  {friends.map((f) => (
-                    <li key={f.id} className="friend-item-card">
+                  {groups.map((g) => (
+                    <li key={g.id} className="friend-item-card">
                       <div className="friend-item-card__header">
                         <div
                           className="friend-item-card__avatar"
-                          style={{ backgroundColor: f.avatarColor }}
+                          style={{ backgroundColor: '#dceffd' }}
                         >
-                          {f.avatarEmoji}
+                          👥
                         </div>
                         <div className="friend-item-card__info">
-                          <h5>{f.name}</h5>
-                          <code>{f.friendCode}</code>
+                          <h5>
+                            {g.name}
+                            {g.owner && (
+                              <span
+                                style={{
+                                  marginLeft: 6,
+                                  fontSize: '0.7rem',
+                                  color: 'var(--c-amber-deep)',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                作成者
+                              </span>
+                            )}
+                          </h5>
+                          <CodeBadge code={g.id} />
                         </div>
                         <button
                           className="friend-item-card__remove"
-                          onClick={async () => {
-                            if (confirm(`${f.name}さんのフレンド登録を解除しますか？`)) {
-                              try {
-                                await removeFriend(f.id)
-                              } catch (err: any) {
-                                alert(err.message || 'フレンド解除に失敗しました')
-                              }
-                            }
+                          onClick={() => {
+                            if (confirm(`「${g.name}」から抜けますか？`)) leaveGroup(g.id)
                           }}
-                          aria-label="フレンド解除"
+                          aria-label="グループから抜ける"
                         >
-                          解除
+                          抜ける
                         </button>
                       </div>
-                      {f.bio && <p className="friend-item-card__bio">{f.bio}</p>}
                     </li>
                   ))}
                 </ul>
               )}
             </div>
-
-            {/* おすすめフレンド（簡単追加用） */}
-            {remainingSuggestions.length > 0 && (
-              <div className="suggested-friends-section">
-                <h4 className="section-title">おすすめのフレンド（シミュレーション用）</h4>
-                <ul className="suggested-list">
-                  {remainingSuggestions.map((sf) => (
-                    <li key={sf.id} className="suggested-item">
-                      <div
-                        className="suggested-item__avatar"
-                        style={{ backgroundColor: sf.avatarColor }}
-                      >
-                        {sf.avatarEmoji}
-                      </div>
-                      <div className="suggested-item__info">
-                        <strong>{sf.name}</strong>
-                        <span>{sf.bio}</span>
-                      </div>
-                      <button
-                        className="btn btn--soft suggested-item__btn"
-                        onClick={async () => {
-                          try {
-                            await addFriendDirect(sf)
-                          } catch (err: any) {
-                            alert(err.message || 'フレンド追加に失敗しました')
-                          }
-                        }}
-                      >
-                        追加
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         )}
       </div>

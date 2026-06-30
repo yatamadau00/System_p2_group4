@@ -36,6 +36,7 @@ interface Row {
   place_label: string | null
   media: MediaJson[] | null
   visibility: string | null
+  group_id: string | null
   is_sample: boolean | null
   created_at: string
 }
@@ -83,9 +84,10 @@ function rowToKotozute(row: Row, mineIds: Set<string>): Kotozute {
     mine: mineIds.has(row.id),
     isSample: row.is_sample ?? false,
     visibility:
-      row.visibility === 'friends' || row.visibility === 'public'
+      row.visibility === 'group' || row.visibility === 'public'
         ? row.visibility
         : undefined,
+    groupId: row.group_id ?? undefined,
   }
 }
 
@@ -164,6 +166,7 @@ export const supabaseRepository: KotozuteRepository = {
         place_label: input.placeLabel ?? null,
         media,
         visibility: input.visibility ?? 'public',
+        group_id: input.groupId ?? null,
         is_sample: false,
       })
       .select('*, author:users!kotozute_author_id_fkey(display_name)')

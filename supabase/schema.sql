@@ -28,7 +28,8 @@ create table public.kotozute (
   author_name text,
   place_label text,
   media jsonb not null default '[]'::jsonb,
-  visibility text not null default 'public' check (visibility in ('public', 'friends')),
+  visibility text not null default 'public' check (visibility in ('public', 'group')),
+  group_id text,
   is_sample boolean not null default false,
   created_at timestamptz not null default now()
 );
