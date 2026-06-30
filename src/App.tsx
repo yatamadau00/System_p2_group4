@@ -194,9 +194,12 @@ export function App() {
 
   const handleSubmit = useCallback(
     async (input: NewKotozute) => {
-      const inputWithAuthor = currentUser
-        ? { ...input, authorId: currentUser.id }
-        : input
+      if (!currentUser) {
+        setComposing(false)
+        setShowAuth(true)
+        return
+      }
+      const inputWithAuthor = { ...input, authorId: currentUser.id }
       const created = await create(inputWithAuthor)
       setComposing(false)
       setToast('ことづてを、この場所に残しました')
@@ -268,7 +271,7 @@ export function App() {
       )}
 
       {/* ことづてを残す FAB */}
-      {!overlayOpen && !loading && (
+      {!overlayOpen && !loading && currentUser && (
         <button
           className="fab"
           onClick={() => setComposing(true)}
@@ -282,7 +285,7 @@ export function App() {
       )}
 
       {/* 残す */}
-      {composing && (
+      {composing && currentUser && (
         <ComposeFlow
           position={position}
           onRetryLocation={geo.start}
