@@ -1,0 +1,95 @@
+-- Kotozute Supabase schema.
+-- Destructive reset: this drops existing app tables and recreates them.
+
+drop table if exists public.friends cascade;
+drop table if exists public.notifications cascade;
+drop table if exists public.kotozute cascade;
+drop table if exists public.users cascade;
+
+create table public.users (
+  id text primary key,
+  username text not null unique,
+  display_name text not null,
+  password_hash text not null,
+  bio text not null default '',
+  avatar_emoji text not null default '🦉',
+  avatar_color text not null default '#f1e8d6',
+  friend_code text not null unique,
+  created_at timestamptz not null default now()
+);
+
+create table public.kotozute (
+  id uuid primary key default gen_random_uuid(),
+  lat double precision not null,
+  lng double precision not null,
+  message text not null default '',
+  link text,
+  author_id text references public.users(id) on delete set null,
+  author_name text,
+  place_label text,
+  media jsonb not null default '[]'::jsonb,
+  visibility text not null default 'public' check (visibility in ('public', 'friends')),
+  is_sample boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create table public.friends (
+  id uuid primary key default gen_random_uuid(),
+  owner_id text not null references public.users(id) on delete cascade,
+  friend_id text not null references public.users(id) on delete cascade,
+  added_at timestamptz not null default now(),
+  constraint friends_not_self_check check (owner_id <> friend_id),
+  constraint friends_owner_friend_key unique (owner_id, friend_id)
+);
+
+create table public.notifications (
+  id text primary key,
+  recipient_id text not null references public.users(id) on delete cascade,
+  title text not null,
+  message text not null,
+  type text not null check (type in ('near', 'unlockable', 'system', 'received')),
+  related_id uuid references public.kotozute(id) on delete set null,
+  read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index kotozute_author_id_idx on public.kotozute (author_id);
+create index kotozute_created_at_idx on public.kotozute (created_at desc);
+create index friends_owner_id_idx on public.friends (owner_id);
+create index friends_friend_id_idx on public.friends (friend_id);
+create index notifications_recipient_created_idx on public.notifications (recipient_id, created_at desc);
+
+alter table public.users enable row level security;
+alter table public.kotozute enable row level security;
+alter table public.friends enable row level security;
+alter table public.notifications enable row level security;
+
+-- Demo policies. This is intentionally open for the class prototype.
+-- Do not use this as-is for a production app.
+create policy "users_select" on public.users for select using (true);
+create policy "users_insert" on public.users for insert with check (true);
+create policy "users_update" on public.users for update using (true) with check (true);
+
+create policy "kotozute_select" on public.kotozute for select using (true);
+create policy "kotozute_insert" on public.kotozute for insert with check (true);
+create policy "kotozute_delete" on public.kotozute for delete using (true);
+
+create policy "friends_select" on public.friends for select using (true);
+create policy "friends_insert" on public.friends for insert with check (true);
+create policy "friends_delete" on public.friends for delete using (true);
+
+create policy "notifications_select" on public.notifications for select using (true);
+create policy "notifications_insert" on public.notifications for insert with check (true);
+create policy "notifications_update" on public.notifications for update using (true) with check (true);
+create policy "notifications_delete" on public.notifications for delete using (true);
+
+insert into storage.buckets (id, name, public)
+values ('kotozute-media', 'kotozute-media', true)
+on conflict (id) do nothing;
+
+drop policy if exists "media_read" on storage.objects;
+drop policy if exists "media_write" on storage.objects;
+drop policy if exists "media_delete" on storage.objects;
+create policy "media_read" on storage.objects for select using (bucket_id = 'kotozute-media');
+create policy "media_write" on storage.objects for insert with check (bucket_id = 'kotozute-media');
+create policy "media_delete" on storage.objects for delete using (bucket_id = 'kotozute-media');

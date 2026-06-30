@@ -164,3 +164,11 @@ export const PigeonIcon = (p: IconProps) => (
     <circle cx="44.5" cy="27.5" r="1.5" fill="rgba(35,20,5,0.55)" />
   </svg>
 )
+
+export const BellIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+  </svg>
+)
+

@@ -11,7 +11,9 @@ import { CheckIcon, PlusIcon } from './components/icons'
 import { useGeolocation } from './hooks/useGeolocation'
 import { useKotozute } from './hooks/useKotozute'
 import { useAuth } from './hooks/useAuth'
+import { useNotifications } from './hooks/useNotifications'
 import { useUserProfile, useFriends } from './services/socialService'
+import { NotificationSheet } from './components/NotificationSheet'
 import { enrich } from './lib/enrich'
 import { DEFAULT_ZOOM } from './config'
 import type { NewKotozute } from './types'
@@ -21,7 +23,8 @@ export function App() {
   const geo = useGeolocation(true)
   const { items, loading, create, remove } = useKotozute()
   const { currentUser, logout } = useAuth()
-  const { profile: rawProfile, updateProfile } = useUserProfile()
+  const { unreadCount, addNotification } = useNotifications()
+  const { profile, updateProfile } = useUserProfile(currentUser)
   const {
     friends,
     addFriendByCode,
@@ -29,19 +32,7 @@ export function App() {
     removeFriend,
     isFriend,
     suggestedFriends,
-  } = useFriends()
-
-  // ログイン中の場合はプロフィール情報をログインユーザーの情報で上書きする
-  const profile = useMemo(() => {
-    if (currentUser) {
-      return {
-        ...rawProfile,
-        id: currentUser.id,
-        name: currentUser.displayName,
-      }
-    }
-    return rawProfile
-  }, [rawProfile, currentUser])
+  } = useFriends(currentUser)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // 地図ピンと下部リストの相互ハイライト用（開封状態とは別）
@@ -50,6 +41,7 @@ export function App() {
   const [showList, setShowList] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
 
   const mapRef = useRef<google.maps.Map | null>(null)
@@ -97,6 +89,68 @@ export function App() {
     const t = window.setTimeout(() => setToast(null), 3200)
     return () => window.clearTimeout(t)
   }, [toast])
+
+  // すでに通知済みのキー (kotozuteId + '_' + type) の集合を localStorage と同期
+  const [notifiedKeys, setNotifiedKeys] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('kotozute_notified_keys')
+      return stored ? new Set(JSON.parse(stored)) : new Set()
+    } catch {
+      return new Set()
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('kotozute_notified_keys', JSON.stringify(Array.from(notifiedKeys)))
+    } catch (e) {
+      console.warn('Failed to save notified keys to localStorage', e)
+    }
+  }, [notifiedKeys])
+
+  // 位置情報と言伝の状態を監視し、新規近接を通知
+  useEffect(() => {
+    if (!position || enriched.length === 0) return
+
+    let updated = false
+    const newKeys = new Set(notifiedKeys)
+
+    enriched.forEach((item) => {
+      const nearKey = `${item.id}_near`
+      const unlockKey = `${item.id}_unlockable`
+
+      if (item.proximity === 'unlockable') {
+        if (!newKeys.has(unlockKey)) {
+          const label = item.placeLabel || item.authorName || '近くのことづて'
+          addNotification(
+            'ことづてが開封可能になりました',
+            `『${label}』が開封できます。封を開けてみましょう。`,
+            'unlockable',
+            item.id
+          )
+          newKeys.add(unlockKey)
+          newKeys.add(nearKey) // 近接通知は不要にする
+          updated = true
+        }
+      } else if (item.proximity === 'near') {
+        if (!newKeys.has(nearKey) && !newKeys.has(unlockKey)) {
+          const label = item.placeLabel || item.authorName || 'ことづて'
+          addNotification(
+            '近くにことづてがあります',
+            `『${label}』に近づいています。あと少し歩いてみましょう。`,
+            'near',
+            item.id
+          )
+          newKeys.add(nearKey)
+          updated = true
+        }
+      }
+    })
+
+    if (updated) {
+      setNotifiedKeys(newKeys)
+    }
+  }, [enriched, position, addNotification, notifiedKeys])
 
   const handleMapLoad = useCallback((map: google.maps.Map | null) => {
     mapRef.current = map
@@ -148,9 +202,25 @@ export function App() {
       setToast('ことづてを、この場所に残しました')
       // 残した直後にその場所のピンへ意識を向ける
       if (mapRef.current) mapRef.current.panTo(created.location)
+
+      // 模擬開封通知（デモ用）
+      // 15秒後に「誰かがあなたのことづてを開封した」という通知を発生させる
+      setTimeout(() => {
+        const place = created.placeLabel || 'あなたの残した場所'
+        const names = ['さくら', 'たかし', 'けんた', 'みく', 'たくみ']
+        const randomName = names[Math.floor(Math.random() * names.length)]
+        
+        addNotification(
+          '言伝が受け取られました',
+          `${randomName}さんが、あなたが「${place}」に残した言伝を開封しました！`,
+          'received',
+          created.id
+        )
+      }, 15000)
     },
-    [create, currentUser],
+    [create, currentUser, addNotification],
   )
+
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -161,7 +231,8 @@ export function App() {
     [remove, selectedId],
   )
 
-  const overlayOpen = composing || showList || showProfile || !!selected || showAuth
+  const overlayOpen =
+    composing || showList || showProfile || !!selected || showAuth || showNotifications
 
   return (
     <div className="app">
@@ -179,6 +250,8 @@ export function App() {
         onLogout={logout}
         profile={profile}
         onOpenProfile={() => setShowProfile(true)}
+        unreadCount={unreadCount}
+        onOpenNotifications={() => setShowNotifications(true)}
       />
 
       {/* 位置情報の状態フィードバック（オーバーレイ中は隠す） */}
@@ -263,6 +336,17 @@ export function App() {
         <AuthSheet onClose={() => setShowAuth(false)} />
       )}
 
+      {/* 通知 */}
+      {showNotifications && (
+        <NotificationSheet
+          onSelectKotozute={(id) => {
+            setShowNotifications(false)
+            handleSelect(id)
+          }}
+          onClose={() => setShowNotifications(false)}
+        />
+      )}
+
       {/* トースト */}
       {toast && (
         <div className="toast" role="status" aria-live="polite">
@@ -275,4 +359,3 @@ export function App() {
     </div>
   )
 }
-

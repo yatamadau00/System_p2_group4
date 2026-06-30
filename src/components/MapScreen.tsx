@@ -15,7 +15,7 @@ import {
 import { KOTOZUTE_MAP_STYLE } from '../lib/mapStyle'
 import type { UserProfile } from '../types'
 import { Pin } from './Pin'
-import { ListIcon, LocateIcon } from './icons'
+import { BellIcon, ListIcon, LocateIcon } from './icons'
 import './MapScreen.css'
 
 interface MapScreenProps {
@@ -32,6 +32,8 @@ interface MapScreenProps {
   onLogout: () => void
   profile: UserProfile
   onOpenProfile: () => void
+  unreadCount: number
+  onOpenNotifications: () => void
 }
 
 const hasKey = GOOGLE_MAPS_API_KEY.trim().length > 0
@@ -56,6 +58,8 @@ export function MapScreen(props: MapScreenProps) {
     onLogout,
     profile,
     onOpenProfile,
+    unreadCount,
+    onOpenNotifications,
   } = props
 
   // ハイライト中のピンを最後に描画して、重なっても前面に出す
@@ -108,8 +112,8 @@ export function MapScreen(props: MapScreenProps) {
       <div className="topbar__auth">
         {currentUser ? (
           <div className="topbar__user">
-            <span className="topbar__username" title={currentUser.displayName}>
-              {currentUser.displayName}
+            <span className="topbar__username" title={profile.name}>
+              {profile.name}
             </span>
             <button
               className="topbar__btn"
@@ -151,6 +155,14 @@ export function MapScreen(props: MapScreenProps) {
         {brandBar}
         {profileButton}
         <div className="map-controls">
+          <button
+            className="map-btn map-btn--notification"
+            onClick={onOpenNotifications}
+            aria-label="通知一覧"
+          >
+            <BellIcon />
+            {unreadCount > 0 && <span className="map-btn__badge">{unreadCount}</span>}
+          </button>
           <button className="map-btn" onClick={onOpenList} aria-label="ことづて一覧">
             <ListIcon />
           </button>
@@ -224,6 +236,14 @@ export function MapScreen(props: MapScreenProps) {
       {brandBar}
       {profileButton}
       <div className="map-controls">
+        <button
+          className="map-btn map-btn--notification"
+          onClick={onOpenNotifications}
+          aria-label="通知一覧をひらく"
+        >
+          <BellIcon />
+          {unreadCount > 0 && <span className="map-btn__badge">{unreadCount}</span>}
+        </button>
         <button
           className="map-btn"
           onClick={onOpenList}
