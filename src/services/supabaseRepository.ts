@@ -33,6 +33,8 @@ interface Row {
   author_name: string | null
   author_id: string | null
   author: { display_name: string | null } | null
+  reply_to_id: string | null
+  root_id: string | null
   place_label: string | null
   media: MediaJson[] | null
   visibility: string | null
@@ -66,6 +68,8 @@ async function removeMineId(id: string) {
 function rowToKotozute(row: Row, mineIds: Set<string>): Kotozute {
   return {
     id: row.id,
+    replyToId: row.reply_to_id ?? undefined,
+    rootId: row.root_id ?? row.reply_to_id ?? row.id,
     location: { lat: row.lat, lng: row.lng },
     message: row.message ?? '',
     link: row.link ?? undefined,
@@ -161,6 +165,8 @@ export const supabaseRepository: KotozuteRepository = {
         link: input.link ?? null,
         author_name: input.authorId ? null : input.authorName ?? null,
         author_id: input.authorId ?? null,
+        reply_to_id: input.replyToId ?? null,
+        root_id: input.rootId ?? input.replyToId ?? id,
         place_label: input.placeLabel ?? null,
         media,
         visibility: input.visibility ?? 'public',
@@ -197,19 +203,25 @@ export const supabaseRepository: KotozuteRepository = {
     if (error) throw error
     if ((count ?? 0) > 0) return
 
-    const rows = seed.map((s) => ({
-      lat: s.location.lat,
-      lng: s.location.lng,
-      message: s.message,
-      link: s.link ?? null,
-      author_name: s.authorName ?? null,
-      author_id: null,
-      place_label: s.placeLabel ?? null,
-      media: [],
-      visibility: s.visibility ?? 'public',
-      is_sample: true,
-      created_at: new Date(s.createdAt ?? Date.now()).toISOString(),
-    }))
+    const rows = seed.map((s) => {
+      const id = generateId()
+      return {
+        id,
+        lat: s.location.lat,
+        lng: s.location.lng,
+        message: s.message,
+        link: s.link ?? null,
+        author_name: s.authorName ?? null,
+        author_id: null,
+        reply_to_id: s.replyToId ?? null,
+        root_id: s.rootId ?? s.replyToId ?? id,
+        place_label: s.placeLabel ?? null,
+        media: [],
+        visibility: s.visibility ?? 'public',
+        is_sample: true,
+        created_at: new Date(s.createdAt ?? Date.now()).toISOString(),
+      }
+    })
     await supabase!.from('kotozute').insert(rows)
   },
 }

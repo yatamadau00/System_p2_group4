@@ -10,7 +10,6 @@ interface KotozuteDB extends DBSchema {
   kotozute: {
     key: string
     value: Kotozute
-    indexes: { createdAt: number }
   }
   meta: {
     key: string
@@ -32,13 +31,22 @@ let dbPromise: Promise<IDBPDatabase<KotozuteDB>> | null = null
 function db() {
   if (!dbPromise) {
     dbPromise = openDB<KotozuteDB>(DB_NAME, DB_VERSION, {
-      upgrade(database, oldVersion) {
+      upgrade(database, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
-          const store = database.createObjectStore('kotozute', { keyPath: 'id' })
+          const store = database.createObjectStore('kotozute', { keyPath: 'id' }) as any
           store.createIndex('createdAt', 'createdAt')
+          store.createIndex('replyToId', 'replyToId')
+          store.createIndex('rootId', 'rootId')
           database.createObjectStore('meta')
         }
         if (oldVersion < 2) {
+          const store = transaction?.objectStore('kotozute') as any
+          if (store && !store.indexNames.contains('replyToId')) {
+            store.createIndex('replyToId', 'replyToId')
+          }
+          if (store && !store.indexNames.contains('rootId')) {
+            store.createIndex('rootId', 'rootId')
+          }
           const userStore = database.createObjectStore('users', { keyPath: 'id' })
           userStore.createIndex('username', 'username', { unique: true })
         }
@@ -62,7 +70,11 @@ export function getDb() {
  * 現行の形へ正規化する。これにより読み出し後はどこでも media を配列として扱える。
  */
 function normalize(record: Kotozute): Kotozute {
-  return { ...record, media: Array.isArray(record.media) ? record.media : [] }
+  return {
+    ...record,
+    media: Array.isArray(record.media) ? record.media : [],
+    rootId: record.rootId ?? record.replyToId ?? record.id,
+  }
 }
 
 export const indexedDbRepository: KotozuteRepository = {
@@ -77,11 +89,13 @@ export const indexedDbRepository: KotozuteRepository = {
   },
 
   async create(input: NewKotozute) {
+    const id = generateId()
     const record: Kotozute = {
       ...input,
-      id: generateId(),
+      id,
       createdAt: Date.now(),
       mine: input.mine ?? true,
+      rootId: input.rootId ?? input.replyToId ?? id,
     }
     await (await db()).put('kotozute', record)
     return record
@@ -103,6 +117,7 @@ export const indexedDbRepository: KotozuteRepository = {
         id: generateId(),
         createdAt: item.createdAt ?? Date.now(),
         mine: item.mine ?? false,
+        rootId: item.rootId ?? item.replyToId ?? generateId(),
       }
       await tx.objectStore('kotozute').put(record)
     }

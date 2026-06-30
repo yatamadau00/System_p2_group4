@@ -4,7 +4,7 @@ import { formatDistance } from '../lib/geo'
 import { kindLabel } from '../lib/media'
 import { NEAR_RADIUS_M, UNLOCK_RADIUS_M } from '../config'
 import { MediaView } from './MediaView'
-import { CloseIcon, FlagIcon, LinkIcon, LockIcon } from './icons'
+import { CloseIcon, EnvelopeIcon, FlagIcon, LinkIcon, LockIcon, TrashIcon } from './icons'
 import './OpenView.css'
 
 type Phase = 'locked' | 'ready' | 'opening' | 'opened'
@@ -18,7 +18,11 @@ const CIRC = 2 * Math.PI * RING
 
 interface OpenViewProps {
   kotozute: EnrichedKotozute
+  replies: EnrichedKotozute[]
   onClose: () => void
+  onReply: () => void
+  onDeleteReply: (id: string) => void
+  currentUserId: string | null
 }
 
 /**
@@ -26,7 +30,14 @@ interface OpenViewProps {
  * - 遠い間はロックし、距離リングと「あと◯m」を出す。
  * - 十分近づくと封蝋が灯り、タップで封が割れ→光と共にベールが晴れ→中身が現れる。
  */
-export function OpenView({ kotozute, onClose }: OpenViewProps) {
+export function OpenView({
+  kotozute,
+  replies,
+  onClose,
+  onReply,
+  onDeleteReply,
+  currentUserId,
+}: OpenViewProps) {
   const initiallyUnlockable = kotozute.proximity === 'unlockable'
   const [phase, setPhase] = useState<Phase>(
     initiallyUnlockable ? 'ready' : 'locked',
@@ -128,7 +139,15 @@ export function OpenView({ kotozute, onClose }: OpenViewProps) {
           </div>
         )}
 
-        {opened && <Letter kotozute={kotozute} />}
+        {opened && (
+          <Letter
+            kotozute={kotozute}
+            onReply={onReply}
+            onDeleteReply={onDeleteReply}
+            currentUserId={currentUserId}
+            replies={replies}
+          />
+        )}
       </div>
     </div>
   )
@@ -201,7 +220,19 @@ function LockedView({
   )
 }
 
-function Letter({ kotozute }: { kotozute: EnrichedKotozute }) {
+function Letter({
+  kotozute,
+  onReply,
+  onDeleteReply,
+  currentUserId,
+  replies,
+}: {
+  kotozute: EnrichedKotozute
+  onReply: () => void
+  onDeleteReply: (id: string) => void
+  currentUserId: string | null
+  replies: EnrichedKotozute[]
+}) {
   const date = new Date(kotozute.createdAt)
   const dateStr = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
   const hasBody = kotozute.message.trim().length > 0 || !!kotozute.link
@@ -215,6 +246,12 @@ function Letter({ kotozute }: { kotozute: EnrichedKotozute }) {
         <span>{kindLabel(kotozute)}</span>
         <span aria-hidden>・</span>
         <span>{dateStr}</span>
+            {kotozute.replyToId && (
+              <>
+                <span aria-hidden>・</span>
+                <span>返信</span>
+              </>
+            )}
         {kotozute.visibility === 'friends' && (
           <span className="friend-only-badge" style={{ margin: 0 }}>
             <LockIcon width={10} height={10} style={{ marginRight: 2, display: 'inline-block', verticalAlign: 'middle' }} />
@@ -253,6 +290,10 @@ function Letter({ kotozute }: { kotozute: EnrichedKotozute }) {
       )}
 
       <div className="letter__actions">
+        <button className="letter__reply" onClick={onReply}>
+          <EnvelopeIcon width={16} height={16} />
+          返信する
+        </button>
         <button
           className="letter__report"
           onClick={() =>
@@ -267,6 +308,48 @@ function Letter({ kotozute }: { kotozute: EnrichedKotozute }) {
           このことづてを報告する
         </button>
       </div>
+
+      {replies.length > 0 && (
+        <div className="thread-replies">
+          <div className="thread-replies__title">返信 {replies.length}</div>
+          <div className="thread-replies__list">
+            {replies.map((reply) => (
+              <article key={reply.id} className="thread-reply">
+                <div className="thread-reply__meta">
+                  <span className="thread-reply__author">
+                    {reply.authorName ?? 'なまえのない誰か'}
+                  </span>
+                  <span aria-hidden>・</span>
+                  <span>
+                    {new Date(reply.createdAt).getMonth() + 1}月
+                    {new Date(reply.createdAt).getDate()}日
+                  </span>
+                </div>
+                {reply.message && <p className="thread-reply__body">{reply.message}</p>}
+                {(reply.media ?? []).length > 0 && (
+                  <div className="thread-reply__media">
+                    {(reply.media ?? []).map((media) => (
+                      <MediaView key={media.id} media={media} />
+                    ))}
+                  </div>
+                )}
+                {((reply.authorId && reply.authorId === currentUserId) || (!reply.authorId && reply.mine)) && (
+                  <button
+                    className="thread-reply__delete"
+                    onClick={() => {
+                      if (confirm('この返信を取り消しますか？')) onDeleteReply(reply.id)
+                    }}
+                    aria-label="この返信を削除"
+                  >
+                    <TrashIcon width={14} height={14} />
+                    削除
+                  </button>
+                )}
+              </article>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

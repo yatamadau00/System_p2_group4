@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import type { AttachmentKind, LatLng, MediaItem, NewKotozute, UserProfile } from '../types'
+import type { AttachmentKind, Kotozute, LatLng, MediaItem, NewKotozute, UserProfile } from '../types'
 import { uid } from '../lib/media'
 import { useObjectUrl } from '../hooks/useObjectUrl'
 import { AudioRecorder } from './AudioRecorder'
@@ -15,13 +15,14 @@ import {
 import './ComposeFlow.css'
 
 interface ComposeFlowProps {
-
   position: LatLng | null
   /** 位置情報の再取得を促す */
   onRetryLocation: () => void
   onSubmit: (input: NewKotozute) => Promise<void>
   onClose: () => void
   profile: UserProfile
+  mode?: 'new' | 'reply'
+  replyTarget?: Kotozute | null
 }
 
 
@@ -37,10 +38,12 @@ export function ComposeFlow({
   onSubmit,
   onClose,
   profile,
+  mode = 'new',
+  replyTarget = null,
 }: ComposeFlowProps) {
   const [message, setMessage] = useState('')
   const [link, setLink] = useState('')
-  const [visibility, setVisibility] = useState<'public' | 'friends'>('public')
+  const [visibility, setVisibility] = useState<'public' | 'friends'>(replyTarget?.visibility ?? 'public')
   const [isAnonymous, setIsAnonymous] = useState(false)
 
   const [placeLabel, setPlaceLabel] = useState('')
@@ -72,23 +75,28 @@ export function ComposeFlow({
   const removeMedia = (id: string) =>
     setMedia((m) => m.filter((x) => x.id !== id))
 
-  const canSubmit =
-    !!position && (message.trim().length > 0 || media.length > 0)
+  const canSubmit = replyTarget
+    ? message.trim().length > 0 || media.length > 0
+    : !!position && (message.trim().length > 0 || media.length > 0)
+
+  const currentVisibility = replyTarget?.visibility ?? visibility
 
   const submit = async () => {
     if (!canSubmit || !position || submitting) return
     setSubmitting(true)
     try {
       await onSubmit({
-        location: position,
+        location: replyTarget?.location ?? position!,
         message: message.trim(),
         link: link.trim() || undefined,
-        authorName: visibility === 'friends' ? profile.name : (isAnonymous ? undefined : profile.name),
+        authorName: currentVisibility === 'friends' ? profile.name : (isAnonymous ? undefined : profile.name),
         placeLabel: placeLabel.trim() || undefined,
         media,
         mine: true,
-        visibility,
+        visibility: currentVisibility,
         authorId: profile.id,
+        replyToId: replyTarget?.id,
+        rootId: replyTarget?.rootId ?? replyTarget?.id,
       })
     } catch (e) {
       console.error(e)
@@ -99,7 +107,7 @@ export function ComposeFlow({
 
   if (submitting) {
     return (
-      <Sheet title="ことづて" onClose={() => {}} dismissOnScrim={false}>
+      <Sheet title={mode === 'reply' ? '返信' : 'ことづて'} onClose={() => {}} dismissOnScrim={false}>
         <div className="sending" role="status" aria-live="polite">
           <div className="spinner spinner--ink" />
           <p>そっと、この場所に結んでいます…</p>
@@ -109,35 +117,46 @@ export function ComposeFlow({
   }
 
   return (
-    <Sheet title="ここに、ことづてを残す" onClose={onClose}>
+    <Sheet title={mode === 'reply' ? '返信を残す' : 'ここに、ことづてを残す'} onClose={onClose}>
       <div className="compose">
-        {/* 場所（今いる場所のみ） */}
-        {position ? (
+        {replyTarget && (
           <div className="place-chosen" role="status">
             <LocateIcon width={24} height={24} />
             <div>
-              <b>いまいる場所に残します</b>
-              <small>
-                {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
-              </small>
+              <b>『{replyTarget.placeLabel ?? replyTarget.authorName ?? 'このことづて'}』へ返信します</b>
+              <small>元のことづてを読んで、そのまま返事を書けます。</small>
             </div>
-          </div>
-        ) : (
-          <div className="place-missing" role="status">
-            <div>
-              <b>現在地がまだ取得できていません</b>
-              <small>ことづては「いまいる場所」にだけ残せます。</small>
-            </div>
-            <button className="btn btn--soft" onClick={onRetryLocation}>
-              現在地を取得
-            </button>
           </div>
         )}
+
+        {/* 場所（今いる場所のみ） */}
+        {!replyTarget &&
+          (position ? (
+            <div className="place-chosen" role="status">
+              <LocateIcon width={24} height={24} />
+              <div>
+                <b>いまいる場所に残します</b>
+                <small>
+                  {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
+                </small>
+              </div>
+            </div>
+          ) : (
+            <div className="place-missing" role="status">
+              <div>
+                <b>現在地がまだ取得できていません</b>
+                <small>ことづては「いまいる場所」にだけ残せます。</small>
+              </div>
+              <button className="btn btn--soft" onClick={onRetryLocation}>
+                現在地を取得
+              </button>
+            </div>
+          ))}
 
         {/* 本文 */}
         <div className="field">
           <label className="field__label" htmlFor="cz-message">
-            ことば
+            {mode === 'reply' ? '返信' : 'ことば'}
           </label>
           <textarea
             id="cz-message"
@@ -145,7 +164,9 @@ export function ComposeFlow({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder={
-              'ここに、ことづてを綴ってください。\nこの場所を訪れた誰かに、そっと届きます。'
+              mode === 'reply'
+                ? 'ここに返信を書いてください。\nこのことづてへ、そっと届きます。'
+                : 'ここに、ことづてを綴ってください。\nこの場所を訪れた誰かに、そっと届きます。'
             }
           />
         </div>
@@ -260,18 +281,20 @@ export function ComposeFlow({
         </div>
 
         {/* 場所の呼び名 */}
-        <div className="field">
-          <label className="field__label" htmlFor="cz-place">
-            場所の呼び名 <small>（任意）</small>
-          </label>
-          <input
-            id="cz-place"
-            className="input"
-            value={placeLabel}
-            onChange={(e) => setPlaceLabel(e.target.value)}
-            placeholder="卒業した教室、いつもの帰り道…"
-          />
-        </div>
+        {!(replyTarget && mode === 'reply') && (
+          <div className="field">
+            <label className="field__label" htmlFor="cz-place">
+              場所の呼び名 <small>（任意）</small>
+            </label>
+            <input
+              id="cz-place"
+              className="input"
+              value={placeLabel}
+              onChange={(e) => setPlaceLabel(e.target.value)}
+              placeholder="卒業した教室、いつもの帰り道…"
+            />
+          </div>
+        )}
 
         {/* 公開範囲設定 */}
         <div className="field">
