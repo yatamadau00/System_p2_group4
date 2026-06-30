@@ -201,8 +201,6 @@ export function App() {
       setToast('ことづてを、この場所に残しました')
       // 残した直後にその場所のピンへ意識を向ける
       if (mapRef.current) mapRef.current.panTo(created.location)
-
-      
     },
     [create, currentUser],
   )
