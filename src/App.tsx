@@ -27,7 +27,8 @@ export function App() {
   )
   const { unreadCount, addNotification } = useNotifications()
   const { profile, updateProfile } = useUserProfile(currentUser)
-  const { groups, createGroup, joinGroup, leaveGroup, isInGroup } = useGroups()
+  const { groups, createGroup, joinGroup, leaveGroup, isInGroup } =
+    useGroups(currentUser)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // 地図ピンと下部リストの相互ハイライト用（開封状態とは別）
@@ -103,7 +104,7 @@ export function App() {
     }
   }, [notifiedKeys])
 
-  // 位置情報と言伝の状態を監視し、新規近接を通知
+  // 位置情報とことづての状態を監視し、新規近接を通知
   useEffect(() => {
     if (!position || enriched.length === 0) return
 
