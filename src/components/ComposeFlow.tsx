@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { AttachmentKind, LatLng, MediaItem, NewKotozute, UserProfile } from '../types'
 import { uid } from '../lib/media'
 import { useObjectUrl } from '../hooks/useObjectUrl'
@@ -22,7 +22,6 @@ interface ComposeFlowProps {
   onSubmit: (input: NewKotozute) => Promise<void>
   onClose: () => void
   profile: UserProfile
-  canPostToFriends: boolean
 }
 
 
@@ -38,7 +37,6 @@ export function ComposeFlow({
   onSubmit,
   onClose,
   profile,
-  canPostToFriends,
 }: ComposeFlowProps) {
   const [message, setMessage] = useState('')
   const [link, setLink] = useState('')
@@ -49,13 +47,6 @@ export function ComposeFlow({
   const [media, setMedia] = useState<MediaItem[]>([])
   const [recording, setRecording] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-
-  useEffect(() => {
-    if (!canPostToFriends && visibility === 'friends') {
-      setVisibility('public')
-      setIsAnonymous(false)
-    }
-  }, [canPostToFriends, visibility])
 
   const imageInput = useRef<HTMLInputElement>(null)
   const videoInput = useRef<HTMLInputElement>(null)
@@ -296,9 +287,7 @@ export function ComposeFlow({
               type="button"
               className="visibility-btn"
               aria-pressed={visibility === 'friends'}
-              disabled={!canPostToFriends}
               onClick={() => {
-                if (!canPostToFriends) return
                 setVisibility('friends')
                 setIsAnonymous(false)
               }}
@@ -310,10 +299,6 @@ export function ComposeFlow({
           {visibility === 'friends' ? (
             <p className="visibility-note">
               このことづては、あなたのフレンドだけが地図上で見つけて開封できます。
-            </p>
-          ) : !canPostToFriends ? (
-            <p className="visibility-note">
-              フレンド限定で残すにはログインしてください。
             </p>
           ) : (
             <p className="visibility-note">
