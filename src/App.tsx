@@ -289,6 +289,7 @@ export function App() {
           onSubmit={handleSubmit}
           onClose={() => setComposing(false)}
           profile={profile}
+          canPostToFriends={!!currentUser}
         />
       )}
 
