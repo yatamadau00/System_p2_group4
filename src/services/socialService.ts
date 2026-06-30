@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import type { User, UserProfile, Group } from '../types'
+import type { User, UserProfile, Group, GroupMember } from '../types'
 import { generateId } from './repository'
 import { updateUserProfile } from './authService'
 import { isSupabaseConfigured, supabase } from './supabaseClient'
@@ -120,36 +120,89 @@ function saveLocalGroups(list: Group[]) {
   localStorage.setItem(GROUPS_KEY, JSON.stringify(list))
 }
 
+const GROUP_DEFAULT_EMOJI = '👥'
+const GROUP_DEFAULT_COLOR = '#dceffd'
+
 // --- Supabase（ユーザーに紐づくグループ） ---
-interface GroupJoinRow {
-  joined_at: string
-  groups:
-    | { id: string; name: string | null; owner_id: string | null }
-    | { id: string; name: string | null; owner_id: string | null }[]
-    | null
+interface GroupRow {
+  id: string
+  name: string | null
+  avatar_emoji: string | null
+  avatar_color: string | null
+  owner_id: string | null
 }
 
-function joinRowToGroup(row: GroupJoinRow, userId: string): Group | null {
-  const g = Array.isArray(row.groups) ? row.groups[0] : row.groups
-  if (!g) return null
+interface GroupJoinRow {
+  joined_at: string
+  groups: GroupRow | GroupRow[] | null
+}
+
+function rowToGroup(g: GroupRow, userId: string, joinedAt: number): Group {
   return {
     id: g.id,
     name: g.name || g.id,
+    avatarEmoji: g.avatar_emoji || GROUP_DEFAULT_EMOJI,
+    avatarColor: g.avatar_color || GROUP_DEFAULT_COLOR,
     owner: g.owner_id === userId,
-    joinedAt: new Date(row.joined_at).getTime(),
+    joinedAt,
   }
 }
+
+const GROUP_COLS = 'id, name, avatar_emoji, avatar_color, owner_id'
 
 async function fetchMemberGroups(userId: string): Promise<Group[]> {
   const { data, error } = await supabase!
     .from('group_members')
-    .select('joined_at, groups:groups!inner(id, name, owner_id)')
+    .select(`joined_at, groups:groups!inner(${GROUP_COLS})`)
     .eq('user_id', userId)
     .order('joined_at', { ascending: false })
   if (error) throw error
   return (data as unknown as GroupJoinRow[])
-    .map((r) => joinRowToGroup(r, userId))
+    .map((r) => {
+      const g = Array.isArray(r.groups) ? r.groups[0] : r.groups
+      return g ? rowToGroup(g, userId, new Date(r.joined_at).getTime()) : null
+    })
     .filter((g): g is Group => g !== null)
+}
+
+interface MemberJoinRow {
+  joined_at: string
+  user_id: string
+  users:
+    | { id: string; display_name: string | null; avatar_emoji: string | null; avatar_color: string | null }
+    | { id: string; display_name: string | null; avatar_emoji: string | null; avatar_color: string | null }[]
+    | null
+}
+
+async function fetchGroupMembers(groupId: string): Promise<GroupMember[]> {
+  const { data: g } = await supabase!
+    .from('groups')
+    .select('owner_id')
+    .eq('id', groupId)
+    .maybeSingle()
+  const ownerId = (g as { owner_id: string | null } | null)?.owner_id ?? null
+
+  const { data, error } = await supabase!
+    .from('group_members')
+    .select('joined_at, user_id, users:users!inner(id, display_name, avatar_emoji, avatar_color)')
+    .eq('group_id', groupId)
+    .order('joined_at', { ascending: true })
+  if (error) throw error
+
+  return (data as unknown as MemberJoinRow[])
+    .map((r) => {
+      const u = Array.isArray(r.users) ? r.users[0] : r.users
+      if (!u) return null
+      return {
+        id: u.id,
+        name: u.display_name || '名もなき人',
+        avatarEmoji: u.avatar_emoji || '🙂',
+        avatarColor: u.avatar_color || '#f1e8d6',
+        joinedAt: new Date(r.joined_at).getTime(),
+        owner: u.id === ownerId,
+      } as GroupMember
+    })
+    .filter((m): m is GroupMember => m !== null)
 }
 
 /**
@@ -186,9 +239,13 @@ export function useGroups(currentUser: User | null) {
       const cleanName = name.trim() || '名もなきグループ'
       if (useDb && currentUser) {
         const id = generateGroupCode()
-        const { error: gErr } = await supabase!
-          .from('groups')
-          .insert({ id, name: cleanName, owner_id: currentUser.id })
+        const { error: gErr } = await supabase!.from('groups').insert({
+          id,
+          name: cleanName,
+          avatar_emoji: GROUP_DEFAULT_EMOJI,
+          avatar_color: GROUP_DEFAULT_COLOR,
+          owner_id: currentUser.id,
+        })
         if (gErr) throw gErr
         const { error: mErr } = await supabase!
           .from('group_members')
@@ -197,6 +254,8 @@ export function useGroups(currentUser: User | null) {
         const group: Group = {
           id,
           name: cleanName,
+          avatarEmoji: GROUP_DEFAULT_EMOJI,
+          avatarColor: GROUP_DEFAULT_COLOR,
           owner: true,
           joinedAt: Date.now(),
         }
@@ -206,6 +265,8 @@ export function useGroups(currentUser: User | null) {
       const group: Group = {
         id: generateGroupCode(),
         name: cleanName,
+        avatarEmoji: GROUP_DEFAULT_EMOJI,
+        avatarColor: GROUP_DEFAULT_COLOR,
         owner: true,
         joinedAt: Date.now(),
       }
@@ -225,7 +286,7 @@ export function useGroups(currentUser: User | null) {
       if (useDb && currentUser) {
         const { data: g, error } = await supabase!
           .from('groups')
-          .select('id, name, owner_id')
+          .select(GROUP_COLS)
           .eq('id', id)
           .maybeSingle()
         if (error) throw error
@@ -244,12 +305,7 @@ export function useGroups(currentUser: User | null) {
           .insert({ group_id: id, user_id: currentUser.id })
         if (mErr) throw mErr
 
-        const group: Group = {
-          id: g.id,
-          name: (g.name as string) || g.id,
-          owner: g.owner_id === currentUser.id,
-          joinedAt: Date.now(),
-        }
+        const group = rowToGroup(g as GroupRow, currentUser.id, Date.now())
         setGroups((prev) => [group, ...prev.filter((x) => x.id !== group.id)])
         return group
       }
@@ -258,7 +314,14 @@ export function useGroups(currentUser: User | null) {
       if (current.some((x) => x.id === id)) {
         throw new Error('すでにこのグループに参加しています。')
       }
-      const group: Group = { id, name: id, owner: false, joinedAt: Date.now() }
+      const group: Group = {
+        id,
+        name: id,
+        avatarEmoji: GROUP_DEFAULT_EMOJI,
+        avatarColor: GROUP_DEFAULT_COLOR,
+        owner: false,
+        joinedAt: Date.now(),
+      }
       const next = [group, ...current]
       saveLocalGroups(next)
       setGroups(next)
@@ -286,10 +349,57 @@ export function useGroups(currentUser: User | null) {
     [useDb, currentUser],
   )
 
+  /** グループの見た目（名前・アイコン）を更新する（作成者向け） */
+  const updateGroup = useCallback(
+    async (
+      id: string,
+      updates: Partial<Pick<Group, 'name' | 'avatarEmoji' | 'avatarColor'>>,
+    ): Promise<void> => {
+      const patch: Record<string, string> = {}
+      if (updates.name !== undefined) patch.name = updates.name.trim() || id
+      if (updates.avatarEmoji !== undefined) patch.avatar_emoji = updates.avatarEmoji
+      if (updates.avatarColor !== undefined) patch.avatar_color = updates.avatarColor
+
+      if (useDb && currentUser) {
+        const { error } = await supabase!.from('groups').update(patch).eq('id', id)
+        if (error) throw error
+      }
+      const apply = (g: Group): Group =>
+        g.id === id
+          ? {
+              ...g,
+              name: updates.name?.trim() || g.name,
+              avatarEmoji: updates.avatarEmoji ?? g.avatarEmoji,
+              avatarColor: updates.avatarColor ?? g.avatarColor,
+            }
+          : g
+      if (!useDb) saveLocalGroups(loadLocalGroups().map(apply))
+      setGroups((prev) => prev.map(apply))
+    },
+    [useDb, currentUser],
+  )
+
+  /** グループのメンバー一覧を取得する */
+  const getGroupMembers = useCallback(
+    async (id: string): Promise<GroupMember[]> => {
+      if (!useDb) return []
+      return fetchGroupMembers(id)
+    },
+    [useDb],
+  )
+
   const isInGroup = useCallback(
     (id: string) => groups.some((g) => g.id === id),
     [groups],
   )
 
-  return { groups, createGroup, joinGroup, leaveGroup, isInGroup }
+  return {
+    groups,
+    createGroup,
+    joinGroup,
+    leaveGroup,
+    updateGroup,
+    getGroupMembers,
+    isInGroup,
+  }
 }
