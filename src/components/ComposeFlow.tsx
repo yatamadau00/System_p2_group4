@@ -83,6 +83,7 @@ export function ComposeFlow({
         message: message.trim(),
         link: link.trim() || undefined,
         authorName: visibility === 'friends' ? profile.name : (isAnonymous ? undefined : profile.name),
+        isAnonymous: visibility === 'public' && isAnonymous,
         placeLabel: placeLabel.trim() || undefined,
         media,
         mine: true,
