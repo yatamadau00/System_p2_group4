@@ -57,7 +57,7 @@ export function NotificationSheet({ onSelectKotozute, onClose }: NotificationShe
           <div className="notif-permission-banner">
             <div className="notif-permission-banner__text">
               <h4>プッシュ通知を有効にする</h4>
-              <p>近くに言伝があるときに、画面を閉じていても通知を受け取れます。</p>
+              <p>近くにことづてがあるときに、画面を閉じていても通知を受け取れます。</p>
             </div>
             <button
               className="notif-permission-banner__btn btn-primary"
@@ -88,7 +88,7 @@ export function NotificationSheet({ onSelectKotozute, onClose }: NotificationShe
             <BellIcon className="notif-sheet__empty-icon" width={48} height={48} />
             <p className="notif-sheet__empty-title">通知はありません</p>
             <p className="notif-sheet__empty-desc">
-              言伝の近くを通りかかったときや、新しい言伝が残されたときに通知が届きます。
+              ことづての近くを通りかかったときや、新しいことづてが残されたときに通知が届きます。
             </p>
           </div>
         ) : (

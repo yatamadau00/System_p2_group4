@@ -101,7 +101,7 @@ export function App() {
     }
   }, [notifiedKeys])
 
-  // 位置情報と言伝の状態を監視し、新規近接を通知
+  // 位置情報とことづての状態を監視し、新規近接を通知
   useEffect(() => {
     if (!position || enriched.length === 0) return
 
@@ -207,8 +207,8 @@ export function App() {
         const randomName = names[Math.floor(Math.random() * names.length)]
         
         addNotification(
-          '言伝が受け取られました',
-          `${randomName}さんが、あなたが「${place}」に残した言伝を開封しました！`,
+          'ことづてが受け取られました',
+          `${randomName}さんが、あなたが「${place}」に残したことづてを開封しました！`,
           'received',
           created.id
         )
