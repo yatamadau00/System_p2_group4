@@ -48,7 +48,6 @@ export function ComposeFlow({
   const [recording, setRecording] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
-
   const imageInput = useRef<HTMLInputElement>(null)
   const videoInput = useRef<HTMLInputElement>(null)
   const audioInput = useRef<HTMLInputElement>(null)
@@ -84,11 +83,11 @@ export function ComposeFlow({
         message: message.trim(),
         link: link.trim() || undefined,
         authorName: visibility === 'friends' ? profile.name : (isAnonymous ? undefined : profile.name),
+        isAnonymous: visibility === 'public' && isAnonymous,
         placeLabel: placeLabel.trim() || undefined,
         media,
         mine: true,
         visibility,
-        authorId: profile.id,
       })
     } catch (e) {
       console.error(e)
