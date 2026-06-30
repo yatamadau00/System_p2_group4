@@ -1,5 +1,6 @@
 /** 軽量なインラインSVGアイコン群（currentColor で着色） */
-import type { SVGProps } from 'react'
+import type { SVGProps, CSSProperties } from 'react'
+import pigeonPng from '../assets/pigeon.png'
 
 type IconProps = SVGProps<SVGSVGElement>
 
@@ -124,45 +125,15 @@ export const FlagIcon = (p: IconProps) => (
   </svg>
 )
 
-/**
- * 封筒をくわえた伝書鳩。塗りつぶしのシルエットで、ことづての象徴に使う。
- * （平面的・幾何的なロゴ調。ピンの色は外側のバブルで制御するので、ここは単色）
- */
-export const PigeonIcon = (p: IconProps) => (
-  <svg
-    width={24}
-    height={24}
-    viewBox="0 0 64 64"
-    fill="currentColor"
-    stroke="none"
+/** 封筒をくわえた伝書鳩。PNG画像を埋め込んで表示する。 */
+export const PigeonIcon = ({ className, style }: { className?: string; style?: CSSProperties }) => (
+  <img
+    src={pigeonPng}
+    alt=""
     aria-hidden
-    {...p}
-  >
-    {/* 尾 */}
-    <path d="M19 41 L3 35 L17 48 Z" />
-    {/* 翼（はね上げ） */}
-    <path d="M27 33 L18 8 L42 30 Z" />
-    {/* 体 */}
-    <ellipse cx="30" cy="38" rx="17" ry="9" transform="rotate(-13 30 38)" />
-    {/* 頭 */}
-    <circle cx="43" cy="29" r="7.2" />
-    {/* くちばし */}
-    <path d="M48 26 L56 29 L48 32 Z" />
-    {/* くわえた封筒 */}
-    <g transform="rotate(-10 55 33)">
-      <rect x="50" y="29" width="12" height="9" rx="1.6" />
-      <path
-        d="M51 31 L56 34.6 L61 31"
-        fill="none"
-        stroke="rgba(35,20,5,0.4)"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </g>
-    {/* 目 */}
-    <circle cx="44.5" cy="27.5" r="1.5" fill="rgba(35,20,5,0.55)" />
-  </svg>
+    className={className}
+    style={style}
+  />
 )
 
 export const BellIcon = (p: IconProps) => (
