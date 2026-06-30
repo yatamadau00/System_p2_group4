@@ -51,7 +51,6 @@ export function ComposeFlow({
   const [recording, setRecording] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
-
   const imageInput = useRef<HTMLInputElement>(null)
   const videoInput = useRef<HTMLInputElement>(null)
   const audioInput = useRef<HTMLInputElement>(null)
@@ -95,6 +94,7 @@ export function ComposeFlow({
             : isAnonymous
               ? undefined
               : profile.name,
+        isAnonymous: visibility === 'public' && isAnonymous,
         placeLabel: placeLabel.trim() || undefined,
         media,
         mine: true,

@@ -50,6 +50,8 @@ export interface Kotozute {
   authorName?: string
   /** 残した人のユーザーID（任意） */
   authorId?: string
+  /** 投稿者名を公開しないか */
+  isAnonymous?: boolean
   /** 残した地点の呼び名（例:「卒業した教室」）任意 */
   placeLabel?: string
   /** 作成時刻（epoch ms） */

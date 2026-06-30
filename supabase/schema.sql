@@ -26,6 +26,7 @@ create table public.kotozute (
   link text,
   author_id text references public.users(id) on delete set null,
   author_name text,
+  is_anonymous boolean not null default false,
   place_label text,
   media jsonb not null default '[]'::jsonb,
   visibility text not null default 'public' check (visibility in ('public', 'group')),
