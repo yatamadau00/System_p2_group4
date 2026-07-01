@@ -178,11 +178,19 @@ export function OpenView({ kotozute, onClose, onOpened }: OpenViewProps) {
           </div>
         )}
 
-        {opened && <Letter kotozute={kotozute} />}
+        {opened && (
+          <Letter
+            kotozute={kotozute}
+            onReportClick={() => setIsReportModalOpen(true)}
+          />
+        )}
       </div>
       {isReportModalOpen && (
         <div className="report-modal" role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
-          <div className="report-modal__backdrop" onClick={() => setIsReportModalOpen(false)} />
+          <div
+            className="report-modal__backdrop"
+            onClick={() => setIsReportModalOpen(false)}
+          />
           <div className="report-modal__content">
             <h2 id="report-modal-title">このことづてを通報する</h2>
             <p>不適切だと思われる理由を選択してください。</p>
@@ -301,14 +309,16 @@ function LockedView({
   )
 }
 
-function Letter({ kotozute }: { kotozute: EnrichedKotozute }) {
+function Letter({
+  kotozute,
+  onReportClick,
+}: {
+  kotozute: EnrichedKotozute
+  onReportClick: () => void
+}) {
   const date = new Date(kotozute.createdAt)
   const dateStr = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
   const hasBody = kotozute.message.trim().length > 0 || !!kotozute.link
-
-  function setIsReportModalOpen(arg0: boolean): void {
-    throw new Error('Function not implemented.')
-  }
 
   return (
     <div className="letter">
@@ -365,7 +375,7 @@ function Letter({ kotozute }: { kotozute: EnrichedKotozute }) {
       <div className="letter__actions">
         <button
           className="letter__report"
-          onClick={() => setIsReportModalOpen(true)}
+          onClick={onReportClick}
         >
           <FlagIcon
             width={12}
