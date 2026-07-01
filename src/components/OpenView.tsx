@@ -5,6 +5,8 @@ import { kindLabel } from '../lib/media'
 import { NEAR_RADIUS_M, UNLOCK_RADIUS_M } from '../config'
 import { MediaView } from './MediaView'
 import { CloseIcon, FlagIcon, LinkIcon, LockIcon } from './icons'
+import { useAuth } from '../hooks/useAuth'
+import { supabase } from '../services/supabaseClient'
 import pigeonPng from '../assets/pigeon.png'
 import './OpenView.css'
 
@@ -29,10 +31,16 @@ interface OpenViewProps {
  * - 十分近づくと封蝋が灯り、タップで封が割れ→光と共にベールが晴れ→中身が現れる。
  */
 export function OpenView({ kotozute, onClose, onOpened }: OpenViewProps) {
+  const { currentUser } = useAuth()
   const initiallyUnlockable = kotozute.proximity === 'unlockable'
   const [phase, setPhase] = useState<Phase>(
     initiallyUnlockable ? 'ready' : 'locked',
   )
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false)
+  const [reportReason, setReportReason] = useState('spam')
+  const [reportDetails, setReportDetails] = useState('')
+  const [reportError, setReportError] = useState<string | null>(null)
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false)
   const openedOnce = useRef(false)
   const titleId = 'open-title'
 
@@ -55,6 +63,45 @@ export function OpenView({ kotozute, onClose, onOpened }: OpenViewProps) {
     }
     setPhase('opening')
     window.setTimeout(() => setPhase('opened'), 1100)
+  }
+
+  const handleReportSubmit = async (reason: string, details: string) => {
+    if (!supabase) {
+      setReportError('Supabase が設定されていません。')
+      return
+    }
+
+    setReportError(null)
+    setIsSubmittingReport(true)
+
+    const reporterId = currentUser?.id ?? null
+
+    const { error } = await supabase
+      .from('reports')
+      .insert([
+        {
+          kotozute_id: kotozute.id,
+          reporter_id: reporterId,
+          reason,
+          details,
+        },
+      ])
+
+    setIsSubmittingReport(false)
+
+    if (error) {
+      if (error.code === '23505') {
+        setReportError('このことづては既に通報されています。')
+        return
+      }
+      setReportError(error.message)
+      return
+    }
+
+    setIsReportModalOpen(false)
+    setReportReason('spam')
+    setReportDetails('')
+    alert('このことづてを報告しました。ご協力ありがとうございます。')
   }
 
   // 距離リングの進捗（NEAR で 0、UNLOCK で 1）
@@ -133,6 +180,56 @@ export function OpenView({ kotozute, onClose, onOpened }: OpenViewProps) {
 
         {opened && <Letter kotozute={kotozute} />}
       </div>
+      {isReportModalOpen && (
+        <div className="report-modal" role="dialog" aria-modal="true" aria-labelledby="report-modal-title">
+          <div className="report-modal__backdrop" onClick={() => setIsReportModalOpen(false)} />
+          <div className="report-modal__content">
+            <h2 id="report-modal-title">このことづてを通報する</h2>
+            <p>不適切だと思われる理由を選択してください。</p>
+            <label className="report-modal__label">
+              <span>理由</span>
+              <select
+                value={reportReason}
+                onChange={(event) => setReportReason(event.target.value)}
+              >
+                <option value="spam">スパム</option>
+                <option value="inappropriate">不適切な内容</option>
+                <option value="privacy">プライバシー侵害</option>
+                <option value="harassment">嫌がらせ</option>
+                <option value="other">その他</option>
+              </select>
+            </label>
+            <label className="report-modal__label">
+              <span>詳細（任意）</span>
+              <textarea
+                value={reportDetails}
+                onChange={(event) => setReportDetails(event.target.value)}
+                rows={4}
+                placeholder="どの点が問題か詳しく書いてください。"
+              />
+            </label>
+            {reportError && <p className="report-modal__error">{reportError}</p>}
+            <div className="report-modal__actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setIsReportModalOpen(false)}
+                disabled={isSubmittingReport}
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => handleReportSubmit(reportReason, reportDetails)}
+                disabled={isSubmittingReport}
+              >
+                {isSubmittingReport ? '送信中...' : '通報する'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -209,6 +306,10 @@ function Letter({ kotozute }: { kotozute: EnrichedKotozute }) {
   const dateStr = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
   const hasBody = kotozute.message.trim().length > 0 || !!kotozute.link
 
+  function setIsReportModalOpen(arg0: boolean): void {
+    throw new Error('Function not implemented.')
+  }
+
   return (
     <div className="letter">
       <div className="letter__place">
@@ -264,9 +365,7 @@ function Letter({ kotozute }: { kotozute: EnrichedKotozute }) {
       <div className="letter__actions">
         <button
           className="letter__report"
-          onClick={() =>
-            alert('このことづてを報告しました。ご協力ありがとうございます。')
-          }
+          onClick={() => setIsReportModalOpen(true)}
         >
           <FlagIcon
             width={12}
