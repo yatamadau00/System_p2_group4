@@ -1,17 +1,29 @@
 -- reports テーブルの定義
-create type if not exists public.report_reason as enum (
-  'spam',
-  'inappropriate',
-  'privacy',
-  'harassment',
-  'other'
-);
 
-create type if not exists public.report_status as enum (
-  'pending',
-  'resolved',
-  'dismissed'
-);
+-- ENUMがなければ作る
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'report_reason') then
+    create type public.report_reason as enum (
+      'spam',
+      'inappropriate',
+      'privacy',
+      'harassment',
+      'other'
+    );
+  end if;
+end$$;
+
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'report_status') then
+    create type public.report_status as enum (
+      'pending',
+      'resolved',
+      'dismissed'
+    );
+  end if;
+end$$;
 
 create table if not exists public.reports (
   id uuid primary key default gen_random_uuid(),
