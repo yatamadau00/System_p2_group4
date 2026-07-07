@@ -17,7 +17,7 @@ export function useKotozute(userId?: string | null) {
     const repo = getRepository()
     const history = userId ? await repo.listOpenHistory(userId) : []
     const openedIds = new Set(history.map((record) => record.kotozuteId))
-    const list = await repo.list()
+    const list = await repo.list(userId)
     setOpenHistory(history)
     setItems(
       list.map((item) => ({
@@ -35,7 +35,7 @@ export function useKotozute(userId?: string | null) {
         await repo.ensureSeed(SAMPLE_KOTOZUTE)
         const history = userId ? await repo.listOpenHistory(userId) : []
         const openedIds = new Set(history.map((record) => record.kotozuteId))
-        const list = await repo.list()
+        const list = await repo.list(userId)
         if (!cancelled) {
           setOpenHistory(history)
           setItems(
@@ -100,6 +100,17 @@ export function useKotozute(userId?: string | null) {
     [refresh, userId],
   )
 
+  const toggleLike = useCallback(
+    async (id: string) => {
+      if (!userId) return null
+      const repo = getRepository()
+      const result = await repo.toggleLike(id, userId)
+      await refresh()
+      return result
+    },
+    [refresh, userId],
+  )
+
   return {
     items,
     openHistory,
@@ -110,5 +121,6 @@ export function useKotozute(userId?: string | null) {
     remove,
     refresh,
     markOpened,
+    toggleLike,
   }
 }

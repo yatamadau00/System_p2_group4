@@ -12,6 +12,7 @@ import {
   CloseIcon,
   EnvelopeIcon,
   FlagIcon,
+  HeartIcon,
   ImageIcon,
   LinkIcon,
   LockIcon,
@@ -40,6 +41,7 @@ interface OpenViewProps {
   onDeleteReply: (id: string) => void
   currentUserId: string | null
   onOpened?: (id: string) => void
+  onToggleLike: (id: string) => Promise<void>
   /** 自分のことづての本文・場所名・リンクを編集する */
   onEdit?: (
     id: string,
@@ -60,6 +62,7 @@ export function OpenView({
   onDeleteReply,
   currentUserId,
   onOpened,
+  onToggleLike,
   onEdit,
 }: OpenViewProps) {
   const { currentUser } = useAuth()
@@ -230,6 +233,7 @@ export function OpenView({
             currentUserId={currentUserId}
             replies={replies}
             onReportClick={handleOpenReport}
+            onToggleLike={onToggleLike}
             canEdit={isOwn && !!onEdit}
             onEdit={onEdit}
           />
@@ -368,6 +372,7 @@ function Letter({
   currentUserId,
   replies,
   onReportClick,
+  onToggleLike,
   canEdit,
   onEdit,
 }: {
@@ -377,12 +382,14 @@ function Letter({
   currentUserId: string | null
   replies: EnrichedKotozute[]
   onReportClick: (id: string) => void
+  onToggleLike: (id: string) => Promise<void>
   canEdit?: boolean
   onEdit?: (
     id: string,
     patch: Partial<Pick<EnrichedKotozute, 'message' | 'placeLabel' | 'link' | 'media'>>,
   ) => Promise<unknown>
 }) {
+  const [likeBusy, setLikeBusy] = useState(false)
   const date = new Date(kotozute.createdAt)
   const dateStr = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
   const hasBody = kotozute.message.trim().length > 0 || !!kotozute.link
@@ -670,6 +677,22 @@ function Letter({
       )}
 
       <div className="letter__actions">
+        <button
+          className={`letter__like${kotozute.likedByCurrentUser ? ' letter__like--liked' : ''}`}
+          onClick={async () => {
+            setLikeBusy(true)
+            try {
+              await onToggleLike(kotozute.id)
+            } finally {
+              setLikeBusy(false)
+            }
+          }}
+          disabled={likeBusy}
+          aria-pressed={!!kotozute.likedByCurrentUser}
+        >
+          <HeartIcon width={16} height={16} filled={!!kotozute.likedByCurrentUser} />
+          いいね {kotozute.likesCount ?? 0}
+        </button>
         <button className="letter__reply" onClick={onReply}>
           <EnvelopeIcon width={16} height={16} />
           返信する
