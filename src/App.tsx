@@ -51,6 +51,8 @@ export function App() {
   const [toast, setToast] = useState<string | null>(null)
 
   const mapRef = useRef<google.maps.Map | null>(null)
+  const listScrollRef = useRef(0)
+  const listTabRef = useRef<'all' | 'mine'>('all')
 
   const position = geo.position
 
@@ -426,10 +428,15 @@ export function App() {
         <ListSheet
           items={enriched}
           hasPosition={!!position}
+          savedScroll={listScrollRef.current}
+          savedTab={listTabRef.current}
+          onSaveScroll={(v) => { listScrollRef.current = v }}
+          onSaveTab={(t) => { listTabRef.current = t }}
           onSelect={(id) => {
             setShowList(false)
+            handleHighlight(id)
             setOpenedFromList(true)
-            handleSelect(id)
+            setTimeout(() => handleSelect(id), 600)
           }}
           onDelete={handleDelete}
           onClose={() => setShowList(false)}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { EnrichedKotozute } from '../lib/enrich'
 import { formatDistance } from '../lib/geo'
 import { primaryKind } from '../lib/media'
@@ -24,6 +24,10 @@ const KIND_ICON = {
 interface ListSheetProps {
   items: EnrichedKotozute[]
   hasPosition: boolean
+  savedScroll?: number
+  savedTab?: 'all' | 'mine'
+  onSaveScroll?: (scrollTop: number) => void
+  onSaveTab?: (tab: 'all' | 'mine') => void
   onSelect: (id: string) => void
   onDelete: (id: string) => void
   onClose: () => void
@@ -32,11 +36,24 @@ interface ListSheetProps {
 export function ListSheet({
   items,
   hasPosition,
+  savedScroll = 0,
+  savedTab = 'all',
+  onSaveScroll,
+  onSaveTab,
   onSelect,
   onDelete,
   onClose,
 }: ListSheetProps) {
-  const [tab, setTab] = useState<'all' | 'mine'>('all')
+  const [tab, setTab] = useState<'all' | 'mine'>(savedTab)
+  const listRef = useRef<HTMLUListElement>(null)
+
+  // マウント時にスクロール位置を復元
+  useEffect(() => {
+    if (savedScroll > 0) {
+      const body = listRef.current?.closest('.sheet__body') as HTMLElement | null
+      if (body) body.scrollTop = savedScroll
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const list = useMemo(() => {
     const filtered = tab === 'mine' ? items.filter((k) => k.mine) : items
@@ -82,7 +99,7 @@ export function ListSheet({
           </p>
         </div>
       ) : (
-        <ul className="cz-list">
+        <ul className="cz-list" ref={listRef}>
           {list.map((k) => {
             const Icon = KIND_ICON[primaryKind(k)]
             const statusText =
@@ -100,7 +117,12 @@ export function ListSheet({
                 : 'なまえのない誰かから'
             return (
               <li key={k.id}>
-                <button className="cz-row" onClick={() => onSelect(k.id)}>
+                <button className="cz-row" onClick={() => {
+                  const body = listRef.current?.closest('.sheet__body') as HTMLElement | null
+                  onSaveScroll?.(body?.scrollTop ?? 0)
+                  onSaveTab?.(tab)
+                  onSelect(k.id)
+                }}>
                   <span className={`cz-row__badge cz-row__badge--${k.proximity}`}>
                     <Icon />
                   </span>

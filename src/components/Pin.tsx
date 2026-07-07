@@ -1,6 +1,6 @@
 import type { EnrichedKotozute } from '../lib/enrich'
 import { formatDistance } from '../lib/geo'
-import { groupColorIndex } from '../lib/groupColor'
+import { groupBulbStyle, groupColorIndex } from '../lib/groupColor'
 import { primaryKind } from '../lib/media'
 import {
   AudioIcon,
@@ -46,6 +46,7 @@ export function Pin({ kotozute, highlighted = false, onClick }: PinProps) {
   const multi = (kotozute.media ?? []).length > 1
   const isGroupOnly = visibility === 'group'
   const groupIdx = isGroupOnly && groupId ? groupColorIndex(groupId) : null
+  const bulbStyle = groupIdx !== null ? groupBulbStyle(groupIdx, proximity) : undefined
 
   const label = unlockable
     ? `${KIND_NAME[kind]}のことづてを開ける`
@@ -58,14 +59,14 @@ export function Pin({ kotozute, highlighted = false, onClick }: PinProps) {
       type="button"
       className={`pin pin--${proximity} pin--kind-${kind}${
         mine ? ' pin--mine' : ''
-      }${isGroupOnly ? ' pin--group' : ''}${groupIdx !== null ? ` pin--gc-${groupIdx}` : ''}${highlighted ? ' pin--highlighted' : ''}`}
+      }${isGroupOnly ? ' pin--group' : ''}${highlighted ? ' pin--highlighted' : ''}`}
       onClick={onClick}
       aria-label={label}
     >
       {distance != null && proximity !== 'far' && (
         <span className="pin__distance">{formatDistance(distance)}</span>
       )}
-      <span className="pin__bulb">
+      <span className="pin__bulb" style={bulbStyle}>
         {unlockable && <span className="pin__halo" aria-hidden />}
         <PigeonIcon className="pin__pigeon" />
         <span className="pin__kind" aria-hidden>
