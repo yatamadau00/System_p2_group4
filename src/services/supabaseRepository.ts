@@ -38,6 +38,8 @@ interface Row {
   place_label: string | null
   media: MediaJson[] | null
   visibility: string | null
+  group_id: string | null
+  is_anonymous: boolean | null
   is_sample: boolean | null
   created_at: string
 }
@@ -80,16 +82,20 @@ function rowToKotozute(row: Row, mineIds: Set<string>): Kotozute {
       mimeType: m.mime_type,
       fileName: m.file_name,
     })),
-    authorName: row.author?.display_name ?? row.author_name ?? undefined,
+    authorName: row.is_anonymous
+      ? undefined
+      : row.author?.display_name ?? row.author_name ?? undefined,
     authorId: row.author_id ?? undefined,
+    isAnonymous: row.is_anonymous ?? false,
     placeLabel: row.place_label ?? undefined,
     createdAt: new Date(row.created_at).getTime(),
     mine: mineIds.has(row.id),
     isSample: row.is_sample ?? false,
     visibility:
-      row.visibility === 'friends' || row.visibility === 'public'
+      row.visibility === 'group' || row.visibility === 'public'
         ? row.visibility
         : undefined,
+    groupId: row.group_id ?? undefined,
   }
 }
 
@@ -167,9 +173,11 @@ export const supabaseRepository: KotozuteRepository = {
         author_id: input.authorId ?? null,
         reply_to_id: input.replyToId ?? null,
         root_id: input.rootId ?? input.replyToId ?? id,
+        is_anonymous: input.isAnonymous ?? false,
         place_label: input.placeLabel ?? null,
         media,
         visibility: input.visibility ?? 'public',
+        group_id: input.groupId ?? null,
         is_sample: false,
       })
       .select('*, author:users!kotozute_author_id_fkey(display_name)')
@@ -195,6 +203,46 @@ export const supabaseRepository: KotozuteRepository = {
     await removeMineId(id)
   },
 
+  async listOpenedIds(userId) {
+    const { data, error } = await supabase!
+      .from('kotozute_opens')
+      .select('kotozute_id')
+      .eq('user_id', userId)
+    if (error) {
+      console.warn('Kotozute open state could not be loaded:', error)
+      return new Set()
+    }
+    return new Set(
+      (data as { kotozute_id: string }[]).map((row) => row.kotozute_id),
+    )
+  },
+
+  async markOpened(kotozuteId, userId) {
+    const { data: existing, error: existingError } = await supabase!
+      .from('kotozute_opens')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('kotozute_id', kotozuteId)
+      .maybeSingle()
+    if (existingError) {
+      console.warn('Kotozute open state could not be checked:', existingError)
+      return false
+    }
+    if (existing) return false
+
+    const { error } = await supabase!
+      .from('kotozute_opens')
+      .insert({
+        user_id: userId,
+        kotozute_id: kotozuteId,
+      })
+    if (error) {
+      console.warn('Kotozute open state could not be saved:', error)
+      return false
+    }
+    return true
+  },
+
   async ensureSeed(seed: SeedKotozute[]) {
     // 共有DBなので、まだ1件も無いときだけサンプルを投入する
     const { count, error } = await supabase!
@@ -215,9 +263,11 @@ export const supabaseRepository: KotozuteRepository = {
         author_id: null,
         reply_to_id: s.replyToId ?? null,
         root_id: s.rootId ?? s.replyToId ?? id,
+        is_anonymous: s.isAnonymous ?? false,
         place_label: s.placeLabel ?? null,
         media: [],
         visibility: s.visibility ?? 'public',
+        group_id: s.groupId ?? null,
         is_sample: true,
         created_at: new Date(s.createdAt ?? Date.now()).toISOString(),
       }

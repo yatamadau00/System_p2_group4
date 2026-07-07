@@ -12,7 +12,7 @@ import { useGeolocation } from './hooks/useGeolocation'
 import { useKotozute } from './hooks/useKotozute'
 import { useAuth } from './hooks/useAuth'
 import { useNotifications } from './hooks/useNotifications'
-import { useUserProfile, useFriends } from './services/socialService'
+import { useUserProfile, useGroups } from './services/socialService'
 import { NotificationSheet } from './components/NotificationSheet'
 import { enrich } from './lib/enrich'
 import { DEFAULT_ZOOM } from './config'
@@ -21,18 +21,21 @@ import './App.css'
 
 export function App() {
   const geo = useGeolocation(true)
-  const { items, loading, create, remove } = useKotozute()
   const { currentUser, logout } = useAuth()
+  const { items, loading, create, remove, markOpened } = useKotozute(
+    currentUser?.id,
+  )
   const { unreadCount, addNotification } = useNotifications()
   const { profile, updateProfile } = useUserProfile(currentUser)
   const {
-    friends,
-    addFriendByCode,
-    addFriendDirect,
-    removeFriend,
-    isFriend,
-    suggestedFriends,
-  } = useFriends(currentUser)
+    groups,
+    createGroup,
+    joinGroup,
+    leaveGroup,
+    updateGroup,
+    getGroupMembers,
+    isInGroup,
+  } = useGroups(currentUser)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // 地図ピンと下部リストの相互ハイライト用（開封状態とは別）
@@ -55,12 +58,12 @@ export function App() {
       if (item.replyToId) return false
       if (item.mine) return true
       if (!item.visibility || item.visibility === 'public') return true
-      if (item.visibility === 'friends' && item.authorId && isFriend(item.authorId)) {
+      if (item.visibility === 'group' && item.groupId && isInGroup(item.groupId)) {
         return true
       }
       return false
     })
-  }, [items, isFriend])
+  }, [items, isInGroup])
 
   // 現在地からの距離・近接状態を付与
   const enriched = useMemo(() => enrich(visibleItems, position), [visibleItems, position])
@@ -132,7 +135,7 @@ export function App() {
     }
   }, [notifiedKeys])
 
-  // 位置情報と言伝の状態を監視し、新規近接を通知
+  // 位置情報とことづての状態を監視し、新規近接を通知
   useEffect(() => {
     if (!position || enriched.length === 0) return
 
@@ -218,10 +221,13 @@ export function App() {
 
   const handleSubmit = useCallback(
     async (input: NewKotozute) => {
+      if (!currentUser) {
+        setComposing(false)
+        setShowAuth(true)
+        return
+      }
       const replyingTo = replyTarget
-      const inputWithAuthor = currentUser
-        ? { ...input, authorId: currentUser.id }
-        : input
+      const inputWithAuthor = { ...input, authorId: currentUser.id }
       const inputWithThread = replyingTo
         ? {
             ...inputWithAuthor,
@@ -271,7 +277,7 @@ export function App() {
         }, 15000)
       }
     },
-    [create, currentUser, addNotification, replyTarget],
+    [create, currentUser, addNotification, replyTarget, profile.name],
   )
 
 
@@ -305,15 +311,31 @@ export function App() {
   )
 
   const handleReply = useCallback((target: Kotozute) => {
+    if (!currentUser) {
+      setShowAuth(true)
+      return
+    }
     setReplyTargetId(target.id)
     setSelectedId(null)
     setComposing(true)
-  }, [])
+  }, [currentUser])
 
   const handleCloseCompose = useCallback(() => {
     setComposing(false)
     setReplyTargetId(null)
   }, [])
+
+  const handleOpened = useCallback(
+    async (id: string) => {
+      if (!currentUser) return
+      try {
+        await markOpened(id)
+      } catch (e) {
+        console.warn('Failed to record kotozute open:', e)
+      }
+    },
+    [currentUser, markOpened],
+  )
 
   const overlayOpen =
     composing || showList || showProfile || !!selected || showAuth || showNotifications
@@ -352,7 +374,7 @@ export function App() {
       )}
 
       {/* ことづてを残す FAB */}
-      {!overlayOpen && !loading && (
+      {!overlayOpen && !loading && currentUser && (
         <button
           className="fab"
           onClick={() => {
@@ -369,7 +391,7 @@ export function App() {
       )}
 
       {/* 残す */}
-      {composing && (
+      {composing && currentUser && (
         <ComposeFlow
           position={position}
           onRetryLocation={geo.start}
@@ -378,6 +400,7 @@ export function App() {
           profile={profile}
           mode={replyTarget ? 'reply' : 'new'}
           replyTarget={replyTarget}
+          groups={groups}
         />
       )}
 
@@ -395,17 +418,18 @@ export function App() {
         />
       )}
 
-      {/* プロフィール & フレンド */}
+      {/* プロフィール & グループ */}
       {showProfile && (
         <ProfileSheet
           items={visibleItems}
           profile={profile}
           updateProfile={updateProfile}
-          friends={friends}
-          addFriendByCode={addFriendByCode}
-          addFriendDirect={addFriendDirect}
-          removeFriend={removeFriend}
-          suggestedFriends={suggestedFriends}
+          groups={groups}
+          createGroup={createGroup}
+          joinGroup={joinGroup}
+          leaveGroup={leaveGroup}
+          updateGroup={updateGroup}
+          getGroupMembers={getGroupMembers}
           onSelectKotozute={(id) => {
             setShowProfile(false)
             setSelectedId(id)
@@ -424,6 +448,7 @@ export function App() {
           onReply={() => handleReply(selected)}
           onDeleteReply={handleDeleteReply}
           currentUserId={currentUser?.id ?? null}
+          onOpened={handleOpened}
         />
       )}
 

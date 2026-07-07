@@ -1,59 +1,14 @@
 import { useState, useCallback, useEffect } from 'react'
-import type { User, UserProfile, Friend } from '../types'
+import type { User, UserProfile, Group, GroupMember } from '../types'
 import { generateId } from './repository'
 import { updateUserProfile } from './authService'
 import { isSupabaseConfigured, supabase } from './supabaseClient'
 
-// --- おすすめのモックフレンド定義 ---
-export const MOCK_SUGGESTED_FRIENDS: Omit<Friend, 'addedAt'>[] = [
-  {
-    id: 'friend-midori',
-    name: 'みどり',
-    bio: '緑の多い散歩道や、懐かしい珈琲店によくいます。のんびり歩くのが好き。',
-    avatarEmoji: '🌲',
-    avatarColor: '#e2ecc8',
-    friendCode: 'KOTO-MDR7',
-  },
-  {
-    id: 'friend-haru',
-    name: 'はる',
-    bio: '春の桜や、道端の小さなお花を見つけるのが好きです。よろしくね！',
-    avatarEmoji: '🌸',
-    avatarColor: '#ffdce3',
-    friendCode: 'KOTO-HARU',
-  },
-  {
-    id: 'friend-sora',
-    name: 'そら',
-    bio: '旅先の広い空や、ベンチから眺める川の流れが大好き。時々ことづてを残します。',
-    avatarEmoji: '🕊️',
-    avatarColor: '#dceffd',
-    friendCode: 'KOTO-SORA',
-  },
-]
-
 const PROFILE_KEY = 'kotozute-user-profile'
-const FRIENDS_KEY = 'kotozute-friends'
+const GROUPS_KEY = 'kotozute-groups'
 const DEFAULT_BIO = '場所に想いを残すのが好きです。'
 const DEFAULT_AVATAR_EMOJI = '🦉'
 const DEFAULT_AVATAR_COLOR = '#f1e8d6'
-
-interface FriendRow {
-  id: string
-  owner_id: string
-  friend_id: string
-  added_at: string
-  friend: FriendUserRow | FriendUserRow[] | null
-}
-
-interface FriendUserRow {
-  id: string
-  display_name: string
-  bio: string | null
-  avatar_emoji: string | null
-  avatar_color: string | null
-  friend_code: string | null
-}
 
 function userToProfile(user: User): UserProfile {
   return {
@@ -66,41 +21,15 @@ function userToProfile(user: User): UserProfile {
   }
 }
 
-function rowToFriend(row: FriendRow): Friend {
-  const friend = Array.isArray(row.friend) ? row.friend[0] : row.friend
-
-  return {
-    id: row.friend_id,
-    name: friend?.display_name ?? '名前のないフレンド',
-    bio: friend?.bio ?? '',
-    avatarEmoji: friend?.avatar_emoji ?? DEFAULT_AVATAR_EMOJI,
-    avatarColor: friend?.avatar_color ?? DEFAULT_AVATAR_COLOR,
-    friendCode: friend?.friend_code ?? '',
-    addedAt: new Date(row.added_at).getTime(),
-  }
-}
-
-function userRowToFriend(row: FriendUserRow): Friend {
-  return {
-    id: row.id,
-    name: row.display_name,
-    bio: row.bio ?? '',
-    avatarEmoji: row.avatar_emoji ?? DEFAULT_AVATAR_EMOJI,
-    avatarColor: row.avatar_color ?? DEFAULT_AVATAR_COLOR,
-    friendCode: row.friend_code ?? '',
-    addedAt: Date.now(),
-  }
-}
-
 // ユーザーの初期プロフィールを生成
 function createDefaultProfile(): UserProfile {
   const codeNum = Math.floor(1000 + Math.random() * 9000)
   return {
     id: generateId(),
     name: 'ことづてびと',
-    bio: '場所に想いを残すのが好きです。',
-    avatarEmoji: '🦉',
-    avatarColor: '#f1e8d6',
+    bio: DEFAULT_BIO,
+    avatarEmoji: DEFAULT_AVATAR_EMOJI,
+    avatarColor: DEFAULT_AVATAR_COLOR,
     friendCode: `KOTO-${codeNum}`,
   }
 }
@@ -131,235 +60,346 @@ export function useUserProfile(currentUser: User | null) {
     }
   }, [currentUser])
 
-  const updateProfile = useCallback(async (updates: Partial<Omit<UserProfile, 'id' | 'friendCode'>>) => {
-    const current = profile
-    const nextProfile = {
-      ...current,
-      ...updates,
-    }
+  const updateProfile = useCallback(
+    async (updates: Partial<Omit<UserProfile, 'id' | 'friendCode'>>) => {
+      const nextProfile = { ...profile, ...updates }
 
-    if (currentUser) {
-      const updated = await updateUserProfile(currentUser.id, {
-        displayName: nextProfile.name,
-        bio: nextProfile.bio,
-        avatarEmoji: nextProfile.avatarEmoji,
-        avatarColor: nextProfile.avatarColor,
+      if (currentUser) {
+        const updated = await updateUserProfile(currentUser.id, {
+          displayName: nextProfile.name,
+          bio: nextProfile.bio,
+          avatarEmoji: nextProfile.avatarEmoji,
+          avatarColor: nextProfile.avatarColor,
+        })
+        setProfile(userToProfile(updated))
+        return
+      }
+
+      setProfile((prev) => {
+        const next = { ...prev, ...updates }
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(next))
+        return next
       })
-      setProfile(userToProfile(updated))
-      return
-    }
-
-    setProfile((prev) => {
-      const next = { ...prev, ...updates }
-      localStorage.setItem(PROFILE_KEY, JSON.stringify(next))
-      return next
-    })
-  }, [currentUser, profile])
+    },
+    [currentUser, profile],
+  )
 
   return { profile, updateProfile }
 }
 
-/**
- * フレンド一覧を管理するフック
- */
-export function useFriends(currentUser: User | null) {
-  const [friends, setFriends] = useState<Friend[]>(() => {
-    if (currentUser && isSupabaseConfigured) return []
+// ---- グループ（共有コードで出入りする） ----
 
-    const saved = localStorage.getItem(FRIENDS_KEY)
-    if (saved) {
-      try {
-        return JSON.parse(saved) as Friend[]
-      } catch (e) {
-        console.error(e)
-      }
+/** 紛らわしい文字を避けたグループコードを生成（例: KOTO-AB23CD） */
+function generateGroupCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let s = ''
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const arr = new Uint32Array(6)
+    crypto.getRandomValues(arr)
+    for (let i = 0; i < 6; i++) s += chars[arr[i] % chars.length]
+  } else {
+    for (let i = 0; i < 6; i++)
+      s += chars[Math.floor(Math.random() * chars.length)]
+  }
+  return `KOTO-${s}`
+}
+
+// --- ローカル保存（Supabase未設定・未ログイン時のフォールバック） ---
+function loadLocalGroups(): Group[] {
+  const saved = localStorage.getItem(GROUPS_KEY)
+  if (saved) {
+    try {
+      return JSON.parse(saved) as Group[]
+    } catch (e) {
+      console.error(e)
     }
-    return []
-  })
+  }
+  return []
+}
+function saveLocalGroups(list: Group[]) {
+  localStorage.setItem(GROUPS_KEY, JSON.stringify(list))
+}
 
+const GROUP_DEFAULT_EMOJI = '👥'
+const GROUP_DEFAULT_COLOR = '#dceffd'
+
+// --- Supabase（ユーザーに紐づくグループ） ---
+interface GroupRow {
+  id: string
+  name: string | null
+  avatar_emoji: string | null
+  avatar_color: string | null
+  owner_id: string | null
+}
+
+interface GroupJoinRow {
+  joined_at: string
+  groups: GroupRow | GroupRow[] | null
+}
+
+function rowToGroup(g: GroupRow, userId: string, joinedAt: number): Group {
+  return {
+    id: g.id,
+    name: g.name || g.id,
+    avatarEmoji: g.avatar_emoji || GROUP_DEFAULT_EMOJI,
+    avatarColor: g.avatar_color || GROUP_DEFAULT_COLOR,
+    owner: g.owner_id === userId,
+    joinedAt,
+  }
+}
+
+const GROUP_COLS = 'id, name, avatar_emoji, avatar_color, owner_id'
+
+async function fetchMemberGroups(userId: string): Promise<Group[]> {
+  const { data, error } = await supabase!
+    .from('group_members')
+    .select(`joined_at, groups:groups!inner(${GROUP_COLS})`)
+    .eq('user_id', userId)
+    .order('joined_at', { ascending: false })
+  if (error) throw error
+  return (data as unknown as GroupJoinRow[])
+    .map((r) => {
+      const g = Array.isArray(r.groups) ? r.groups[0] : r.groups
+      return g ? rowToGroup(g, userId, new Date(r.joined_at).getTime()) : null
+    })
+    .filter((g): g is Group => g !== null)
+}
+
+interface MemberJoinRow {
+  joined_at: string
+  user_id: string
+  users:
+    | { id: string; display_name: string | null; avatar_emoji: string | null; avatar_color: string | null }
+    | { id: string; display_name: string | null; avatar_emoji: string | null; avatar_color: string | null }[]
+    | null
+}
+
+async function fetchGroupMembers(groupId: string): Promise<GroupMember[]> {
+  const { data: g } = await supabase!
+    .from('groups')
+    .select('owner_id')
+    .eq('id', groupId)
+    .maybeSingle()
+  const ownerId = (g as { owner_id: string | null } | null)?.owner_id ?? null
+
+  const { data, error } = await supabase!
+    .from('group_members')
+    .select('joined_at, user_id, users:users!inner(id, display_name, avatar_emoji, avatar_color)')
+    .eq('group_id', groupId)
+    .order('joined_at', { ascending: true })
+  if (error) throw error
+
+  return (data as unknown as MemberJoinRow[])
+    .map((r) => {
+      const u = Array.isArray(r.users) ? r.users[0] : r.users
+      if (!u) return null
+      return {
+        id: u.id,
+        name: u.display_name || '名もなき人',
+        avatarEmoji: u.avatar_emoji || '🙂',
+        avatarColor: u.avatar_color || '#f1e8d6',
+        joinedAt: new Date(r.joined_at).getTime(),
+        owner: u.id === ownerId,
+      } as GroupMember
+    })
+    .filter((m): m is GroupMember => m !== null)
+}
+
+/**
+ * 参加しているグループを管理するフック。
+ * ログイン中は Supabase の groups / group_members に保存し、ユーザーに紐づける
+ * （どの端末でも同じグループが見え、メンバーも記録される）。
+ * 未ログイン/未設定時は端末ローカルにフォールバックする。
+ */
+export function useGroups(currentUser: User | null) {
+  const useDb = !!currentUser && isSupabaseConfigured
+  const [groups, setGroups] = useState<Group[]>(() =>
+    useDb ? [] : loadLocalGroups(),
+  )
+
+  // ログイン状態に応じてグループ一覧を読み込む
   useEffect(() => {
-    if (!currentUser || !isSupabaseConfigured) {
-      const saved = localStorage.getItem(FRIENDS_KEY)
-      if (saved) {
-        try {
-          setFriends(JSON.parse(saved) as Friend[])
-          return
-        } catch (e) {
-          console.error(e)
-        }
-      }
-      setFriends([])
+    if (!useDb || !currentUser) {
+      setGroups(loadLocalGroups())
       return
     }
-
     let cancelled = false
-    ;(async () => {
-      const list = await loadSupabaseFriends(currentUser.id)
-      if (!cancelled) setFriends(list)
-    })().catch((e) => {
-      console.error(e)
-    })
+    fetchMemberGroups(currentUser.id)
+      .then((list) => {
+        if (!cancelled) setGroups(list)
+      })
+      .catch((e) => console.error(e))
     return () => {
       cancelled = true
     }
-  }, [currentUser])
+  }, [useDb, currentUser])
 
-  // フレンド一覧を保存
-  const saveFriends = (list: Friend[]) => {
-    localStorage.setItem(FRIENDS_KEY, JSON.stringify(list))
-    setFriends(list)
-  }
-
-  // フレンドコードで追加
-  const addFriendByCode = useCallback(async (code: string): Promise<Friend> => {
-    const cleanCode = code.trim().toUpperCase()
-    
-    // すでにフレンドか確認
-    const alreadyFriend = friends.find(f => f.friendCode === cleanCode)
-    if (alreadyFriend) {
-      throw new Error('すでにフレンドに登録されています。')
-    }
-
-    if (currentUser && isSupabaseConfigured) {
-      const found = await findSupabaseUserByFriendCode(cleanCode)
-      if (found) {
-        if (found.id === currentUser.id) {
-          throw new Error('自分自身はフレンドに追加できません。')
+  const createGroup = useCallback(
+    async (name: string): Promise<Group> => {
+      const cleanName = name.trim() || '名もなきグループ'
+      if (useDb && currentUser) {
+        const id = generateGroupCode()
+        const { error: gErr } = await supabase!.from('groups').insert({
+          id,
+          name: cleanName,
+          avatar_emoji: GROUP_DEFAULT_EMOJI,
+          avatar_color: GROUP_DEFAULT_COLOR,
+          owner_id: currentUser.id,
+        })
+        if (gErr) throw gErr
+        const { error: mErr } = await supabase!
+          .from('group_members')
+          .insert({ group_id: id, user_id: currentUser.id })
+        if (mErr) throw mErr
+        const group: Group = {
+          id,
+          name: cleanName,
+          avatarEmoji: GROUP_DEFAULT_EMOJI,
+          avatarColor: GROUP_DEFAULT_COLOR,
+          owner: true,
+          joinedAt: Date.now(),
         }
-        const friend = userRowToFriend(found)
-        await saveSupabaseFriend(currentUser.id, friend)
-        setFriends((prev) => [...prev, friend])
-        return friend
+        setGroups((prev) => [group, ...prev])
+        return group
       }
-    }
-
-    // おすすめのモックフレンドから検索
-    if (currentUser && isSupabaseConfigured) {
-      throw new Error('登録済みユーザーのフレンドコードを入力してください。')
-    }
-
-    const mock = MOCK_SUGGESTED_FRIENDS.find(f => f.friendCode === cleanCode)
-    if (mock) {
-      const newFriend: Friend = {
-        ...mock,
-        addedAt: Date.now()
+      const group: Group = {
+        id: generateGroupCode(),
+        name: cleanName,
+        avatarEmoji: GROUP_DEFAULT_EMOJI,
+        avatarColor: GROUP_DEFAULT_COLOR,
+        owner: true,
+        joinedAt: Date.now(),
       }
-      if (currentUser && isSupabaseConfigured) {
-        await saveSupabaseFriend(currentUser.id, newFriend)
-        setFriends((prev) => [...prev, newFriend])
-      } else {
-        saveFriends([...friends, newFriend])
-      }
-      return newFriend
-    }
+      const next = [group, ...loadLocalGroups()]
+      saveLocalGroups(next)
+      setGroups(next)
+      return group
+    },
+    [useDb, currentUser],
+  )
 
-    // 一般的なフォーマット（KOTO-XXXX）であれば、疑似的にフレンドを自動生成してあげる（遊び心）
-    const match = cleanCode.match(/^KOTO-([A-Z0-9]{4})$/)
-    if (match) {
-      const id = `friend-custom-${generateId()}`
-      const newFriend: Friend = {
+  const joinGroup = useCallback(
+    async (code: string): Promise<Group> => {
+      const id = code.trim().toUpperCase()
+      if (!id) throw new Error('グループIDを入力してください。')
+
+      if (useDb && currentUser) {
+        const { data: g, error } = await supabase!
+          .from('groups')
+          .select(GROUP_COLS)
+          .eq('id', id)
+          .maybeSingle()
+        if (error) throw error
+        if (!g) throw new Error('そのIDのグループは見つかりませんでした。')
+
+        const { data: existing } = await supabase!
+          .from('group_members')
+          .select('group_id')
+          .eq('group_id', id)
+          .eq('user_id', currentUser.id)
+          .maybeSingle()
+        if (existing) throw new Error('すでにこのグループに参加しています。')
+
+        const { error: mErr } = await supabase!
+          .from('group_members')
+          .insert({ group_id: id, user_id: currentUser.id })
+        if (mErr) throw mErr
+
+        const group = rowToGroup(g as GroupRow, currentUser.id, Date.now())
+        setGroups((prev) => [group, ...prev.filter((x) => x.id !== group.id)])
+        return group
+      }
+
+      const current = loadLocalGroups()
+      if (current.some((x) => x.id === id)) {
+        throw new Error('すでにこのグループに参加しています。')
+      }
+      const group: Group = {
         id,
-        name: `旅人 #${match[1]}`,
-        bio: `フレンドコード ${cleanCode} で登録された新しい友達。`,
-        avatarEmoji: '🦊',
-        avatarColor: '#f4d6b8',
-        friendCode: cleanCode,
-        addedAt: Date.now()
+        name: id,
+        avatarEmoji: GROUP_DEFAULT_EMOJI,
+        avatarColor: GROUP_DEFAULT_COLOR,
+        owner: false,
+        joinedAt: Date.now(),
       }
-      if (currentUser && isSupabaseConfigured) {
-        await saveSupabaseFriend(currentUser.id, newFriend)
-        setFriends((prev) => [...prev, newFriend])
-      } else {
-        saveFriends([...friends, newFriend])
+      const next = [group, ...current]
+      saveLocalGroups(next)
+      setGroups(next)
+      return group
+    },
+    [useDb, currentUser],
+  )
+
+  const leaveGroup = useCallback(
+    async (id: string): Promise<void> => {
+      if (useDb && currentUser) {
+        const { error } = await supabase!
+          .from('group_members')
+          .delete()
+          .eq('group_id', id)
+          .eq('user_id', currentUser.id)
+        if (error) throw error
+        setGroups((prev) => prev.filter((g) => g.id !== id))
+        return
       }
-      return newFriend
-    }
+      const next = loadLocalGroups().filter((g) => g.id !== id)
+      saveLocalGroups(next)
+      setGroups(next)
+    },
+    [useDb, currentUser],
+  )
 
-    throw new Error('該当するフレンドが見つかりませんでした。（KOTO-XXXX 形式で入力してください）')
-  }, [currentUser, friends])
+  /** グループの見た目（名前・アイコン）を更新する（作成者向け） */
+  const updateGroup = useCallback(
+    async (
+      id: string,
+      updates: Partial<Pick<Group, 'name' | 'avatarEmoji' | 'avatarColor'>>,
+    ): Promise<void> => {
+      const patch: Record<string, string> = {}
+      if (updates.name !== undefined) patch.name = updates.name.trim() || id
+      if (updates.avatarEmoji !== undefined) patch.avatar_emoji = updates.avatarEmoji
+      if (updates.avatarColor !== undefined) patch.avatar_color = updates.avatarColor
 
-  // 直接オブジェクトからフレンド追加（おすすめの簡単登録用）
-  const addFriendDirect = useCallback(async (suggested: Omit<Friend, 'addedAt'>) => {
-    if (currentUser && isSupabaseConfigured) {
-      throw new Error('登録済みユーザーのフレンドコードから追加してください。')
-    }
+      if (useDb && currentUser) {
+        const { error } = await supabase!.from('groups').update(patch).eq('id', id)
+        if (error) throw error
+      }
+      const apply = (g: Group): Group =>
+        g.id === id
+          ? {
+              ...g,
+              name: updates.name?.trim() || g.name,
+              avatarEmoji: updates.avatarEmoji ?? g.avatarEmoji,
+              avatarColor: updates.avatarColor ?? g.avatarColor,
+            }
+          : g
+      if (!useDb) saveLocalGroups(loadLocalGroups().map(apply))
+      setGroups((prev) => prev.map(apply))
+    },
+    [useDb, currentUser],
+  )
 
-    if (friends.some(f => f.id === suggested.id)) return
-    const newFriend: Friend = {
-      ...suggested,
-      addedAt: Date.now()
-    }
-    if (currentUser && isSupabaseConfigured) {
-      await saveSupabaseFriend(currentUser.id, newFriend)
-      setFriends((prev) => [...prev, newFriend])
-    } else {
-      saveFriends([...friends, newFriend])
-    }
-  }, [currentUser, friends])
+  /** グループのメンバー一覧を取得する */
+  const getGroupMembers = useCallback(
+    async (id: string): Promise<GroupMember[]> => {
+      if (!useDb) return []
+      return fetchGroupMembers(id)
+    },
+    [useDb],
+  )
 
-  // フレンド削除
-  const removeFriend = useCallback(async (id: string) => {
-    const next = friends.filter(f => f.id !== id)
-    if (currentUser && isSupabaseConfigured) {
-      await removeSupabaseFriend(currentUser.id, id)
-      setFriends(next)
-    } else {
-      saveFriends(next)
-    }
-  }, [currentUser, friends])
-
-  const isFriend = useCallback((id: string) => {
-    return friends.some(f => f.id === id)
-  }, [friends])
+  const isInGroup = useCallback(
+    (id: string) => groups.some((g) => g.id === id),
+    [groups],
+  )
 
   return {
-    friends,
-    addFriendByCode,
-    addFriendDirect,
-    removeFriend,
-    isFriend,
-    suggestedFriends: currentUser && isSupabaseConfigured ? [] : MOCK_SUGGESTED_FRIENDS
+    groups,
+    createGroup,
+    joinGroup,
+    leaveGroup,
+    updateGroup,
+    getGroupMembers,
+    isInGroup,
   }
-}
-
-async function loadSupabaseFriends(userId: string): Promise<Friend[]> {
-  const { data, error } = await supabase!
-    .from('friends')
-    .select('id, owner_id, friend_id, added_at, friend:users!friends_friend_id_fkey(id, display_name, bio, avatar_emoji, avatar_color, friend_code)')
-    .eq('owner_id', userId)
-    .order('added_at', { ascending: false })
-  if (error) throw error
-  return (data as unknown as FriendRow[]).map(rowToFriend)
-}
-
-async function findSupabaseUserByFriendCode(code: string): Promise<FriendUserRow | null> {
-  const { data, error } = await supabase!
-    .from('users')
-    .select('id, display_name, bio, avatar_emoji, avatar_color, friend_code')
-    .eq('friend_code', code)
-    .maybeSingle()
-  if (error) throw error
-  return (data as FriendUserRow | null) ?? null
-}
-
-async function saveSupabaseFriend(ownerId: string, friend: Friend) {
-  const { error } = await supabase!
-    .from('friends')
-    .upsert(
-      {
-        owner_id: ownerId,
-        friend_id: friend.id,
-      },
-      { onConflict: 'owner_id,friend_id' },
-    )
-  if (error) throw error
-}
-
-async function removeSupabaseFriend(ownerId: string, friendId: string) {
-  const { error } = await supabase!
-    .from('friends')
-    .delete()
-    .eq('owner_id', ownerId)
-    .eq('friend_id', friendId)
-  if (error) throw error
 }

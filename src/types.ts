@@ -54,6 +54,8 @@ export interface Kotozute {
   authorName?: string
   /** 残した人のユーザーID（任意） */
   authorId?: string
+  /** 投稿者名を公開しないか */
+  isAnonymous?: boolean
   /** 残した地点の呼び名（例:「卒業した教室」）任意 */
   placeLabel?: string
   /** 作成時刻（epoch ms） */
@@ -62,8 +64,12 @@ export interface Kotozute {
   mine: boolean
   /** ダミーデータ（サンプル）か */
   isSample?: boolean
-  /** 公開範囲（全体公開 or フレンド限定） */
-  visibility?: 'public' | 'friends'
+  /** 公開範囲（全体公開 or グループ限定） */
+  visibility?: 'public' | 'group'
+  /** group 限定のとき、対象グループのID（共有コード） */
+  groupId?: string
+  /** 現在のログインユーザーが開封済みか */
+  openedByCurrentUser?: boolean
 }
 
 /** 新規作成時の入力（id/createdAt はサービス層が付与） */
@@ -80,15 +86,31 @@ export interface UserProfile {
   friendCode: string
 }
 
-/** 登録されたフレンド情報 */
-export interface Friend {
+/** 参加しているグループ（共有コードで出入りする） */
+export interface Group {
+  /** グループID＝共有コード（例: KOTO-AB12CD） */
+  id: string
+  /** グループ名（作成者が付ける。未設定ならコードを表示） */
+  name: string
+  /** グループのアイコン絵文字 */
+  avatarEmoji: string
+  /** グループのアイコン背景色 */
+  avatarColor: string
+  /** 自分が作成したグループか */
+  owner: boolean
+  /** 参加した時刻（epoch ms） */
+  joinedAt: number
+}
+
+/** グループのメンバー（一覧表示用） */
+export interface GroupMember {
   id: string
   name: string
-  bio: string
   avatarEmoji: string
   avatarColor: string
-  friendCode: string
-  addedAt: number
+  joinedAt: number
+  /** グループの作成者か */
+  owner: boolean
 }
 
 /** 位置情報の取得状態 */

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import type { AttachmentKind, Kotozute, LatLng, MediaItem, NewKotozute, UserProfile } from '../types'
+import type { AttachmentKind, Group, Kotozute, LatLng, MediaItem, NewKotozute, UserProfile } from '../types'
 import { uid } from '../lib/media'
 import { useObjectUrl } from '../hooks/useObjectUrl'
 import { AudioRecorder } from './AudioRecorder'
@@ -23,6 +23,8 @@ interface ComposeFlowProps {
   profile: UserProfile
   mode?: 'new' | 'reply'
   replyTarget?: Kotozute | null
+  /** 参加中のグループ（グループ限定の投稿先に使う） */
+  groups: Group[]
 }
 
 
@@ -40,17 +42,18 @@ export function ComposeFlow({
   profile,
   mode = 'new',
   replyTarget = null,
+  groups,
 }: ComposeFlowProps) {
   const [message, setMessage] = useState('')
   const [link, setLink] = useState('')
-  const [visibility, setVisibility] = useState<'public' | 'friends'>(replyTarget?.visibility ?? 'public')
+  const [visibility, setVisibility] = useState<'public' | 'group'>('public')
+  const [groupId, setGroupId] = useState<string>(replyTarget?.groupId ?? groups[0]?.id ?? '')
   const [isAnonymous, setIsAnonymous] = useState(false)
 
   const [placeLabel, setPlaceLabel] = useState('')
   const [media, setMedia] = useState<MediaItem[]>([])
   const [recording, setRecording] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-
 
   const imageInput = useRef<HTMLInputElement>(null)
   const videoInput = useRef<HTMLInputElement>(null)
@@ -80,20 +83,31 @@ export function ComposeFlow({
     : !!position && (message.trim().length > 0 || media.length > 0)
 
   const currentVisibility = replyTarget?.visibility ?? visibility
+  const submitLocation = replyTarget?.location ?? position
 
   const submit = async () => {
-    if (!canSubmit || !position || submitting) return
+    if (!canSubmit || !submitLocation || submitting) return
     setSubmitting(true)
     try {
       await onSubmit({
-        location: replyTarget?.location ?? position!,
+        location: submitLocation,
         message: message.trim(),
         link: link.trim() || undefined,
-        authorName: currentVisibility === 'friends' ? profile.name : (isAnonymous ? undefined : profile.name),
+        authorName:
+          currentVisibility === 'group'
+            ? profile.name
+            : isAnonymous
+              ? undefined
+              : profile.name,
+        isAnonymous: currentVisibility === 'public' && isAnonymous,
         placeLabel: placeLabel.trim() || undefined,
         media,
         mine: true,
         visibility: currentVisibility,
+        groupId:
+          currentVisibility === 'group'
+            ? replyTarget?.groupId ?? groupId
+            : undefined,
         authorId: profile.id,
         replyToId: replyTarget?.id,
         rootId: replyTarget?.rootId ?? replyTarget?.id,
@@ -297,47 +311,85 @@ export function ComposeFlow({
         )}
 
         {/* 公開範囲設定 */}
-        <div className="field">
-          <span className="field__label">公開範囲</span>
-          <div className="visibility-selector" role="group" aria-label="公開範囲の選択">
-            <button
-              type="button"
-              className="visibility-btn"
-              aria-pressed={visibility === 'public'}
-              onClick={() => setVisibility('public')}
-            >
-              全体公開
-            </button>
-            <button
-              type="button"
-              className="visibility-btn"
-              aria-pressed={visibility === 'friends'}
-              onClick={() => {
-                setVisibility('friends')
-                setIsAnonymous(false)
-              }}
-            >
-              <LockIcon width={16} height={16} style={{ color: 'inherit' }} />
-              フレンド限定
-            </button>
+        {replyTarget ? (
+          <div className="field">
+            <span className="field__label">公開範囲</span>
+            <p className="visibility-note">
+              返信は元のことづてと同じ公開範囲で送られます。
+            </p>
           </div>
-          {visibility === 'friends' ? (
-            <p className="visibility-note">
-              このことづては、あなたのフレンドだけが地図上で見つけて開封できます。
-            </p>
-          ) : (
-            <p className="visibility-note">
-              このことづては、場所を訪れたすべてのユーザーが開封できます。
-            </p>
-          )}
-        </div>
+        ) : (
+          <div className="field">
+            <span className="field__label">公開範囲</span>
+            <div className="visibility-selector" role="group" aria-label="公開範囲の選択">
+              <button
+                type="button"
+                className="visibility-btn"
+                aria-pressed={visibility === 'public'}
+                onClick={() => {
+                  setVisibility('public')
+                  setIsAnonymous(false)
+                }}
+              >
+                全体公開
+              </button>
+              <button
+                type="button"
+                className="visibility-btn"
+                aria-pressed={visibility === 'group'}
+                onClick={() => {
+                  setVisibility('group')
+                  setIsAnonymous(false)
+                  if (!groupId && groups[0]) setGroupId(groups[0].id)
+                }}
+              >
+                <LockIcon width={16} height={16} style={{ color: 'inherit' }} />
+                グループ限定
+              </button>
+            </div>
+
+            {visibility === 'group' &&
+              (groups.length === 0 ? (
+                <p className="visibility-note">
+                  参加しているグループがありません。プロフィール画面でグループを作成、または参加してください。
+                </p>
+              ) : (
+                <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+                  <label className="field__label" htmlFor="cz-group">
+                    どのグループに残す？
+                  </label>
+                  <select
+                    id="cz-group"
+                    className="input"
+                    value={groupId}
+                    onChange={(e) => setGroupId(e.target.value)}
+                  >
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name}（{g.id}）
+                      </option>
+                    ))}
+                  </select>
+                  <p className="visibility-note">
+                    このグループに参加している人だけが、地図で見つけて開封できます。
+                  </p>
+                </div>
+              ))}
+
+            {visibility === 'public' && (
+              <p className="visibility-note">
+                このことづては、場所を訪れたすべてのユーザーが開封できます。
+              </p>
+            )}
+          </div>
+        )}
 
         {/* 投稿者の名前（プロフィール連動） */}
         <div className="field">
           <span className="field__label">あなたの呼び名</span>
-          {visibility === 'friends' ? (
+          {currentVisibility === 'group' ? (
             <div className="visibility-note" style={{ color: 'var(--c-ink)', fontWeight: 'bold', fontSize: '0.95rem', marginTop: 4 }}>
-              {profile.avatarEmoji} {profile.name} <small style={{ fontWeight: 'normal', color: 'var(--c-ink-2)' }}>（フレンド限定公開のため匿名にできません）</small>
+              {profile.avatarEmoji} {profile.name} <small style={{ fontWeight: 'normal', color: 'var(--c-ink-2)' }}>（グループ限定のため匿名にできません）</small>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

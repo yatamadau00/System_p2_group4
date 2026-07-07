@@ -23,6 +23,7 @@ interface OpenViewProps {
   onReply: () => void
   onDeleteReply: (id: string) => void
   currentUserId: string | null
+  onOpened?: (id: string) => void
 }
 
 /**
@@ -37,6 +38,7 @@ export function OpenView({
   onReply,
   onDeleteReply,
   currentUserId,
+  onOpened,
 }: OpenViewProps) {
   const initiallyUnlockable = kotozute.proximity === 'unlockable'
   const [phase, setPhase] = useState<Phase>(
@@ -57,6 +59,7 @@ export function OpenView({
 
   const openSeal = () => {
     openedOnce.current = true
+    onOpened?.(kotozute.id)
     if (prefersReducedMotion()) {
       setPhase('opened')
       return
@@ -171,11 +174,11 @@ function LockedView({
         {kotozute.placeLabel ?? 'どこかの誰かのことづて'}
       </div>
 
-      {kotozute.visibility === 'friends' && (
+      {kotozute.visibility === 'group' && (
         <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0 -8px 0' }}>
           <span className="friend-only-badge">
             <LockIcon width={10} height={10} style={{ marginRight: 2, display: 'inline-block', verticalAlign: 'middle' }} />
-            フレンド限定公開
+            グループ限定公開
           </span>
         </div>
       )}
@@ -246,17 +249,23 @@ function Letter({
         <span>{kindLabel(kotozute)}</span>
         <span aria-hidden>・</span>
         <span>{dateStr}</span>
-            {kotozute.replyToId && (
-              <>
-                <span aria-hidden>・</span>
-                <span>返信</span>
-              </>
-            )}
-        {kotozute.visibility === 'friends' && (
+        {kotozute.openedByCurrentUser && (
+          <>
+            <span aria-hidden>・</span>
+            <span>開封済み</span>
+          </>
+        )}
+        {kotozute.visibility === 'group' && (
           <span className="friend-only-badge" style={{ margin: 0 }}>
             <LockIcon width={10} height={10} style={{ marginRight: 2, display: 'inline-block', verticalAlign: 'middle' }} />
-            フレンド限定
+            グループ限定
           </span>
+        )}
+        {kotozute.replyToId && (
+          <>
+            <span aria-hidden>・</span>
+            <span>返信</span>
+          </>
         )}
       </div>
 

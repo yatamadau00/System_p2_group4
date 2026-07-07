@@ -20,10 +20,20 @@ interface KotozuteDB extends DBSchema {
     value: User
     indexes: { username: string }
   }
+  kotozuteOpens: {
+    key: string
+    value: {
+      id: string
+      userId: string
+      kotozuteId: string
+      openedAt: number
+    }
+    indexes: { userId: string; kotozuteId: string }
+  }
 }
 
 const DB_NAME = 'kotozute-db'
-const DB_VERSION = 2
+const DB_VERSION = 3
 const SEEDED_KEY = 'seeded'
 
 let dbPromise: Promise<IDBPDatabase<KotozuteDB>> | null = null
@@ -49,6 +59,13 @@ function db() {
           }
           const userStore = database.createObjectStore('users', { keyPath: 'id' })
           userStore.createIndex('username', 'username', { unique: true })
+        }
+        if (oldVersion < 3) {
+          const openStore = database.createObjectStore('kotozuteOpens', {
+            keyPath: 'id',
+          })
+          openStore.createIndex('userId', 'userId')
+          openStore.createIndex('kotozuteId', 'kotozuteId')
         }
       },
     })
@@ -102,7 +119,34 @@ export const indexedDbRepository: KotozuteRepository = {
   },
 
   async remove(id) {
-    await (await db()).delete('kotozute', id)
+    const database = await db()
+    const tx = database.transaction(['kotozute', 'kotozuteOpens'], 'readwrite')
+    await tx.objectStore('kotozute').delete(id)
+    const opens = await tx.objectStore('kotozuteOpens').index('kotozuteId').getAll(id)
+    await Promise.all(
+      opens.map((open) => tx.objectStore('kotozuteOpens').delete(open.id)),
+    )
+    await tx.done
+  },
+
+  async listOpenedIds(userId) {
+    const opens = await (await db())
+      .getAllFromIndex('kotozuteOpens', 'userId', userId)
+    return new Set(opens.map((open) => open.kotozuteId))
+  },
+
+  async markOpened(kotozuteId, userId) {
+    const database = await db()
+    const id = `${userId}:${kotozuteId}`
+    const existing = await database.get('kotozuteOpens', id)
+    if (existing) return false
+    await database.put('kotozuteOpens', {
+      id,
+      userId,
+      kotozuteId,
+      openedAt: Date.now(),
+    })
+    return true
   },
 
   async ensureSeed(seed: SeedKotozute[]) {

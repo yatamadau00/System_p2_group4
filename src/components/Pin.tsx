@@ -43,7 +43,7 @@ export function Pin({ kotozute, highlighted = false, onClick }: PinProps) {
   const KindIcon = KIND_ICON[kind]
   const unlockable = proximity === 'unlockable'
   const multi = (kotozute.media ?? []).length > 1
-  const isFriendsOnly = visibility === 'friends'
+  const isGroupOnly = visibility === 'group'
 
   const label = unlockable
     ? `${KIND_NAME[kind]}のことづてを開ける`
@@ -56,7 +56,7 @@ export function Pin({ kotozute, highlighted = false, onClick }: PinProps) {
       type="button"
       className={`pin pin--${proximity} pin--kind-${kind}${
         mine ? ' pin--mine' : ''
-      }${isFriendsOnly ? ' pin--friends' : ''}${highlighted ? ' pin--highlighted' : ''}`}
+      }${isGroupOnly ? ' pin--group' : ''}${highlighted ? ' pin--highlighted' : ''}`}
       onClick={onClick}
       aria-label={label}
     >
@@ -67,7 +67,7 @@ export function Pin({ kotozute, highlighted = false, onClick }: PinProps) {
         {unlockable && <span className="pin__halo" aria-hidden />}
         <PigeonIcon className="pin__pigeon" />
         <span className="pin__kind" aria-hidden>
-          {isFriendsOnly ? (
+          {isGroupOnly ? (
             <LockIcon width={12} height={12} style={{ strokeWidth: 2.2 }} />
           ) : multi ? (
             <span className="pin__kind-multi">＋</span>
