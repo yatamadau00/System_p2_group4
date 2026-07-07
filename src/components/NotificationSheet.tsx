@@ -95,8 +95,8 @@ export function NotificationSheet({ onSelectKotozute, onClose }: NotificationShe
         {browserNotificationSupported && permission === 'default' && (
           <div className="notif-permission-banner">
             <div className="notif-permission-banner__text">
-              <h4>プッシュ通知を有効にする</h4>
-              <p>近くにことづてがあるときに、画面を閉じていても通知を受け取れます。</p>
+              <h4>ブラウザ通知を有効にする</h4>
+              <p>アプリを開いている間、ことづての射程圏内に入ったときに通知を受け取れます。</p>
             </div>
             <button
               className="notif-permission-banner__btn btn-primary"
