@@ -84,10 +84,12 @@ export function App() {
   const selected = useMemo(
     () => {
       if (selectedId && selectedId === profileUnlockedId) {
-        const ownItem = visibleItems.find((k) => k.id === selectedId && k.mine)
-        if (ownItem) {
+        const replayableItem = visibleItems.find(
+          (k) => k.id === selectedId && (k.mine || k.openedByCurrentUser),
+        )
+        if (replayableItem) {
           return {
-            ...ownItem,
+            ...replayableItem,
             distance: null,
             proximity: 'unlockable' as const,
           }
