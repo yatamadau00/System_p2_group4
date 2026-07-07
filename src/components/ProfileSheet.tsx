@@ -1,5 +1,11 @@
 import { useMemo, useState } from 'react'
-import type { UserProfile, Group, GroupMember, Kotozute } from '../types'
+import type {
+  UserProfile,
+  Group,
+  GroupMember,
+  Kotozute,
+  KotozuteOpenHistory,
+} from '../types'
 import { Sheet } from './Sheet'
 import { GroupSheet } from './GroupSheet'
 import { TrashIcon, PigeonIcon, LockIcon } from './icons'
@@ -7,6 +13,7 @@ import './ProfileSheet.css'
 
 interface ProfileSheetProps {
   items: Kotozute[]
+  openHistory: KotozuteOpenHistory[]
   profile: UserProfile
   updateProfile: (
     updates: Partial<Omit<UserProfile, 'id' | 'friendCode'>>,
@@ -32,6 +39,7 @@ const AVATAR_COLORS = ['#f1e8d6', '#e2ecc8', '#ffdce3', '#dceffd', '#fceecb', '#
 
 export function ProfileSheet({
   items,
+  openHistory,
   profile,
   updateProfile,
   groups,
@@ -63,6 +71,15 @@ export function ProfileSheet({
 
   // 自分のことづて一覧
   const myItems = useMemo(() => items.filter((item) => item.mine), [items])
+  const openedItems = useMemo(() => {
+    const itemById = new Map(items.map((item) => [item.id, item]))
+    return openHistory
+      .map((record) => {
+        const item = itemById.get(record.kotozuteId)
+        return item ? { item, openedAt: record.openedAt } : null
+      })
+      .filter((record): record is { item: Kotozute; openedAt: number } => !!record)
+  }, [items, openHistory])
 
   const handleSaveProfile = async () => {
     if (!editName.trim()) {
@@ -266,6 +283,49 @@ export function ProfileSheet({
                     </button>
                   </div>
                 </div>
+              )}
+            </div>
+
+            {/* 取得履歴 */}
+            <div className="open-history-section">
+              <h4 className="section-title">取得したことづて ({openedItems.length})</h4>
+              {openedItems.length === 0 ? (
+                <div className="empty-sub">
+                  <p>まだ取得したことづてはありません。近くのことづてを開くと、ここに日時つきで残ります。</p>
+                </div>
+              ) : (
+                <ul className="cz-list">
+                  {openedItems.map(({ item: k, openedAt }) => (
+                    <li key={`${k.id}:${openedAt}`}>
+                      <button className="cz-row" onClick={() => onSelectKotozute(k.id)}>
+                        <span className="cz-row__badge cz-row__badge--near">
+                          <PigeonIcon />
+                        </span>
+                        <span className="cz-row__main">
+                          <span className="cz-row__place">
+                            {k.placeLabel ?? 'この場所のことづて'}
+                          </span>
+                          <span className="cz-row__sub">
+                            {new Date(openedAt).toLocaleString('ja-JP', {
+                              year: 'numeric',
+                              month: 'numeric',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                            に取得
+                            {k.visibility === 'group' && (
+                              <span className="friend-only-badge">
+                                <LockIcon width={10} height={10} style={{ marginRight: 2, display: 'inline-block', verticalAlign: 'middle' }} />
+                                グループ限定
+                              </span>
+                            )}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
 
