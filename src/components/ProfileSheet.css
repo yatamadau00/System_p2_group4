@@ -34,6 +34,14 @@
   border: 2px solid #fff;
   flex-shrink: 0;
   user-select: none;
+  overflow: hidden;
+}
+
+.profile-card__avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .profile-card__title h3 {
@@ -106,6 +114,26 @@
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--c-ink-3);
+}
+
+.avatar-image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.avatar-image-input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.avatar-image-button {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.82rem;
 }
 
 .picker-options {

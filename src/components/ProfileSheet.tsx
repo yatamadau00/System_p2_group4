@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ChangeEvent } from 'react'
 import type {
   UserProfile,
   Group,
@@ -58,6 +58,7 @@ export function ProfileSheet({
   const [editBio, setEditBio] = useState(profile.bio)
   const [editEmoji, setEditEmoji] = useState(profile.avatarEmoji)
   const [editColor, setEditColor] = useState(profile.avatarColor)
+  const [editImageUrl, setEditImageUrl] = useState(profile.avatarImageUrl ?? null)
   const [savingProfile, setSavingProfile] = useState(false)
 
   // グループ関連
@@ -93,6 +94,7 @@ export function ProfileSheet({
         bio: editBio.trim(),
         avatarEmoji: editEmoji,
         avatarColor: editColor,
+        avatarImageUrl: editImageUrl,
       })
       setIsEditing(false)
     } catch (err: any) {
@@ -107,7 +109,33 @@ export function ProfileSheet({
     setEditBio(profile.bio)
     setEditEmoji(profile.avatarEmoji)
     setEditColor(profile.avatarColor)
+    setEditImageUrl(profile.avatarImageUrl ?? null)
     setIsEditing(false)
+  }
+
+  const handleAvatarImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('画像ファイルを選択してください')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert('画像は2MB以下にしてください')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setEditImageUrl(reader.result)
+      }
+    }
+    reader.onerror = () => {
+      alert('画像の読み込みに失敗しました')
+    }
+    reader.readAsDataURL(file)
   }
 
   const copyCode = (code: string) => {
@@ -191,9 +219,37 @@ export function ProfileSheet({
                       className="profile-card__avatar"
                       style={{ backgroundColor: editColor }}
                     >
-                      {editEmoji}
+                      {editImageUrl ? (
+                        <img src={editImageUrl} alt="" className="profile-card__avatar-image" />
+                      ) : (
+                        editEmoji
+                      )}
                     </div>
                     <div className="avatar-pickers">
+                      <div className="avatar-picker-group">
+                        <label htmlFor="avatar-image">画像</label>
+                        <div className="avatar-image-actions">
+                          <label className="btn btn--soft avatar-image-button" htmlFor="avatar-image">
+                            画像を選択
+                          </label>
+                          <input
+                            id="avatar-image"
+                            className="avatar-image-input"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarImageChange}
+                          />
+                          {editImageUrl && (
+                            <button
+                              type="button"
+                              className="btn btn--soft avatar-image-button"
+                              onClick={() => setEditImageUrl(null)}
+                            >
+                              画像を解除
+                            </button>
+                          )}
+                        </div>
+                      </div>
                       <div className="avatar-picker-group">
                         <label>絵文字</label>
                         <div className="picker-options">
@@ -265,7 +321,11 @@ export function ProfileSheet({
                       className="profile-card__avatar"
                       style={{ backgroundColor: profile.avatarColor }}
                     >
-                      {profile.avatarEmoji}
+                      {profile.avatarImageUrl ? (
+                        <img src={profile.avatarImageUrl} alt="" className="profile-card__avatar-image" />
+                      ) : (
+                        profile.avatarEmoji
+                      )}
                     </div>
                     <div className="profile-card__title">
                       <h3>{profile.name}</h3>

@@ -14,6 +14,7 @@ interface UserRow {
   bio: string | null
   avatar_emoji: string | null
   avatar_color: string | null
+  avatar_image_url: string | null
   friend_code: string | null
   created_at: string
 }
@@ -36,6 +37,7 @@ function rowToUser(row: UserRow): User {
     bio: row.bio ?? '',
     avatarEmoji: row.avatar_emoji ?? DEFAULT_AVATAR_EMOJI,
     avatarColor: row.avatar_color ?? DEFAULT_AVATAR_COLOR,
+    avatarImageUrl: row.avatar_image_url ?? null,
     friendCode: row.friend_code ?? '',
     createdAt: new Date(row.created_at).getTime(),
   }
@@ -88,6 +90,7 @@ export async function registerUser(
         bio: '場所に想いを残すのが好きです。',
         avatar_emoji: DEFAULT_AVATAR_EMOJI,
         avatar_color: DEFAULT_AVATAR_COLOR,
+        avatar_image_url: null,
         friend_code: createFriendCode(),
       })
       .select()
@@ -109,6 +112,7 @@ export async function registerUser(
     bio: '場所に想いを残すのが好きです。',
     avatarEmoji: DEFAULT_AVATAR_EMOJI,
     avatarColor: DEFAULT_AVATAR_COLOR,
+    avatarImageUrl: null,
     friendCode: createFriendCode(),
     passwordHash,
     createdAt: Date.now(),
@@ -160,7 +164,10 @@ export async function getUserById(id: string): Promise<User | undefined> {
 /** プロフィール情報を更新する */
 export async function updateUserProfile(
   id: string,
-  updates: Pick<User, 'displayName' | 'bio' | 'avatarEmoji' | 'avatarColor'>,
+  updates: Pick<
+    User,
+    'displayName' | 'bio' | 'avatarEmoji' | 'avatarColor' | 'avatarImageUrl'
+  >,
 ): Promise<User> {
   if (isSupabaseConfigured) {
     const { data, error } = await supabase!
@@ -170,6 +177,7 @@ export async function updateUserProfile(
         bio: updates.bio ?? '',
         avatar_emoji: updates.avatarEmoji ?? DEFAULT_AVATAR_EMOJI,
         avatar_color: updates.avatarColor ?? DEFAULT_AVATAR_COLOR,
+        avatar_image_url: updates.avatarImageUrl ?? null,
       })
       .eq('id', id)
       .select()
@@ -189,6 +197,7 @@ export async function updateUserProfile(
     bio: updates.bio,
     avatarEmoji: updates.avatarEmoji,
     avatarColor: updates.avatarColor,
+    avatarImageUrl: updates.avatarImageUrl ?? null,
   }
   await db.put('users', next)
   return next
