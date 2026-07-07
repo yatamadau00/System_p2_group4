@@ -27,7 +27,7 @@ export function haversineMeters(a: LatLng, b: LatLng): number {
  * - far:        それより遠い
  */
 export function proximityFor(distanceM: number): Proximity {
-  if (distanceM < UNLOCK_RADIUS_M) return 'unlockable'
+  if (Math.round(distanceM) <= UNLOCK_RADIUS_M) return 'unlockable'
   if (distanceM < NEAR_RADIUS_M) return 'near'
   return 'far'
 }
