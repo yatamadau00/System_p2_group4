@@ -23,6 +23,8 @@ create table public.users (
 
 create table public.kotozute (
   id uuid primary key default gen_random_uuid(),
+  reply_to_id uuid references public.kotozute(id) on delete set null,
+  root_id uuid references public.kotozute(id) on delete set null,
   lat double precision not null,
   lng double precision not null,
   message text not null default '',
@@ -83,6 +85,8 @@ create table public.group_members (
 );
 
 create index kotozute_author_id_idx on public.kotozute (author_id);
+create index kotozute_reply_to_id_idx on public.kotozute (reply_to_id);
+create index kotozute_root_id_idx on public.kotozute (root_id);
 create index kotozute_created_at_idx on public.kotozute (created_at desc);
 create index friends_owner_id_idx on public.friends (owner_id);
 create index friends_friend_id_idx on public.friends (friend_id);

@@ -16,7 +16,7 @@ import { useUserProfile, useGroups } from './services/socialService'
 import { NotificationSheet } from './components/NotificationSheet'
 import { enrich } from './lib/enrich'
 import { DEFAULT_ZOOM } from './config'
-import type { NewKotozute } from './types'
+import type { Kotozute, NewKotozute } from './types'
 import './App.css'
 
 export function App() {
@@ -45,6 +45,7 @@ export function App() {
   const [showAuth, setShowAuth] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+  const [replyTargetId, setReplyTargetId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
   const mapRef = useRef<google.maps.Map | null>(null)
@@ -54,6 +55,7 @@ export function App() {
   // 表示可能なことづてにフィルター（全体公開 or 自分が作成 or 登録済みのフレンドが作成したもの）
   const visibleItems = useMemo(() => {
     return items.filter((item) => {
+      if (item.replyToId) return false
       if (item.mine) return true
       if (!item.visibility || item.visibility === 'public') return true
       if (item.visibility === 'group' && item.groupId && isInGroup(item.groupId)) {
@@ -81,6 +83,28 @@ export function App() {
     () => enriched.find((k) => k.id === selectedId) ?? null,
     [enriched, selectedId],
   )
+  const replyTarget = useMemo(
+    () => enriched.find((k) => k.id === replyTargetId) ?? null,
+    [enriched, replyTargetId],
+  )
+  const selectedReplies = useMemo(() => {
+    if (!selected) return []
+    return items
+      .filter(
+        (item) =>
+          item.id !== selected.id &&
+          (item.replyToId === selected.id || item.rootId === selected.id),
+      )
+      .sort((a, b) => a.createdAt - b.createdAt)
+      .map((item) => {
+        const distance = position ? null : null
+        return {
+          ...item,
+          distance,
+          proximity: 'far' as const,
+        }
+      })
+  }, [items, selected])
 
   // コールバックを安定させつつ最新の一覧を参照するための ref
   const itemsRef = useRef(enriched)
@@ -202,14 +226,58 @@ export function App() {
         setShowAuth(true)
         return
       }
+      const replyingTo = replyTarget
       const inputWithAuthor = { ...input, authorId: currentUser.id }
-      const created = await create(inputWithAuthor)
+      const inputWithThread = replyingTo
+        ? {
+            ...inputWithAuthor,
+            replyToId: replyingTo.id,
+            rootId: replyingTo.rootId ?? replyingTo.id,
+          }
+        : inputWithAuthor
+      const created = await create(inputWithThread)
       setComposing(false)
-      setToast('ことづてを、この場所に残しました')
-      // 残した直後にその場所のピンへ意識を向ける
-      if (mapRef.current) mapRef.current.panTo(created.location)
+      if (replyingTo) {
+        setSelectedId(replyingTo.id)
+        setToast('返信を残しました')
+      } else {
+        setToast('ことづてを、この場所に残しました')
+        // 残した直後にその場所のピンへ意識を向ける
+        if (mapRef.current) mapRef.current.panTo(created.location)
+      }
+      setReplyTargetId(null)
+
+      // 返信通知: 返信先の作者へ届くようにする
+      if (replyingTo?.authorId) {
+        const senderName = currentUser?.displayName ?? profile.name ?? 'だれか'
+        const targetLabel = replyingTo.placeLabel || replyingTo.authorName || 'あなたのことづて'
+        addNotification(
+          '返信が届きました',
+          `${senderName}さんが『${targetLabel}』に返信しました。`,
+          'received',
+          replyingTo.id,
+          replyingTo.authorId,
+        )
+      }
+
+      // 模擬開封通知（デモ用）
+      // 15秒後に「誰かがあなたのことづてを開封した」という通知を発生させる
+      if (!replyingTo) {
+        setTimeout(() => {
+          const place = created.placeLabel || 'あなたの残した場所'
+          const names = ['さくら', 'たかし', 'けんた', 'みく', 'たくみ']
+          const randomName = names[Math.floor(Math.random() * names.length)]
+
+          addNotification(
+            '言伝が受け取られました',
+            `${randomName}さんが、あなたが「${place}」に残した言伝を開封しました！`,
+            'received',
+            created.id,
+          )
+        }, 15000)
+      }
     },
-    [create, currentUser],
+    [create, currentUser, addNotification, replyTarget, profile.name],
   )
 
 
@@ -221,6 +289,41 @@ export function App() {
     },
     [remove, selectedId],
   )
+
+  const handleDeleteReply = useCallback(
+    async (id: string) => {
+      const target = items.find((item) => item.id === id)
+      if (!target) return
+
+      const isOwner = target.authorId
+        ? currentUser?.id === target.authorId
+        : target.mine
+
+      if (!isOwner) {
+        setToast('この返信は削除できません')
+        return
+      }
+
+      await remove(id)
+      setToast('返信を取り消しました')
+    },
+    [currentUser?.id, items, remove],
+  )
+
+  const handleReply = useCallback((target: Kotozute) => {
+    if (!currentUser) {
+      setShowAuth(true)
+      return
+    }
+    setReplyTargetId(target.id)
+    setSelectedId(null)
+    setComposing(true)
+  }, [currentUser])
+
+  const handleCloseCompose = useCallback(() => {
+    setComposing(false)
+    setReplyTargetId(null)
+  }, [])
 
   const handleOpened = useCallback(
     async (id: string) => {
@@ -274,7 +377,10 @@ export function App() {
       {!overlayOpen && !loading && currentUser && (
         <button
           className="fab"
-          onClick={() => setComposing(true)}
+          onClick={() => {
+            setReplyTargetId(null)
+            setComposing(true)
+          }}
           aria-label="ことづてを残す"
         >
           <span className="fab__plus">
@@ -290,8 +396,10 @@ export function App() {
           position={position}
           onRetryLocation={geo.start}
           onSubmit={handleSubmit}
-          onClose={() => setComposing(false)}
+          onClose={handleCloseCompose}
           profile={profile}
+          mode={replyTarget ? 'reply' : 'new'}
+          replyTarget={replyTarget}
           groups={groups}
         />
       )}
@@ -313,7 +421,7 @@ export function App() {
       {/* プロフィール & グループ */}
       {showProfile && (
         <ProfileSheet
-          items={items}
+          items={visibleItems}
           profile={profile}
           updateProfile={updateProfile}
           groups={groups}
@@ -335,7 +443,11 @@ export function App() {
       {selected && (
         <OpenView
           kotozute={selected}
+          replies={selectedReplies}
           onClose={() => setSelectedId(null)}
+          onReply={() => handleReply(selected)}
+          onDeleteReply={handleDeleteReply}
+          currentUserId={currentUser?.id ?? null}
           onOpened={handleOpened}
         />
       )}
