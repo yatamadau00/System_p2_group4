@@ -5,6 +5,9 @@
   background: var(--c-washi-2);
   border-radius: var(--r-pill);
   margin-bottom: var(--sp-4);
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .segmented button {

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { EnrichedKotozute } from '../lib/enrich'
 import type { AttachmentKind, MediaItem } from '../types'
 import { formatDistance } from '../lib/geo'
-import { groupColorIndex } from '../lib/groupColor'
+import { groupColorIndex, groupSealStyle } from '../lib/groupColor'
 import { kindLabel, uid } from '../lib/media'
 import { NEAR_RADIUS_M, UNLOCK_RADIUS_M } from '../config'
 import { MediaView } from './MediaView'
@@ -75,7 +75,7 @@ export function OpenView({
     (!!currentUser && kotozute.authorId === currentUser.id)
   const initiallyUnlockable = kotozute.proximity === 'unlockable'
   const [phase, setPhase] = useState<Phase>(
-    isOwn ? 'opened' : initiallyUnlockable ? 'ready' : 'locked',
+    isOwn || initiallyUnlockable ? 'ready' : 'locked',
   )
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [reportTargetId, setReportTargetId] = useState<string | null>(null)
@@ -217,7 +217,10 @@ export function OpenView({
               {kotozute.placeLabel ?? 'この場所のことづて'}
             </div>
             <button
-              className={`seal${kotozute.visibility === 'group' && kotozute.groupId ? ` seal--gc-${groupColorIndex(kotozute.groupId)}` : ''}`}
+              className="seal"
+              style={kotozute.visibility === 'group' && kotozute.groupId
+                ? groupSealStyle(groupColorIndex(kotozute.groupId))
+                : undefined}
               onClick={openSeal}
               disabled={phase === 'opening'}
               aria-label="封を開ける"
