@@ -366,8 +366,26 @@
   bottom: calc(var(--safe-bottom) + 204px);
   z-index: var(--z-overlay);
   display: grid;
+  gap: 10px;
+  width: min(190px, calc(100vw - 112px));
+}
+
+.map-layer-children {
+  position: relative;
+  display: grid;
   gap: 8px;
-  width: min(176px, calc(100vw - 112px));
+  padding-left: 15px;
+}
+
+.map-layer-children::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 5px;
+  bottom: 5px;
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .map-layer {
@@ -387,6 +405,17 @@
     background var(--dur-1),
     color var(--dur-1),
     transform var(--dur-1);
+}
+
+.map-layer--parent {
+  min-height: 40px;
+  padding-inline: 14px;
+  font-size: 0.82rem;
+}
+
+.map-layer--child {
+  min-height: 34px;
+  font-size: 0.74rem;
 }
 
 .map-layer::before {
