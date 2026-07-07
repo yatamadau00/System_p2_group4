@@ -360,6 +360,67 @@
   z-index: var(--z-overlay);
 }
 
+.map-layers {
+  position: absolute;
+  left: var(--sp-4);
+  bottom: calc(var(--safe-bottom) + 204px);
+  z-index: var(--z-overlay);
+  display: grid;
+  gap: 8px;
+  width: min(176px, calc(100vw - 112px));
+}
+
+.map-layer {
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: var(--r-pill);
+  background: rgba(20, 23, 28, 0.68);
+  color: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(8px);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-align: left;
+  transition:
+    background var(--dur-1),
+    color var(--dur-1),
+    transform var(--dur-1);
+}
+
+.map-layer::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+.map-layer:active {
+  transform: scale(0.97);
+}
+
+.map-layer--active {
+  background: var(--c-surface-veil);
+  color: var(--c-ink);
+  border-color: rgba(255, 255, 255, 0.52);
+}
+
+.map-layer--active::before {
+  opacity: 1;
+}
+
+.map-layer--group.map-layer--active::before {
+  color: var(--c-moss-deep);
+}
+
+.map-layer--owned.map-layer--active::before {
+  color: var(--c-amber-deep);
+}
+
 .map-btn {
   width: 48px;
   height: 48px;
@@ -479,6 +540,25 @@
   box-shadow: var(--shadow-md);
   cursor: pointer;
   user-select: none;
+}
+
+@media (max-width: 520px) {
+  .map-layers {
+    left: var(--sp-3);
+    bottom: calc(var(--safe-bottom) + 178px);
+    width: min(154px, calc(100vw - 92px));
+  }
+
+  .map-layer {
+    min-height: 34px;
+    padding: 6px 10px;
+    font-size: 0.7rem;
+  }
+
+  .map-controls {
+    right: var(--sp-3);
+    bottom: calc(var(--safe-bottom) + 178px);
+  }
 }
 
 
