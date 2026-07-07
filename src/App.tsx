@@ -46,6 +46,7 @@ export function App() {
   const [showProfile, setShowProfile] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [replyTargetId, setReplyTargetId] = useState<string | null>(null)
+  const [profileUnlockedId, setProfileUnlockedId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
   const mapRef = useRef<google.maps.Map | null>(null)
@@ -80,8 +81,20 @@ export function App() {
     [enriched],
   )
   const selected = useMemo(
-    () => enriched.find((k) => k.id === selectedId) ?? null,
-    [enriched, selectedId],
+    () => {
+      if (selectedId && selectedId === profileUnlockedId) {
+        const ownItem = visibleItems.find((k) => k.id === selectedId && k.mine)
+        if (ownItem) {
+          return {
+            ...ownItem,
+            distance: null,
+            proximity: 'unlockable' as const,
+          }
+        }
+      }
+      return enriched.find((k) => k.id === selectedId) ?? null
+    },
+    [enriched, profileUnlockedId, selectedId, visibleItems],
   )
   const replyTarget = useMemo(
     () => enriched.find((k) => k.id === replyTargetId) ?? null,
@@ -200,6 +213,7 @@ export function App() {
    */
   const handleSelect = useCallback(
     (id: string) => {
+      setProfileUnlockedId(null)
       setHighlightedId(id)
       focusOn(id)
       setSelectedId(id)
@@ -285,9 +299,10 @@ export function App() {
     async (id: string) => {
       await remove(id)
       if (selectedId === id) setSelectedId(null)
+      if (profileUnlockedId === id) setProfileUnlockedId(null)
       setToast('ことづてを取り消しました')
     },
-    [remove, selectedId],
+    [profileUnlockedId, remove, selectedId],
   )
 
   const handleDeleteReply = useCallback(
@@ -432,6 +447,7 @@ export function App() {
           getGroupMembers={getGroupMembers}
           onSelectKotozute={(id) => {
             setShowProfile(false)
+            setProfileUnlockedId(id)
             setSelectedId(id)
           }}
           onDeleteKotozute={handleDelete}
@@ -444,7 +460,10 @@ export function App() {
         <OpenView
           kotozute={selected}
           replies={selectedReplies}
-          onClose={() => setSelectedId(null)}
+          onClose={() => {
+            setSelectedId(null)
+            setProfileUnlockedId(null)
+          }}
           onReply={() => handleReply(selected)}
           onDeleteReply={handleDeleteReply}
           currentUserId={currentUser?.id ?? null}
