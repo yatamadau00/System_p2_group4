@@ -104,26 +104,32 @@ export function App() {
 
   // 現在地からの距離・近接状態を付与
   const enriched = useMemo(() => enrich(visibleItems, position), [visibleItems, position])
-  const mapItems = useMemo(
-    () =>
-      enriched.filter((item) => {
-        const layerKey = getMapLayerKey(item)
-        if (!mapLayerVisibility[layerKey]) return false
-        if (layerKey !== 'group') return true
-        if (!isGroupVisible(item, groupLayerVisibility)) return false
-        return true
-      })
-        .filter((item) => {
-          if (!favoriteOnly) return true
-          return !!item.favoritedByCurrentUser
-      }),
-    [enriched, favoriteOnly, groupLayerVisibility, mapLayerVisibility],
-  )
+  // 地図に表示するピン（期間内、表示レイヤー、お気に入り条件に合致するもののみ）
+  const mapItems = useMemo(() => {
+    const now = Date.now()
+    return enriched.filter((item) => {
+      // 1. 開封有効期間のチェック
+      if (item.validFrom && now < item.validFrom) return false
+      if (item.validTo && now > item.validTo) return false
+
+      // 2. 地図レイヤー切り替えのチェック
+      const layerKey = getMapLayerKey(item)
+      if (!mapLayerVisibility[layerKey]) return false
+      if (layerKey === 'group' && !isGroupVisible(item, groupLayerVisibility)) {
+        return false
+      }
+
+      // 3. お気に入りだけ表示する横断フィルタ
+      if (favoriteOnly && !item.favoritedByCurrentUser) return false
+
+      return true
+    })
+  }, [enriched, favoriteOnly, groupLayerVisibility, mapLayerVisibility])
   const unlockableCount = useMemo(
     () => mapItems.filter((k) => k.proximity === 'unlockable').length,
     [mapItems],
   )
-  // 下部カルーセル＝現在地の半径内（＝いま開ける）ことづて。距離が近い順。
+  // 下部カルーセル＝現在地の半径内（＝いま開ける）かつ期間内のことづて。距離が近い順。
   const nearbyItems = useMemo(
     () =>
       mapItems
@@ -465,7 +471,7 @@ export function App() {
       <MapScreen
         items={mapItems}
         position={position}
-        totalCount={visibleItems.length}
+        totalCount={mapItems.length}
         unlockableCount={unlockableCount}
         highlightedId={highlightedId}
         onSelectPin={handleSelect}

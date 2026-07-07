@@ -70,6 +70,10 @@ export interface Kotozute {
   groupId?: string
   /** 現在のログインユーザーが開封済みか */
   openedByCurrentUser?: boolean
+  /** 開封可能期間の開始日時（epoch ms、任意） */
+  validFrom?: number
+  /** 開封可能期間の終了日時（epoch ms、任意） */
+  validTo?: number
   /** いいねされた数 */
   likesCount?: number
   /** 現在のログインユーザーがいいね済みか */
