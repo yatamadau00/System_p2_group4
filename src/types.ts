@@ -72,6 +72,12 @@ export interface Kotozute {
   openedByCurrentUser?: boolean
 }
 
+/** ユーザーがことづてを取得（開封）した履歴 */
+export interface KotozuteOpenHistory {
+  kotozuteId: string
+  openedAt: number
+}
+
 /** 新規作成時の入力（id/createdAt はサービス層が付与） */
 export type NewKotozute = Omit<Kotozute, 'id' | 'createdAt' | 'mine'> &
   Partial<Pick<Kotozute, 'mine'>>
