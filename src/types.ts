@@ -70,6 +70,20 @@ export interface Kotozute {
   groupId?: string
   /** 現在のログインユーザーが開封済みか */
   openedByCurrentUser?: boolean
+  /** 開封可能期間の開始日時（epoch ms、任意） */
+  validFrom?: number
+  /** 開封可能期間の終了日時（epoch ms、任意） */
+  validTo?: number
+  /** いいねされた数 */
+  likesCount?: number
+  /** 現在のログインユーザーがいいね済みか */
+  likedByCurrentUser?: boolean
+}
+
+/** ユーザーがことづてを取得（開封）した履歴 */
+export interface KotozuteOpenHistory {
+  kotozuteId: string
+  openedAt: number
 }
 
 /** 新規作成時の入力（id/createdAt はサービス層が付与） */

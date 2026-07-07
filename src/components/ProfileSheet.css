@@ -151,6 +151,10 @@
   margin-top: var(--sp-4);
 }
 
+.open-history-section {
+  margin-top: var(--sp-4);
+}
+
 .section-title {
   font-family: var(--font-serif);
   font-size: 1.05rem;

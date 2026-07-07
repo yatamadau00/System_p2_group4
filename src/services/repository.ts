@@ -1,4 +1,4 @@
-import type { Kotozute, NewKotozute } from '../types'
+import type { Kotozute, KotozuteOpenHistory, NewKotozute } from '../types'
 
 /** サンプル投入用。作成時刻を明示できる（一覧の並びに変化を出すため） */
 export type SeedKotozute = NewKotozute & { createdAt?: number }
@@ -13,17 +13,27 @@ export type SeedKotozute = NewKotozute & { createdAt?: number }
  */
 export interface KotozuteRepository {
   /** すべてのことづてを取得（新しい順） */
-  list(): Promise<Kotozute[]>
+  list(userId?: string | null): Promise<Kotozute[]>
   /** 1件取得 */
-  get(id: string): Promise<Kotozute | undefined>
+  get(id: string, userId?: string | null): Promise<Kotozute | undefined>
   /** 新規作成して保存。確定した Kotozute を返す */
   create(input: NewKotozute): Promise<Kotozute>
+  /** 本文・場所名・リンク・メディアを更新する（自分のことづての編集用） */
+  update(
+    id: string,
+    patch: Partial<Pick<Kotozute, 'message' | 'placeLabel' | 'link' | 'media'>>,
+  ): Promise<Kotozute>
   /** 削除 */
   remove(id: string): Promise<void>
-  /** 指定ユーザーが開封済みのことづてID一覧を取得 */
-  listOpenedIds(userId: string): Promise<Set<string>>
+  /** 指定ユーザーのことづて取得履歴を取得（新しい順） */
+  listOpenHistory(userId: string): Promise<KotozuteOpenHistory[]>
   /** 指定ユーザーの開封を記録。新規記録なら true */
   markOpened(kotozuteId: string, userId: string): Promise<boolean>
+  /** 指定ユーザーのいいね状態を切り替え、更新後の状態を返す */
+  toggleLike(
+    kotozuteId: string,
+    userId: string,
+  ): Promise<{ liked: boolean; likesCount: number }>
   /** 初回起動時にサンプルを投入（既にデータがあれば何もしない） */
   ensureSeed(seed: SeedKotozute[]): Promise<void>
 }

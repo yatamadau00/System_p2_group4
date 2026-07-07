@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useState, useRef } from 'react'
 import {
   GoogleMap,
   OverlayView,
@@ -6,17 +6,20 @@ import {
   useJsApiLoader,
 } from '@react-google-maps/api'
 import type { EnrichedKotozute } from '../lib/enrich'
-import type { LatLng, User } from '../types'
+import type { Group, LatLng, User, UserProfile } from '../types'
 import {
   DEFAULT_ZOOM,
   FALLBACK_CENTER,
   GOOGLE_MAPS_API_KEY,
 } from '../config'
 import { KOTOZUTE_MAP_STYLE } from '../lib/mapStyle'
-import type { UserProfile } from '../types'
 import { Pin } from './Pin'
 import { BellIcon, ListIcon, LocateIcon } from './icons'
 import './MapScreen.css'
+
+type MapLayerKey = 'public' | 'group' | 'owned'
+type MapLayerVisibility = Record<MapLayerKey, boolean>
+type GroupLayerVisibility = Record<string, boolean>
 
 interface MapScreenProps {
   items: EnrichedKotozute[]
@@ -34,6 +37,11 @@ interface MapScreenProps {
   onOpenProfile: () => void
   unreadCount: number
   onOpenNotifications: () => void
+  mapLayerVisibility: MapLayerVisibility
+  onToggleMapLayer: (key: MapLayerKey) => void
+  groups: Group[]
+  groupLayerVisibility: GroupLayerVisibility
+  onToggleGroupLayer: (groupId: string) => void
 }
 
 const hasKey = GOOGLE_MAPS_API_KEY.trim().length > 0
@@ -60,7 +68,13 @@ export function MapScreen(props: MapScreenProps) {
     onOpenProfile,
     unreadCount,
     onOpenNotifications,
+    mapLayerVisibility,
+    onToggleMapLayer,
+    groups,
+    groupLayerVisibility,
+    onToggleGroupLayer,
   } = props
+  const [groupSelectorOpen, setGroupSelectorOpen] = useState(false)
 
   // ハイライト中のピンを最後に描画して、重なっても前面に出す
   const orderedItems = highlightedId
@@ -147,6 +161,75 @@ export function MapScreen(props: MapScreenProps) {
     </button>
   )
 
+  const visibleGroupCount = groups.filter((group) => groupLayerVisibility[group.id] ?? true)
+    .length
+
+  const layerControls = (
+    <div className="map-layers" role="group" aria-label="地図に表示することづて">
+      <button
+        className={`map-layer${mapLayerVisibility.public ? ' map-layer--active' : ''}`}
+        type="button"
+        aria-pressed={mapLayerVisibility.public}
+        onClick={() => onToggleMapLayer('public')}
+      >
+        公開
+      </button>
+      <div className="map-layer-group">
+        <button
+          className={`map-layer map-layer--group${visibleGroupCount > 0 ? ' map-layer--active' : ''}`}
+          type="button"
+          aria-expanded={groupSelectorOpen}
+          aria-controls="map-group-selector"
+          onClick={() => setGroupSelectorOpen((open) => !open)}
+        >
+          グループ
+        </button>
+        {groupSelectorOpen && (
+          <div
+            id="map-group-selector"
+            className="map-group-selector"
+            aria-label="表示するグループを選択"
+          >
+            <div className="map-group-selector__title">表示するグループ</div>
+            {groups.length === 0 ? (
+              <p className="map-group-selector__empty">参加中のグループなし</p>
+            ) : (
+              groups.map((group) => {
+                const active = groupLayerVisibility[group.id] ?? true
+                return (
+                  <button
+                    key={group.id}
+                    className={`map-group-option${active ? ' map-group-option--active' : ''}`}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => onToggleGroupLayer(group.id)}
+                  >
+                    <span
+                      className="map-group-option__avatar"
+                      style={{ backgroundColor: group.avatarColor }}
+                      aria-hidden
+                    >
+                      {group.avatarEmoji}
+                    </span>
+                    <span className="map-group-option__name">{group.name || group.id}</span>
+                  </button>
+                )
+              })
+            )}
+          </div>
+        )}
+      </div>
+      <button
+        className={`map-layer map-layer--owned${mapLayerVisibility.owned ? ' map-layer--active' : ''}`}
+        type="button"
+        aria-pressed={mapLayerVisibility.owned}
+        onClick={() => onToggleMapLayer('owned')}
+      >
+        自作/取得済み
+      </button>
+    </div>
+  )
+
   // --- フォールバック地図（キー未設定 or 読み込み失敗） ---
   if (!hasKey || loadError) {
     return (
@@ -154,6 +237,7 @@ export function MapScreen(props: MapScreenProps) {
         <FallbackMap items={items} onSelectPin={onSelectPin} />
         {brandBar}
         {profileButton}
+        {layerControls}
         <div className="map-controls">
           <button
             className="map-btn map-btn--notification"
@@ -235,6 +319,7 @@ export function MapScreen(props: MapScreenProps) {
 
       {brandBar}
       {profileButton}
+      {layerControls}
       <div className="map-controls">
         <button
           className="map-btn map-btn--notification"
