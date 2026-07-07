@@ -83,7 +83,21 @@
   letter-spacing: 0.04em;
   box-shadow: var(--shadow-amber), 0 2px 8px rgba(0, 0, 0, 0.18);
   transition: transform var(--dur-2) var(--ease-soft);
-  animation: float-in var(--dur-3) var(--ease-out);
+  /* 中央寄せ(translateX(-50%))を保ったまま登場させる専用アニメーション。
+     共通の float-in は transform:translateY を使うため、-50%が打ち消されて
+     一瞬右にずれてしまう。それを防ぐ。 */
+  animation: fab-in var(--dur-3) var(--ease-out);
+}
+
+@keyframes fab-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 16px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 .fab:active {
