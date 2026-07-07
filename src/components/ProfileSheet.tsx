@@ -128,10 +128,13 @@ export function ProfileSheet({
       .filter((record): record is { item: Kotozute; openedAt: number } => !!record)
   }, [items, openHistory])
 
-  const handleSaveProfile = async () => {
+  const saveProfile = async (
+    nextImageUrl = editImageUrl,
+    options: { closeAfterSave?: boolean } = {},
+  ): Promise<boolean> => {
     if (!editName.trim()) {
       alert('名前を入力してください')
-      return
+      return false
     }
     setSavingProfile(true)
     try {
@@ -140,14 +143,20 @@ export function ProfileSheet({
         bio: editBio.trim(),
         avatarEmoji: editEmoji,
         avatarColor: editColor,
-        avatarImageUrl: editImageUrl,
+        avatarImageUrl: nextImageUrl,
       })
-      setIsEditing(false)
+      if (options.closeAfterSave ?? true) setIsEditing(false)
+      return true
     } catch (err: any) {
       alert(err.message || 'プロフィールの保存に失敗しました')
+      return false
     } finally {
       setSavingProfile(false)
     }
+  }
+
+  const handleSaveProfile = () => {
+    void saveProfile()
   }
 
   const handleCancelEdit = () => {
@@ -200,6 +209,8 @@ export function ProfileSheet({
         avatarOffsetX,
         avatarOffsetY,
       )
+      const saved = await saveProfile(nextImageUrl, { closeAfterSave: false })
+      if (!saved) return
       setEditImageUrl(nextImageUrl)
       setAvatarEditorSrc(null)
     } catch (err: any) {
@@ -394,8 +405,9 @@ export function ProfileSheet({
                               type="button"
                               className="btn btn--primary avatar-image-button"
                               onClick={handleApplyAvatarEdit}
+                              disabled={savingProfile}
                             >
-                              加工を反映
+                              {savingProfile ? '保存中…' : '加工して保存'}
                             </button>
                           </div>
                         </div>
