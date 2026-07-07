@@ -22,9 +22,16 @@ import './App.css'
 export function App() {
   const geo = useGeolocation(true)
   const { currentUser, logout } = useAuth()
-  const { items, openHistory, loading, create, remove, markOpened, toggleLike } = useKotozute(
-    currentUser?.id,
-  )
+  const {
+    items,
+    openHistory,
+    loading,
+    create,
+    update,
+    remove,
+    markOpened,
+    toggleLike,
+  } = useKotozute(currentUser?.id)
   const { unreadCount, addNotification } = useNotifications()
   const { profile, updateProfile } = useUserProfile(currentUser)
   const {
@@ -497,6 +504,7 @@ export function App() {
           onDeleteReply={handleDeleteReply}
           currentUserId={currentUser?.id ?? null}
           onOpened={handleOpened}
+          onEdit={update}
           onToggleLike={handleToggleLike}
         />
       )}

@@ -161,6 +161,21 @@ export const indexedDbRepository: KotozuteRepository = {
     return record
   },
 
+  async update(id, patch) {
+    const database = await db()
+    const existing = await database.get('kotozute', id)
+    if (!existing) throw new Error('ことづてが見つかりません')
+    const updated: Kotozute = {
+      ...existing,
+      ...(patch.message !== undefined ? { message: patch.message } : {}),
+      ...(patch.placeLabel !== undefined ? { placeLabel: patch.placeLabel } : {}),
+      ...(patch.link !== undefined ? { link: patch.link } : {}),
+      ...(patch.media !== undefined ? { media: patch.media } : {}),
+    }
+    await database.put('kotozute', updated)
+    return normalize(updated)
+  },
+
   async remove(id) {
     const database = await db()
     const tx = database.transaction(
