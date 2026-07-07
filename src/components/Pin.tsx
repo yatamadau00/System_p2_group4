@@ -1,5 +1,6 @@
 import type { EnrichedKotozute } from '../lib/enrich'
 import { formatDistance } from '../lib/geo'
+import { groupColorIndex } from '../lib/groupColor'
 import { primaryKind } from '../lib/media'
 import {
   AudioIcon,
@@ -38,12 +39,13 @@ interface PinProps {
  * - 距離ラベルは本体の上に余白をとって配置し、ピンと重ならない。
  */
 export function Pin({ kotozute, highlighted = false, onClick }: PinProps) {
-  const { proximity, distance, mine, visibility } = kotozute
+  const { proximity, distance, mine, visibility, groupId } = kotozute
   const kind = primaryKind(kotozute)
   const KindIcon = KIND_ICON[kind]
   const unlockable = proximity === 'unlockable'
   const multi = (kotozute.media ?? []).length > 1
   const isGroupOnly = visibility === 'group'
+  const groupIdx = isGroupOnly && groupId ? groupColorIndex(groupId) : null
 
   const label = unlockable
     ? `${KIND_NAME[kind]}のことづてを開ける`
@@ -56,7 +58,7 @@ export function Pin({ kotozute, highlighted = false, onClick }: PinProps) {
       type="button"
       className={`pin pin--${proximity} pin--kind-${kind}${
         mine ? ' pin--mine' : ''
-      }${isGroupOnly ? ' pin--group' : ''}${highlighted ? ' pin--highlighted' : ''}`}
+      }${isGroupOnly ? ' pin--group' : ''}${groupIdx !== null ? ` pin--gc-${groupIdx}` : ''}${highlighted ? ' pin--highlighted' : ''}`}
       onClick={onClick}
       aria-label={label}
     >
