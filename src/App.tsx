@@ -42,6 +42,7 @@ export function App() {
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [composing, setComposing] = useState(false)
   const [showList, setShowList] = useState(false)
+  const [openedFromList, setOpenedFromList] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
@@ -425,10 +426,9 @@ export function App() {
         <ListSheet
           items={enriched}
           hasPosition={!!position}
-          highlightedId={highlightedId}
-          onHighlight={handleHighlight}
           onSelect={(id) => {
             setShowList(false)
+            setOpenedFromList(true)
             handleSelect(id)
           }}
           onDelete={handleDelete}
@@ -466,6 +466,10 @@ export function App() {
           onClose={() => {
             setSelectedId(null)
             setProfileUnlockedId(null)
+            if (openedFromList) {
+              setOpenedFromList(false)
+              setShowList(true)
+            }
           }}
           onReply={() => handleReply(selected)}
           onDeleteReply={handleDeleteReply}
