@@ -5,6 +5,7 @@ drop table if exists public.group_members cascade;
 drop table if exists public.groups cascade;
 drop table if exists public.friends cascade;
 drop table if exists public.notifications cascade;
+drop table if exists public.kotozute_favorites cascade;
 drop table if exists public.kotozute_likes cascade;
 drop table if exists public.kotozute_opens cascade;
 drop table if exists public.kotozute cascade;
@@ -68,6 +69,14 @@ create table public.kotozute_likes (
   constraint kotozute_likes_user_kotozute_key unique (user_id, kotozute_id)
 );
 
+create table public.kotozute_favorites (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null references public.users(id) on delete cascade,
+  kotozute_id uuid not null references public.kotozute(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  constraint kotozute_favorites_user_kotozute_key unique (user_id, kotozute_id)
+);
+
 create table public.notifications (
   id text primary key,
   recipient_id text not null references public.users(id) on delete cascade,
@@ -105,6 +114,8 @@ create index kotozute_opens_user_id_idx on public.kotozute_opens (user_id);
 create index kotozute_opens_kotozute_id_idx on public.kotozute_opens (kotozute_id);
 create index kotozute_likes_user_id_idx on public.kotozute_likes (user_id);
 create index kotozute_likes_kotozute_id_idx on public.kotozute_likes (kotozute_id);
+create index kotozute_favorites_user_id_idx on public.kotozute_favorites (user_id);
+create index kotozute_favorites_kotozute_id_idx on public.kotozute_favorites (kotozute_id);
 create index notifications_recipient_created_idx on public.notifications (recipient_id, created_at desc);
 create index group_members_user_idx on public.group_members (user_id);
 create index group_members_group_idx on public.group_members (group_id);
@@ -114,6 +125,7 @@ alter table public.kotozute enable row level security;
 alter table public.friends enable row level security;
 alter table public.kotozute_opens enable row level security;
 alter table public.kotozute_likes enable row level security;
+alter table public.kotozute_favorites enable row level security;
 alter table public.notifications enable row level security;
 alter table public.groups enable row level security;
 alter table public.group_members enable row level security;
@@ -139,6 +151,10 @@ create policy "kotozute_opens_insert" on public.kotozute_opens for insert with c
 create policy "kotozute_likes_select" on public.kotozute_likes for select using (true);
 create policy "kotozute_likes_insert" on public.kotozute_likes for insert with check (true);
 create policy "kotozute_likes_delete" on public.kotozute_likes for delete using (true);
+
+create policy "kotozute_favorites_select" on public.kotozute_favorites for select using (true);
+create policy "kotozute_favorites_insert" on public.kotozute_favorites for insert with check (true);
+create policy "kotozute_favorites_delete" on public.kotozute_favorites for delete using (true);
 
 create policy "notifications_select" on public.notifications for select using (true);
 create policy "notifications_insert" on public.notifications for insert with check (true);

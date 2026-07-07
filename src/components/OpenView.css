@@ -167,6 +167,39 @@
   border-radius: var(--r-md);
 }
 
+.favorite-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 7px 12px;
+}
+
+.favorite-action--night {
+  color: #f4d06f;
+  background: rgba(244, 208, 111, 0.12);
+  border: 1px solid rgba(244, 208, 111, 0.28);
+}
+
+.favorite-action--paper {
+  color: #9f8b47;
+  background: var(--c-washi-2);
+  border: 1px solid rgba(159, 139, 71, 0.22);
+}
+
+.favorite-action--active {
+  color: #c49124;
+  background: rgba(196, 145, 36, 0.17);
+}
+
+.favorite-action:disabled {
+  opacity: 0.64;
+  cursor: wait;
+}
+
 /* ====== 開封可能（封を開ける前） ====== */
 .ready {
   display: grid;

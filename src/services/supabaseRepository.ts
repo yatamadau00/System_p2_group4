@@ -51,6 +51,11 @@ interface LikeRow {
   user_id: string
 }
 
+interface FavoriteRow {
+  kotozute_id: string
+  user_id: string
+}
+
 // ---- 「自分が残した」IDの端末ローカル記録（IndexedDB） ----
 let mineDbPromise: Promise<IDBPDatabase> | null = null
 function mineDb() {
@@ -79,6 +84,7 @@ function rowToKotozute(
   mineIds: Set<string>,
   likesCount = 0,
   likedByCurrentUser = false,
+  favoritedByCurrentUser = false,
 ): Kotozute {
   return {
     id: row.id,
@@ -112,6 +118,7 @@ function rowToKotozute(
     validTo: row.valid_to ? new Date(row.valid_to).getTime() : undefined,
     likesCount,
     likedByCurrentUser,
+    favoritedByCurrentUser,
   }
 }
 
@@ -140,6 +147,26 @@ async function getLikeState(
   return { counts, likedIds }
 }
 
+async function getFavoriteState(
+  ids: string[],
+  userId?: string | null,
+): Promise<Set<string>> {
+  if (ids.length === 0 || !userId) return new Set()
+
+  const { data, error } = await supabase!
+    .from('kotozute_favorites')
+    .select('kotozute_id, user_id')
+    .eq('user_id', userId)
+    .in('kotozute_id', ids)
+
+  if (error) {
+    console.warn('Kotozute favorites could not be loaded:', error)
+    return new Set()
+  }
+
+  return new Set((data as FavoriteRow[]).map((favorite) => favorite.kotozute_id))
+}
+
 /** 拡張子をMIME/種別から推定（録音webm等のため） */
 function extFor(mime?: string, fileName?: string, kind?: AttachmentKind): string {
   const fromName = fileName?.includes('.') ? fileName.split('.').pop() : undefined
@@ -158,12 +185,14 @@ export const supabaseRepository: KotozuteRepository = {
     const mine = await getMineIds()
     const rows = data as Row[]
     const likes = await getLikeState(rows.map((row) => row.id), userId)
+    const favoriteIds = await getFavoriteState(rows.map((row) => row.id), userId)
     return rows.map((r) =>
       rowToKotozute(
         r,
         mine,
         likes.counts.get(r.id) ?? 0,
         likes.likedIds.has(r.id),
+        favoriteIds.has(r.id),
       ),
     )
   },
@@ -178,11 +207,13 @@ export const supabaseRepository: KotozuteRepository = {
     if (!data) return undefined
     const mine = await getMineIds()
     const likes = await getLikeState([id], userId)
+    const favoriteIds = await getFavoriteState([id], userId)
     return rowToKotozute(
       data as Row,
       mine,
       likes.counts.get(id) ?? 0,
       likes.likedIds.has(id),
+      favoriteIds.has(id),
     )
   },
 
@@ -384,6 +415,34 @@ export const supabaseRepository: KotozuteRepository = {
       .eq('kotozute_id', kotozuteId)
     if (countError) throw countError
     return { liked, likesCount: count ?? 0 }
+  },
+
+  async toggleFavorite(kotozuteId, userId) {
+    const { data: existing, error: existingError } = await supabase!
+      .from('kotozute_favorites')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('kotozute_id', kotozuteId)
+      .maybeSingle()
+    if (existingError) throw existingError
+
+    const favorited = !existing
+    if (existing) {
+      const { error } = await supabase!
+        .from('kotozute_favorites')
+        .delete()
+        .eq('id', existing.id)
+      if (error) throw error
+    } else {
+      const { error } = await supabase!
+        .from('kotozute_favorites')
+        .insert({
+          user_id: userId,
+          kotozute_id: kotozuteId,
+        })
+      if (error) throw error
+    }
+    return { favorited }
   },
 
   async ensureSeed(seed: SeedKotozute[]) {
