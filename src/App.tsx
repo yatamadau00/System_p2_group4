@@ -385,6 +385,7 @@ export function App() {
           highlightedId={highlightedId}
           hasPosition={!!position}
           onSelect={handleHighlight}
+          onOpen={handleSelect}
         />
       )}
 
@@ -424,6 +425,8 @@ export function App() {
         <ListSheet
           items={enriched}
           hasPosition={!!position}
+          highlightedId={highlightedId}
+          onHighlight={handleHighlight}
           onSelect={(id) => {
             setShowList(false)
             handleSelect(id)

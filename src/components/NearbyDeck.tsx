@@ -32,6 +32,7 @@ interface NearbyDeckProps {
   /** 現在地が取れているか（空状態の文言を分けるため） */
   hasPosition: boolean
   onSelect: (id: string) => void
+  onOpen: (id: string) => void
 }
 
 /**
@@ -44,6 +45,7 @@ export function NearbyDeck({
   highlightedId,
   hasPosition,
   onSelect,
+  onOpen,
 }: NearbyDeckProps) {
   const cardRefs = useRef<Record<string, HTMLButtonElement | null>>({})
 
@@ -85,8 +87,8 @@ export function NearbyDeck({
                   cardRefs.current[k.id] = el
                 }}
                 className={`nearby-card${active ? ' nearby-card--active' : ''}`}
-                onClick={() => onSelect(k.id)}
-                aria-label={`${KIND_SHORT[kind]}のことづて。地図のピンを表示`}
+                onClick={() => active ? onOpen(k.id) : onSelect(k.id)}
+                aria-label={active ? `${KIND_SHORT[kind]}のことづてを開く` : `${KIND_SHORT[kind]}のことづて。地図のピンを表示`}
               >
                 <span className={`nearby-card__badge nearby-card__badge--${kind}`}>
                   <Icon />
@@ -101,7 +103,7 @@ export function NearbyDeck({
                   <span className="nearby-card__sub">
                     {date.getMonth() + 1}月{date.getDate()}日
                     <span className="nearby-card__open">
-                      {k.openedByCurrentUser ? '開封済み' : 'タップでピンを表示'}
+                      {k.openedByCurrentUser ? '開封済み' : active ? 'タップで開く' : 'タップでピンを表示'}
                       （{formatDistance(k.distance ?? 0)}）
                     </span>
                   </span>
