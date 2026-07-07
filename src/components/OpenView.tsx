@@ -1,10 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { EnrichedKotozute } from '../lib/enrich'
+import type { AttachmentKind, MediaItem } from '../types'
 import { formatDistance } from '../lib/geo'
-import { kindLabel } from '../lib/media'
+import { kindLabel, uid } from '../lib/media'
 import { NEAR_RADIUS_M, UNLOCK_RADIUS_M } from '../config'
 import { MediaView } from './MediaView'
-import { CloseIcon, EnvelopeIcon, FlagIcon, LinkIcon, LockIcon, TrashIcon } from './icons'
+import { AudioRecorder } from './AudioRecorder'
+import {
+  AudioIcon,
+  CloseIcon,
+  EnvelopeIcon,
+  FlagIcon,
+  ImageIcon,
+  LinkIcon,
+  LockIcon,
+  TrashIcon,
+  VideoIcon,
+} from './icons'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../services/supabaseClient'
 import pigeonPng from '../assets/pigeon.png'
@@ -30,7 +42,7 @@ interface OpenViewProps {
   /** 自分のことづての本文・場所名・リンクを編集する */
   onEdit?: (
     id: string,
-    patch: Partial<Pick<EnrichedKotozute, 'message' | 'placeLabel' | 'link'>>,
+    patch: Partial<Pick<EnrichedKotozute, 'message' | 'placeLabel' | 'link' | 'media'>>,
   ) => Promise<unknown>
 }
 
@@ -356,7 +368,7 @@ function Letter({
   canEdit?: boolean
   onEdit?: (
     id: string,
-    patch: Partial<Pick<EnrichedKotozute, 'message' | 'placeLabel' | 'link'>>,
+    patch: Partial<Pick<EnrichedKotozute, 'message' | 'placeLabel' | 'link' | 'media'>>,
   ) => Promise<unknown>
 }) {
   const date = new Date(kotozute.createdAt)
@@ -367,7 +379,29 @@ function Letter({
   const [editMessage, setEditMessage] = useState(kotozute.message)
   const [editPlace, setEditPlace] = useState(kotozute.placeLabel ?? '')
   const [editLink, setEditLink] = useState(kotozute.link ?? '')
+  const [editMedia, setEditMedia] = useState<MediaItem[]>(kotozute.media ?? [])
+  const [recording, setRecording] = useState(false)
   const [savingEdit, setSavingEdit] = useState(false)
+
+  const editImageInput = useRef<HTMLInputElement>(null)
+  const editVideoInput = useRef<HTMLInputElement>(null)
+  const editAudioInput = useRef<HTMLInputElement>(null)
+
+  const addEditFile = (kind: AttachmentKind, file: File | null) => {
+    if (!file) return
+    setEditMedia((m) => [
+      ...m,
+      { id: uid(), kind, blob: file, mimeType: file.type, fileName: file.name },
+    ])
+  }
+
+  const resetEdit = () => {
+    setEditMessage(kotozute.message)
+    setEditPlace(kotozute.placeLabel ?? '')
+    setEditLink(kotozute.link ?? '')
+    setEditMedia(kotozute.media ?? [])
+    setRecording(false)
+  }
 
   const saveEdit = async () => {
     if (!onEdit) return
@@ -377,6 +411,7 @@ function Letter({
         message: editMessage.trim(),
         placeLabel: editPlace.trim() || undefined,
         link: editLink.trim() || undefined,
+        media: editMedia,
       })
       setEditing(false)
     } catch (err: any) {
@@ -421,15 +456,123 @@ function Letter({
                 placeholder="https://"
               />
             </label>
+
+            {/* メディア編集：追加・削除 */}
+            <div className="field">
+              <span className="field__label">
+                メディア <small>（追加・削除できます）</small>
+              </span>
+              <div className="attach-buttons">
+                <button
+                  type="button"
+                  className="attach-btn"
+                  onClick={() => editImageInput.current?.click()}
+                >
+                  <ImageIcon width={20} height={20} />
+                  写真
+                </button>
+                <button
+                  type="button"
+                  className="attach-btn"
+                  onClick={() => editVideoInput.current?.click()}
+                >
+                  <VideoIcon width={20} height={20} />
+                  映像
+                </button>
+                <button
+                  type="button"
+                  className="attach-btn"
+                  onClick={() => setRecording((v) => !v)}
+                  aria-pressed={recording}
+                >
+                  <AudioIcon width={20} height={20} />
+                  声
+                </button>
+              </div>
+
+              <input
+                ref={editImageInput}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => {
+                  addEditFile('image', e.target.files?.[0] ?? null)
+                  e.target.value = ''
+                }}
+              />
+              <input
+                ref={editVideoInput}
+                type="file"
+                accept="video/*"
+                hidden
+                onChange={(e) => {
+                  addEditFile('video', e.target.files?.[0] ?? null)
+                  e.target.value = ''
+                }}
+              />
+              <input
+                ref={editAudioInput}
+                type="file"
+                accept="audio/*"
+                hidden
+                onChange={(e) => {
+                  addEditFile('audio', e.target.files?.[0] ?? null)
+                  e.target.value = ''
+                }}
+              />
+
+              {recording && (
+                <div className="recorder-wrap">
+                  <AudioRecorder
+                    onConfirm={(blob, mimeType) => {
+                      setEditMedia((m) => [
+                        ...m,
+                        { id: uid(), kind: 'audio', blob, mimeType, fileName: '録音した声' },
+                      ])
+                      setRecording(false)
+                    }}
+                    onCancel={() => setRecording(false)}
+                  />
+                  <button
+                    type="button"
+                    className="recorder__file"
+                    onClick={() => {
+                      setRecording(false)
+                      editAudioInput.current?.click()
+                    }}
+                  >
+                    ファイルから選ぶ
+                  </button>
+                </div>
+              )}
+
+              {editMedia.length > 0 && (
+                <ul className="attach-list">
+                  {editMedia.map((m) => (
+                    <li key={m.id} className="attach-item">
+                      <button
+                        type="button"
+                        className="attach-item__remove"
+                        onClick={() =>
+                          setEditMedia((list) => list.filter((x) => x.id !== m.id))
+                        }
+                        aria-label="このメディアを外す"
+                      >
+                        <CloseIcon width={16} height={16} />
+                      </button>
+                      <MediaView media={m} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
         <div className="letter__actions" style={{ display: 'flex', gap: 'var(--sp-3)' }}>
           <button
             className="btn btn--soft"
             onClick={() => {
-              setEditMessage(kotozute.message)
-              setEditPlace(kotozute.placeLabel ?? '')
-              setEditLink(kotozute.link ?? '')
+              resetEdit()
               setEditing(false)
             }}
             disabled={savingEdit}

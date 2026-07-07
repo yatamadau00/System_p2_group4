@@ -65,7 +65,7 @@ export function useKotozute(userId?: string | null) {
   const update = useCallback(
     async (
       id: string,
-      patch: Partial<Pick<Kotozute, 'message' | 'placeLabel' | 'link'>>,
+      patch: Partial<Pick<Kotozute, 'message' | 'placeLabel' | 'link' | 'media'>>,
     ) => {
       const repo = getRepository()
       const updated = await repo.update(id, patch)

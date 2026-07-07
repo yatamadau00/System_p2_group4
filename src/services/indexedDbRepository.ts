@@ -127,6 +127,7 @@ export const indexedDbRepository: KotozuteRepository = {
       ...(patch.message !== undefined ? { message: patch.message } : {}),
       ...(patch.placeLabel !== undefined ? { placeLabel: patch.placeLabel } : {}),
       ...(patch.link !== undefined ? { link: patch.link } : {}),
+      ...(patch.media !== undefined ? { media: patch.media } : {}),
     }
     await database.put('kotozute', updated)
     return normalize(updated)

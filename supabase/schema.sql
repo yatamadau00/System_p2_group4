@@ -112,6 +112,7 @@ create policy "users_update" on public.users for update using (true) with check 
 
 create policy "kotozute_select" on public.kotozute for select using (true);
 create policy "kotozute_insert" on public.kotozute for insert with check (true);
+create policy "kotozute_update" on public.kotozute for update using (true) with check (true);
 create policy "kotozute_delete" on public.kotozute for delete using (true);
 
 create policy "friends_select" on public.friends for select using (true);
