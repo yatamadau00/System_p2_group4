@@ -53,6 +53,7 @@ export function App() {
     remove,
     markOpened,
     toggleLike,
+    toggleFavorite,
   } = useKotozute(currentUser?.id)
   const { unreadCount, addNotification } = useNotifications()
   const { profile, updateProfile } = useUserProfile(currentUser)
@@ -82,10 +83,11 @@ export function App() {
     initialMapLayerVisibility,
   )
   const [groupLayerVisibility, setGroupLayerVisibility] = useState<GroupLayerVisibility>({})
+  const [favoriteOnly, setFavoriteOnly] = useState(false)
 
   const mapRef = useRef<google.maps.Map | null>(null)
   const listScrollRef = useRef(0)
-  const listTabRef = useRef<'all' | 'mine'>('all')
+  const listTabRef = useRef<'all' | 'favorite' | 'mine'>('all')
 
   const position = geo.position
 
@@ -104,7 +106,7 @@ export function App() {
 
   // 現在地からの距離・近接状態を付与
   const enriched = useMemo(() => enrich(visibleItems, position), [visibleItems, position])
-  // 地図に表示するピン（期間内、かつ表示レイヤーに合致するもののみ）
+  // 地図に表示するピン（期間内、表示レイヤー、お気に入り条件に合致するもののみ）
   const mapItems = useMemo(() => {
     const now = Date.now()
     return enriched.filter((item) => {
@@ -115,10 +117,16 @@ export function App() {
       // 2. 地図レイヤー切り替えのチェック
       const layerKey = getMapLayerKey(item)
       if (!mapLayerVisibility[layerKey]) return false
-      if (layerKey !== 'group') return true
-      return isGroupVisible(item, groupLayerVisibility)
+      if (layerKey === 'group' && !isGroupVisible(item, groupLayerVisibility)) {
+        return false
+      }
+
+      // 3. お気に入りだけ表示する横断フィルタ
+      if (favoriteOnly && !item.favoritedByCurrentUser) return false
+
+      return true
     })
-  }, [enriched, groupLayerVisibility, mapLayerVisibility])
+  }, [enriched, favoriteOnly, groupLayerVisibility, mapLayerVisibility])
   const unlockableCount = useMemo(
     () => mapItems.filter((k) => k.proximity === 'unlockable').length,
     [mapItems],
@@ -438,6 +446,25 @@ export function App() {
     [currentUser, toggleLike],
   )
 
+  const handleToggleFavorite = useCallback(
+    async (id: string) => {
+      if (!currentUser) {
+        setShowAuth(true)
+        return
+      }
+      try {
+        const result = await toggleFavorite(id)
+        if (result) {
+          setToast(result.favorited ? 'お気に入りに追加しました' : 'お気に入りから外しました')
+        }
+      } catch (e) {
+        console.warn('Failed to toggle kotozute favorite:', e)
+        setToast('お気に入りを更新できませんでした')
+      }
+    },
+    [currentUser, toggleFavorite],
+  )
+
   const overlayOpen =
     composing || showList || showProfile || !!selected || showAuth || showNotifications
 
@@ -461,6 +488,8 @@ export function App() {
         onOpenNotifications={() => setShowNotifications(true)}
         mapLayerVisibility={mapLayerVisibility}
         onToggleMapLayer={handleToggleMapLayer}
+        favoriteOnly={favoriteOnly}
+        onToggleFavoriteOnly={() => setFavoriteOnly((value) => !value)}
         groups={groups}
         groupLayerVisibility={groupLayerVisibility}
         onToggleGroupLayer={handleToggleGroupLayer}
@@ -527,6 +556,7 @@ export function App() {
             setTimeout(() => handleSelect(id), 600)
           }}
           onDelete={handleDelete}
+          onToggleFavorite={handleToggleFavorite}
           onClose={() => setShowList(false)}
         />
       )}
@@ -573,6 +603,7 @@ export function App() {
           onOpened={handleOpened}
           onEdit={update}
           onToggleLike={handleToggleLike}
+          onToggleFavorite={handleToggleFavorite}
         />
       )}
 

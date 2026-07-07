@@ -39,6 +39,8 @@ interface MapScreenProps {
   onOpenNotifications: () => void
   mapLayerVisibility: MapLayerVisibility
   onToggleMapLayer: (key: MapLayerKey) => void
+  favoriteOnly: boolean
+  onToggleFavoriteOnly: () => void
   groups: Group[]
   groupLayerVisibility: GroupLayerVisibility
   onToggleGroupLayer: (groupId: string) => void
@@ -70,6 +72,8 @@ export function MapScreen(props: MapScreenProps) {
     onOpenNotifications,
     mapLayerVisibility,
     onToggleMapLayer,
+    favoriteOnly,
+    onToggleFavoriteOnly,
     groups,
     groupLayerVisibility,
     onToggleGroupLayer,
@@ -167,66 +171,76 @@ export function MapScreen(props: MapScreenProps) {
   const layerControls = (
     <div className="map-layers" role="group" aria-label="地図に表示することづて">
       <button
-        className={`map-layer${mapLayerVisibility.public ? ' map-layer--active' : ''}`}
+        className={`map-layer map-layer--favorite map-layer--parent${favoriteOnly ? ' map-layer--active' : ''}`}
         type="button"
-        aria-pressed={mapLayerVisibility.public}
-        onClick={() => onToggleMapLayer('public')}
+        aria-pressed={favoriteOnly}
+        onClick={onToggleFavoriteOnly}
       >
-        公開
+        お気に入り
       </button>
-      <div className="map-layer-group">
+      <div className="map-layer-children">
         <button
-          className={`map-layer map-layer--group${visibleGroupCount > 0 ? ' map-layer--active' : ''}`}
+          className={`map-layer map-layer--child${mapLayerVisibility.public ? ' map-layer--active' : ''}`}
           type="button"
-          aria-expanded={groupSelectorOpen}
-          aria-controls="map-group-selector"
-          onClick={() => setGroupSelectorOpen((open) => !open)}
+          aria-pressed={mapLayerVisibility.public}
+          onClick={() => onToggleMapLayer('public')}
         >
-          グループ
+          公開
         </button>
-        {groupSelectorOpen && (
-          <div
-            id="map-group-selector"
-            className="map-group-selector"
-            aria-label="表示するグループを選択"
+        <div className="map-layer-group">
+          <button
+            className={`map-layer map-layer--child map-layer--group${visibleGroupCount > 0 ? ' map-layer--active' : ''}`}
+            type="button"
+            aria-expanded={groupSelectorOpen}
+            aria-controls="map-group-selector"
+            onClick={() => setGroupSelectorOpen((open) => !open)}
           >
-            <div className="map-group-selector__title">表示するグループ</div>
-            {groups.length === 0 ? (
-              <p className="map-group-selector__empty">参加中のグループなし</p>
-            ) : (
-              groups.map((group) => {
-                const active = groupLayerVisibility[group.id] ?? true
-                return (
-                  <button
-                    key={group.id}
-                    className={`map-group-option${active ? ' map-group-option--active' : ''}`}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => onToggleGroupLayer(group.id)}
-                  >
-                    <span
-                      className="map-group-option__avatar"
-                      style={{ backgroundColor: group.avatarColor }}
-                      aria-hidden
+            グループ
+          </button>
+          {groupSelectorOpen && (
+            <div
+              id="map-group-selector"
+              className="map-group-selector"
+              aria-label="表示するグループを選択"
+            >
+              <div className="map-group-selector__title">表示するグループ</div>
+              {groups.length === 0 ? (
+                <p className="map-group-selector__empty">参加中のグループなし</p>
+              ) : (
+                groups.map((group) => {
+                  const active = groupLayerVisibility[group.id] ?? true
+                  return (
+                    <button
+                      key={group.id}
+                      className={`map-group-option${active ? ' map-group-option--active' : ''}`}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => onToggleGroupLayer(group.id)}
                     >
-                      {group.avatarEmoji}
-                    </span>
-                    <span className="map-group-option__name">{group.name || group.id}</span>
-                  </button>
-                )
-              })
+                      <span
+                        className="map-group-option__avatar"
+                        style={{ backgroundColor: group.avatarColor }}
+                        aria-hidden
+                      >
+                        {group.avatarEmoji}
+                      </span>
+                      <span className="map-group-option__name">{group.name || group.id}</span>
+                    </button>
+                  )
+                })
+              )}
+            </div>
             )}
-          </div>
-        )}
+        </div>
+        <button
+          className={`map-layer map-layer--child map-layer--owned${mapLayerVisibility.owned ? ' map-layer--active' : ''}`}
+          type="button"
+          aria-pressed={mapLayerVisibility.owned}
+          onClick={() => onToggleMapLayer('owned')}
+        >
+          自作/取得済み
+        </button>
       </div>
-      <button
-        className={`map-layer map-layer--owned${mapLayerVisibility.owned ? ' map-layer--active' : ''}`}
-        type="button"
-        aria-pressed={mapLayerVisibility.owned}
-        onClick={() => onToggleMapLayer('owned')}
-      >
-        自作/取得済み
-      </button>
     </div>
   )
 

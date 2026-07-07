@@ -34,6 +34,8 @@ export interface KotozuteRepository {
     kotozuteId: string,
     userId: string,
   ): Promise<{ liked: boolean; likesCount: number }>
+  /** 指定ユーザーのお気に入り状態を切り替え、更新後の状態を返す */
+  toggleFavorite(kotozuteId: string, userId: string): Promise<{ favorited: boolean }>
   /** 初回起動時にサンプルを投入（既にデータがあれば何もしない） */
   ensureSeed(seed: SeedKotozute[]): Promise<void>
 }

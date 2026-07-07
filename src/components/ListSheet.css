@@ -142,6 +142,22 @@
   flex: none;
 }
 
+.cz-row__favorite {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #9f8b47;
+  background: rgba(159, 139, 71, 0.08);
+  flex: none;
+}
+
+.cz-row__favorite--active {
+  color: #c49124;
+  background: rgba(196, 145, 36, 0.16);
+}
+
 /* 空状態 */
 .empty {
   display: grid;
@@ -193,4 +209,3 @@
   font-family: var(--font-sans);
   letter-spacing: 0;
 }
-
