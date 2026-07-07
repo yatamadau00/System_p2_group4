@@ -184,6 +184,11 @@ export const supabaseRepository: KotozuteRepository = {
     if (error) throw error
     const mine = await getMineIds()
     const rows = data as Row[]
+    if (userId) {
+      rows.forEach((r) => {
+        if (r.author_id === userId) mine.add(r.id)
+      })
+    }
     const likes = await getLikeState(rows.map((row) => row.id), userId)
     const favoriteIds = await getFavoriteState(rows.map((row) => row.id), userId)
     return rows.map((r) =>
@@ -206,10 +211,14 @@ export const supabaseRepository: KotozuteRepository = {
     if (error) throw error
     if (!data) return undefined
     const mine = await getMineIds()
+    const row = data as Row
+    if (userId && row.author_id === userId) {
+      mine.add(row.id)
+    }
     const likes = await getLikeState([id], userId)
     const favoriteIds = await getFavoriteState([id], userId)
     return rowToKotozute(
-      data as Row,
+      row,
       mine,
       likes.counts.get(id) ?? 0,
       likes.likedIds.has(id),
