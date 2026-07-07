@@ -1,11 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { EnrichedKotozute } from '../lib/enrich'
+import type { AttachmentKind, MediaItem } from '../types'
 import { formatDistance } from '../lib/geo'
 import { groupColorIndex } from '../lib/groupColor'
-import { kindLabel } from '../lib/media'
+import { kindLabel, uid } from '../lib/media'
 import { NEAR_RADIUS_M, UNLOCK_RADIUS_M } from '../config'
 import { MediaView } from './MediaView'
-import { CloseIcon, EnvelopeIcon, FlagIcon, LinkIcon, LockIcon, TrashIcon } from './icons'
+import { AudioRecorder } from './AudioRecorder'
+import {
+  AudioIcon,
+  CloseIcon,
+  EnvelopeIcon,
+  FlagIcon,
+  HeartIcon,
+  ImageIcon,
+  LinkIcon,
+  LockIcon,
+  TrashIcon,
+  VideoIcon,
+} from './icons'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../services/supabaseClient'
 import pigeonPng from '../assets/pigeon.png'
@@ -28,6 +41,12 @@ interface OpenViewProps {
   onDeleteReply: (id: string) => void
   currentUserId: string | null
   onOpened?: (id: string) => void
+  onToggleLike: (id: string) => Promise<void>
+  /** 自分のことづての本文・場所名・リンクを編集する */
+  onEdit?: (
+    id: string,
+    patch: Partial<Pick<EnrichedKotozute, 'message' | 'placeLabel' | 'link' | 'media'>>,
+  ) => Promise<unknown>
 }
 
 /**
@@ -43,11 +62,17 @@ export function OpenView({
   onDeleteReply,
   currentUserId,
   onOpened,
+  onToggleLike,
+  onEdit,
 }: OpenViewProps) {
   const { currentUser } = useAuth()
+  // 自分のことづては、どこにいても閲覧・編集できる（距離ロックを無視）
+  const isOwn =
+    kotozute.mine ||
+    (!!currentUser && kotozute.authorId === currentUser.id)
   const initiallyUnlockable = kotozute.proximity === 'unlockable'
   const [phase, setPhase] = useState<Phase>(
-    initiallyUnlockable ? 'ready' : 'locked',
+    isOwn ? 'opened' : initiallyUnlockable ? 'ready' : 'locked',
   )
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [reportTargetId, setReportTargetId] = useState<string | null>(null)
@@ -60,13 +85,13 @@ export function OpenView({
 
   // 歩いて近づいたらロック→開封可能へ自動遷移（既に開封済みなら維持）
   useEffect(() => {
-    if (openedOnce.current) return
+    if (openedOnce.current || isOwn) return
     if (kotozute.proximity === 'unlockable') {
       setPhase((p) => (p === 'locked' ? 'ready' : p))
     } else {
       setPhase((p) => (p === 'ready' ? 'locked' : p))
     }
-  }, [kotozute.proximity])
+  }, [kotozute.proximity, isOwn])
 
   const openSeal = () => {
     openedOnce.current = true
@@ -208,6 +233,9 @@ export function OpenView({
             currentUserId={currentUserId}
             replies={replies}
             onReportClick={handleOpenReport}
+            onToggleLike={onToggleLike}
+            canEdit={isOwn && !!onEdit}
+            onEdit={onEdit}
           />
         )}
       </div>
@@ -344,6 +372,9 @@ function Letter({
   currentUserId,
   replies,
   onReportClick,
+  onToggleLike,
+  canEdit,
+  onEdit,
 }: {
   kotozute: EnrichedKotozute
   onReply: () => void
@@ -351,10 +382,229 @@ function Letter({
   currentUserId: string | null
   replies: EnrichedKotozute[]
   onReportClick: (id: string) => void
+  onToggleLike: (id: string) => Promise<void>
+  canEdit?: boolean
+  onEdit?: (
+    id: string,
+    patch: Partial<Pick<EnrichedKotozute, 'message' | 'placeLabel' | 'link' | 'media'>>,
+  ) => Promise<unknown>
 }) {
+  const [likeBusy, setLikeBusy] = useState(false)
   const date = new Date(kotozute.createdAt)
   const dateStr = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
   const hasBody = kotozute.message.trim().length > 0 || !!kotozute.link
+
+  const [editing, setEditing] = useState(false)
+  const [editMessage, setEditMessage] = useState(kotozute.message)
+  const [editPlace, setEditPlace] = useState(kotozute.placeLabel ?? '')
+  const [editLink, setEditLink] = useState(kotozute.link ?? '')
+  const [editMedia, setEditMedia] = useState<MediaItem[]>(kotozute.media ?? [])
+  const [recording, setRecording] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  const editImageInput = useRef<HTMLInputElement>(null)
+  const editVideoInput = useRef<HTMLInputElement>(null)
+  const editAudioInput = useRef<HTMLInputElement>(null)
+
+  const addEditFile = (kind: AttachmentKind, file: File | null) => {
+    if (!file) return
+    setEditMedia((m) => [
+      ...m,
+      { id: uid(), kind, blob: file, mimeType: file.type, fileName: file.name },
+    ])
+  }
+
+  const resetEdit = () => {
+    setEditMessage(kotozute.message)
+    setEditPlace(kotozute.placeLabel ?? '')
+    setEditLink(kotozute.link ?? '')
+    setEditMedia(kotozute.media ?? [])
+    setRecording(false)
+  }
+
+  const saveEdit = async () => {
+    if (!onEdit) return
+    setSavingEdit(true)
+    try {
+      await onEdit(kotozute.id, {
+        message: editMessage.trim(),
+        placeLabel: editPlace.trim() || undefined,
+        link: editLink.trim() || undefined,
+        media: editMedia,
+      })
+      setEditing(false)
+    } catch (err: any) {
+      alert(err.message || '編集を保存できませんでした')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="letter">
+        <div className="letter__place">ことづてを編集</div>
+        <div className="letter__card">
+          <div className="letter__message" style={{ display: 'grid', gap: 'var(--sp-3)' }}>
+            <label className="field">
+              <span className="field__label">ことば</span>
+              <textarea
+                className="textarea"
+                value={editMessage}
+                onChange={(e) => setEditMessage(e.target.value)}
+                rows={5}
+              />
+            </label>
+            <label className="field">
+              <span className="field__label">場所の呼び名（任意）</span>
+              <input
+                className="input"
+                value={editPlace}
+                onChange={(e) => setEditPlace(e.target.value)}
+                placeholder="卒業した教室、いつもの帰り道…"
+              />
+            </label>
+            <label className="field">
+              <span className="field__label">リンク（任意）</span>
+              <input
+                className="input"
+                type="url"
+                inputMode="url"
+                value={editLink}
+                onChange={(e) => setEditLink(e.target.value)}
+                placeholder="https://"
+              />
+            </label>
+
+            {/* メディア編集：追加・削除 */}
+            <div className="field">
+              <span className="field__label">
+                メディア <small>（追加・削除できます）</small>
+              </span>
+              <div className="attach-buttons">
+                <button
+                  type="button"
+                  className="attach-btn"
+                  onClick={() => editImageInput.current?.click()}
+                >
+                  <ImageIcon width={20} height={20} />
+                  写真
+                </button>
+                <button
+                  type="button"
+                  className="attach-btn"
+                  onClick={() => editVideoInput.current?.click()}
+                >
+                  <VideoIcon width={20} height={20} />
+                  映像
+                </button>
+                <button
+                  type="button"
+                  className="attach-btn"
+                  onClick={() => setRecording((v) => !v)}
+                  aria-pressed={recording}
+                >
+                  <AudioIcon width={20} height={20} />
+                  声
+                </button>
+              </div>
+
+              <input
+                ref={editImageInput}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => {
+                  addEditFile('image', e.target.files?.[0] ?? null)
+                  e.target.value = ''
+                }}
+              />
+              <input
+                ref={editVideoInput}
+                type="file"
+                accept="video/*"
+                hidden
+                onChange={(e) => {
+                  addEditFile('video', e.target.files?.[0] ?? null)
+                  e.target.value = ''
+                }}
+              />
+              <input
+                ref={editAudioInput}
+                type="file"
+                accept="audio/*"
+                hidden
+                onChange={(e) => {
+                  addEditFile('audio', e.target.files?.[0] ?? null)
+                  e.target.value = ''
+                }}
+              />
+
+              {recording && (
+                <div className="recorder-wrap">
+                  <AudioRecorder
+                    onConfirm={(blob, mimeType) => {
+                      setEditMedia((m) => [
+                        ...m,
+                        { id: uid(), kind: 'audio', blob, mimeType, fileName: '録音した声' },
+                      ])
+                      setRecording(false)
+                    }}
+                    onCancel={() => setRecording(false)}
+                  />
+                  <button
+                    type="button"
+                    className="recorder__file"
+                    onClick={() => {
+                      setRecording(false)
+                      editAudioInput.current?.click()
+                    }}
+                  >
+                    ファイルから選ぶ
+                  </button>
+                </div>
+              )}
+
+              {editMedia.length > 0 && (
+                <ul className="attach-list">
+                  {editMedia.map((m) => (
+                    <li key={m.id} className="attach-item">
+                      <button
+                        type="button"
+                        className="attach-item__remove"
+                        onClick={() =>
+                          setEditMedia((list) => list.filter((x) => x.id !== m.id))
+                        }
+                        aria-label="このメディアを外す"
+                      >
+                        <CloseIcon width={16} height={16} />
+                      </button>
+                      <MediaView media={m} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="letter__actions" style={{ display: 'flex', gap: 'var(--sp-3)' }}>
+          <button
+            className="btn btn--soft"
+            onClick={() => {
+              resetEdit()
+              setEditing(false)
+            }}
+            disabled={savingEdit}
+          >
+            キャンセル
+          </button>
+          <button className="btn btn--primary" onClick={saveEdit} disabled={savingEdit}>
+            {savingEdit ? '保存中…' : '保存する'}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="letter">
@@ -384,6 +634,18 @@ function Letter({
           </>
         )}
       </div>
+
+      {canEdit && (
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <button
+            className="btn btn--soft"
+            style={{ minHeight: 0, padding: '8px 16px', fontSize: '0.88rem' }}
+            onClick={() => setEditing(true)}
+          >
+            このことづてを編集
+          </button>
+        </div>
+      )}
 
       <div className="letter__card">
         {/* 添えられたメディアを順に表示（複数可） */}
@@ -415,6 +677,22 @@ function Letter({
       )}
 
       <div className="letter__actions">
+        <button
+          className={`letter__like${kotozute.likedByCurrentUser ? ' letter__like--liked' : ''}`}
+          onClick={async () => {
+            setLikeBusy(true)
+            try {
+              await onToggleLike(kotozute.id)
+            } finally {
+              setLikeBusy(false)
+            }
+          }}
+          disabled={likeBusy}
+          aria-pressed={!!kotozute.likedByCurrentUser}
+        >
+          <HeartIcon width={16} height={16} filled={!!kotozute.likedByCurrentUser} />
+          いいね {kotozute.likesCount ?? 0}
+        </button>
         <button className="letter__reply" onClick={onReply}>
           <EnvelopeIcon width={16} height={16} />
           返信する

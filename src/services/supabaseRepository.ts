@@ -44,6 +44,11 @@ interface Row {
   created_at: string
 }
 
+interface LikeRow {
+  kotozute_id: string
+  user_id: string
+}
+
 // ---- 「自分が残した」IDの端末ローカル記録（IndexedDB） ----
 let mineDbPromise: Promise<IDBPDatabase> | null = null
 function mineDb() {
@@ -67,7 +72,12 @@ async function removeMineId(id: string) {
   await (await mineDb()).delete('ids', id)
 }
 
-function rowToKotozute(row: Row, mineIds: Set<string>): Kotozute {
+function rowToKotozute(
+  row: Row,
+  mineIds: Set<string>,
+  likesCount = 0,
+  likedByCurrentUser = false,
+): Kotozute {
   return {
     id: row.id,
     replyToId: row.reply_to_id ?? undefined,
@@ -96,7 +106,34 @@ function rowToKotozute(row: Row, mineIds: Set<string>): Kotozute {
         ? row.visibility
         : undefined,
     groupId: row.group_id ?? undefined,
+    likesCount,
+    likedByCurrentUser,
   }
+}
+
+async function getLikeState(
+  ids: string[],
+  userId?: string | null,
+): Promise<{ counts: Map<string, number>; likedIds: Set<string> }> {
+  if (ids.length === 0) return { counts: new Map(), likedIds: new Set() }
+
+  const { data, error } = await supabase!
+    .from('kotozute_likes')
+    .select('kotozute_id, user_id')
+    .in('kotozute_id', ids)
+
+  if (error) {
+    console.warn('Kotozute likes could not be loaded:', error)
+    return { counts: new Map(), likedIds: new Set() }
+  }
+
+  const counts = new Map<string, number>()
+  const likedIds = new Set<string>()
+  ;(data as LikeRow[]).forEach((like) => {
+    counts.set(like.kotozute_id, (counts.get(like.kotozute_id) ?? 0) + 1)
+    if (userId && like.user_id === userId) likedIds.add(like.kotozute_id)
+  })
+  return { counts, likedIds }
 }
 
 /** 拡張子をMIME/種別から推定（録音webm等のため） */
@@ -108,17 +145,26 @@ function extFor(mime?: string, fileName?: string, kind?: AttachmentKind): string
 }
 
 export const supabaseRepository: KotozuteRepository = {
-  async list() {
+  async list(userId) {
     const { data, error } = await supabase!
       .from('kotozute')
       .select('*, author:users!kotozute_author_id_fkey(display_name)')
       .order('created_at', { ascending: false })
     if (error) throw error
     const mine = await getMineIds()
-    return (data as Row[]).map((r) => rowToKotozute(r, mine))
+    const rows = data as Row[]
+    const likes = await getLikeState(rows.map((row) => row.id), userId)
+    return rows.map((r) =>
+      rowToKotozute(
+        r,
+        mine,
+        likes.counts.get(r.id) ?? 0,
+        likes.likedIds.has(r.id),
+      ),
+    )
   },
 
-  async get(id) {
+  async get(id, userId) {
     const { data, error } = await supabase!
       .from('kotozute')
       .select('*, author:users!kotozute_author_id_fkey(display_name)')
@@ -127,7 +173,13 @@ export const supabaseRepository: KotozuteRepository = {
     if (error) throw error
     if (!data) return undefined
     const mine = await getMineIds()
-    return rowToKotozute(data as Row, mine)
+    const likes = await getLikeState([id], userId)
+    return rowToKotozute(
+      data as Row,
+      mine,
+      likes.counts.get(id) ?? 0,
+      likes.likedIds.has(id),
+    )
   },
 
   async create(input: NewKotozute) {
@@ -188,6 +240,54 @@ export const supabaseRepository: KotozuteRepository = {
     return rowToKotozute(data as Row, new Set([id]))
   },
 
+  async update(id, patch) {
+    const row: Record<string, unknown> = {}
+    if (patch.message !== undefined) row.message = patch.message
+    if (patch.placeLabel !== undefined) row.place_label = patch.placeLabel || null
+    if (patch.link !== undefined) row.link = patch.link || null
+
+    // メディアの更新：新規（blob）はアップロード、既存（url）はそのまま残す
+    if (patch.media !== undefined) {
+      const media: MediaJson[] = []
+      for (const m of patch.media) {
+        if (m.blob) {
+          const path = `${id}/${uid()}.${extFor(m.mimeType, m.fileName, m.kind)}`
+          const { error: upErr } = await supabase!.storage
+            .from(MEDIA_BUCKET)
+            .upload(path, m.blob, { contentType: m.mimeType, upsert: false })
+          if (upErr) throw upErr
+          const { data: pub } = supabase!.storage
+            .from(MEDIA_BUCKET)
+            .getPublicUrl(path)
+          media.push({
+            kind: m.kind,
+            url: pub.publicUrl,
+            mime_type: m.mimeType,
+            file_name: m.fileName,
+          })
+        } else if (m.url) {
+          media.push({
+            kind: m.kind,
+            url: m.url,
+            mime_type: m.mimeType,
+            file_name: m.fileName,
+          })
+        }
+      }
+      row.media = media
+    }
+
+    const { data, error } = await supabase!
+      .from('kotozute')
+      .update(row)
+      .eq('id', id)
+      .select('*, author:users!kotozute_author_id_fkey(display_name)')
+      .single()
+    if (error) throw error
+    const mine = await getMineIds()
+    return rowToKotozute(data as Row, mine)
+  },
+
   async remove(id) {
     // 付随メディアもベストエフォートで削除
     const { data: files } = await supabase!.storage
@@ -244,6 +344,40 @@ export const supabaseRepository: KotozuteRepository = {
       return false
     }
     return true
+  },
+
+  async toggleLike(kotozuteId, userId) {
+    const { data: existing, error: existingError } = await supabase!
+      .from('kotozute_likes')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('kotozute_id', kotozuteId)
+      .maybeSingle()
+    if (existingError) throw existingError
+
+    const liked = !existing
+    if (existing) {
+      const { error } = await supabase!
+        .from('kotozute_likes')
+        .delete()
+        .eq('id', existing.id)
+      if (error) throw error
+    } else {
+      const { error } = await supabase!
+        .from('kotozute_likes')
+        .insert({
+          user_id: userId,
+          kotozute_id: kotozuteId,
+        })
+      if (error) throw error
+    }
+
+    const { count, error: countError } = await supabase!
+      .from('kotozute_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('kotozute_id', kotozuteId)
+    if (countError) throw countError
+    return { liked, likesCount: count ?? 0 }
   },
 
   async ensureSeed(seed: SeedKotozute[]) {
