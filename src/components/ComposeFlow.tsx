@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import type { AttachmentKind, Group, LatLng, MediaItem, NewKotozute, UserProfile } from '../types'
+import type { AttachmentKind, Group, Kotozute, LatLng, MediaItem, NewKotozute, UserProfile } from '../types'
 import { uid } from '../lib/media'
 import { useObjectUrl } from '../hooks/useObjectUrl'
 import { AudioRecorder } from './AudioRecorder'
@@ -21,6 +21,8 @@ interface ComposeFlowProps {
   onSubmit: (input: NewKotozute) => Promise<void>
   onClose: () => void
   profile: UserProfile
+  mode?: 'new' | 'reply'
+  replyTarget?: Kotozute | null
   /** 参加中のグループ（グループ限定の投稿先に使う） */
   groups: Group[]
 }
@@ -38,12 +40,14 @@ export function ComposeFlow({
   onSubmit,
   onClose,
   profile,
+  mode = 'new',
+  replyTarget = null,
   groups,
 }: ComposeFlowProps) {
   const [message, setMessage] = useState('')
   const [link, setLink] = useState('')
   const [visibility, setVisibility] = useState<'public' | 'group'>('public')
-  const [groupId, setGroupId] = useState<string>(groups[0]?.id ?? '')
+  const [groupId, setGroupId] = useState<string>(replyTarget?.groupId ?? groups[0]?.id ?? '')
   const [isAnonymous, setIsAnonymous] = useState(false)
 
   const [placeLabel, setPlaceLabel] = useState('')
@@ -74,33 +78,39 @@ export function ComposeFlow({
   const removeMedia = (id: string) =>
     setMedia((m) => m.filter((x) => x.id !== id))
 
-  const canSubmit =
-    !!position &&
-    (message.trim().length > 0 || media.length > 0) &&
-    (visibility !== 'group' || !!groupId)
+  const canSubmit = replyTarget
+    ? message.trim().length > 0 || media.length > 0
+    : !!position && (message.trim().length > 0 || media.length > 0)
+
+  const currentVisibility = replyTarget?.visibility ?? visibility
+  const submitLocation = replyTarget?.location ?? position
 
   const submit = async () => {
-    if (!canSubmit || !position || submitting) return
+    if (!canSubmit || !submitLocation || submitting) return
     setSubmitting(true)
     try {
       await onSubmit({
-        location: position,
+        location: submitLocation,
         message: message.trim(),
         link: link.trim() || undefined,
-        // グループ投稿は誰からかが分かる方が嬉しいので名前を出す。全体公開は匿名選択可。
         authorName:
-          visibility === 'group'
+          currentVisibility === 'group'
             ? profile.name
             : isAnonymous
               ? undefined
               : profile.name,
-        isAnonymous: visibility === 'public' && isAnonymous,
+        isAnonymous: currentVisibility === 'public' && isAnonymous,
         placeLabel: placeLabel.trim() || undefined,
         media,
         mine: true,
-        visibility,
-        groupId: visibility === 'group' ? groupId : undefined,
+        visibility: currentVisibility,
+        groupId:
+          currentVisibility === 'group'
+            ? replyTarget?.groupId ?? groupId
+            : undefined,
         authorId: profile.id,
+        replyToId: replyTarget?.id,
+        rootId: replyTarget?.rootId ?? replyTarget?.id,
       })
     } catch (e) {
       console.error(e)
@@ -111,7 +121,7 @@ export function ComposeFlow({
 
   if (submitting) {
     return (
-      <Sheet title="ことづて" onClose={() => {}} dismissOnScrim={false}>
+      <Sheet title={mode === 'reply' ? '返信' : 'ことづて'} onClose={() => {}} dismissOnScrim={false}>
         <div className="sending" role="status" aria-live="polite">
           <div className="spinner spinner--ink" />
           <p>そっと、この場所に結んでいます…</p>
@@ -121,35 +131,46 @@ export function ComposeFlow({
   }
 
   return (
-    <Sheet title="ここに、ことづてを残す" onClose={onClose}>
+    <Sheet title={mode === 'reply' ? '返信を残す' : 'ここに、ことづてを残す'} onClose={onClose}>
       <div className="compose">
-        {/* 場所（今いる場所のみ） */}
-        {position ? (
+        {replyTarget && (
           <div className="place-chosen" role="status">
             <LocateIcon width={24} height={24} />
             <div>
-              <b>いまいる場所に残します</b>
-              <small>
-                {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
-              </small>
+              <b>『{replyTarget.placeLabel ?? replyTarget.authorName ?? 'このことづて'}』へ返信します</b>
+              <small>元のことづてを読んで、そのまま返事を書けます。</small>
             </div>
-          </div>
-        ) : (
-          <div className="place-missing" role="status">
-            <div>
-              <b>現在地がまだ取得できていません</b>
-              <small>ことづては「いまいる場所」にだけ残せます。</small>
-            </div>
-            <button className="btn btn--soft" onClick={onRetryLocation}>
-              現在地を取得
-            </button>
           </div>
         )}
+
+        {/* 場所（今いる場所のみ） */}
+        {!replyTarget &&
+          (position ? (
+            <div className="place-chosen" role="status">
+              <LocateIcon width={24} height={24} />
+              <div>
+                <b>いまいる場所に残します</b>
+                <small>
+                  {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
+                </small>
+              </div>
+            </div>
+          ) : (
+            <div className="place-missing" role="status">
+              <div>
+                <b>現在地がまだ取得できていません</b>
+                <small>ことづては「いまいる場所」にだけ残せます。</small>
+              </div>
+              <button className="btn btn--soft" onClick={onRetryLocation}>
+                現在地を取得
+              </button>
+            </div>
+          ))}
 
         {/* 本文 */}
         <div className="field">
           <label className="field__label" htmlFor="cz-message">
-            ことば
+            {mode === 'reply' ? '返信' : 'ことば'}
           </label>
           <textarea
             id="cz-message"
@@ -157,7 +178,9 @@ export function ComposeFlow({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder={
-              'ここに、ことづてを綴ってください。\nこの場所を訪れた誰かに、そっと届きます。'
+              mode === 'reply'
+                ? 'ここに返信を書いてください。\nこのことづてへ、そっと届きます。'
+                : 'ここに、ことづてを綴ってください。\nこの場所を訪れた誰かに、そっと届きます。'
             }
           />
         </div>
@@ -272,85 +295,99 @@ export function ComposeFlow({
         </div>
 
         {/* 場所の呼び名 */}
-        <div className="field">
-          <label className="field__label" htmlFor="cz-place">
-            場所の呼び名 <small>（任意）</small>
-          </label>
-          <input
-            id="cz-place"
-            className="input"
-            value={placeLabel}
-            onChange={(e) => setPlaceLabel(e.target.value)}
-            placeholder="卒業した教室、いつもの帰り道…"
-          />
-        </div>
+        {!(replyTarget && mode === 'reply') && (
+          <div className="field">
+            <label className="field__label" htmlFor="cz-place">
+              場所の呼び名 <small>（任意）</small>
+            </label>
+            <input
+              id="cz-place"
+              className="input"
+              value={placeLabel}
+              onChange={(e) => setPlaceLabel(e.target.value)}
+              placeholder="卒業した教室、いつもの帰り道…"
+            />
+          </div>
+        )}
 
         {/* 公開範囲設定 */}
-        <div className="field">
-          <span className="field__label">公開範囲</span>
-          <div className="visibility-selector" role="group" aria-label="公開範囲の選択">
-            <button
-              type="button"
-              className="visibility-btn"
-              aria-pressed={visibility === 'public'}
-              onClick={() => setVisibility('public')}
-            >
-              全体公開
-            </button>
-            <button
-              type="button"
-              className="visibility-btn"
-              aria-pressed={visibility === 'group'}
-              onClick={() => {
-                setVisibility('group')
-                setIsAnonymous(false)
-                if (!groupId && groups[0]) setGroupId(groups[0].id)
-              }}
-            >
-              <LockIcon width={16} height={16} style={{ color: 'inherit' }} />
-              グループ限定
-            </button>
-          </div>
-
-          {visibility === 'group' &&
-            (groups.length === 0 ? (
-              <p className="visibility-note">
-                参加しているグループがありません。プロフィール画面でグループを作成、または参加してください。
-              </p>
-            ) : (
-              <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
-                <label className="field__label" htmlFor="cz-group">
-                  どのグループに残す？
-                </label>
-                <select
-                  id="cz-group"
-                  className="input"
-                  value={groupId}
-                  onChange={(e) => setGroupId(e.target.value)}
-                >
-                  {groups.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}（{g.id}）
-                    </option>
-                  ))}
-                </select>
-                <p className="visibility-note">
-                  このグループに参加している人だけが、地図で見つけて開封できます。
-                </p>
-              </div>
-            ))}
-
-          {visibility === 'public' && (
+        {replyTarget ? (
+          <div className="field">
+            <span className="field__label">公開範囲</span>
             <p className="visibility-note">
-              このことづては、場所を訪れたすべてのユーザーが開封できます。
+              返信は元のことづてと同じ公開範囲で送られます。
             </p>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="field">
+            <span className="field__label">公開範囲</span>
+            <div className="visibility-selector" role="group" aria-label="公開範囲の選択">
+              <button
+                type="button"
+                className="visibility-btn"
+                aria-pressed={visibility === 'public'}
+                onClick={() => {
+                  setVisibility('public')
+                  setIsAnonymous(false)
+                }}
+              >
+                全体公開
+              </button>
+              <button
+                type="button"
+                className="visibility-btn"
+                aria-pressed={visibility === 'group'}
+                onClick={() => {
+                  setVisibility('group')
+                  setIsAnonymous(false)
+                  if (!groupId && groups[0]) setGroupId(groups[0].id)
+                }}
+              >
+                <LockIcon width={16} height={16} style={{ color: 'inherit' }} />
+                グループ限定
+              </button>
+            </div>
+
+            {visibility === 'group' &&
+              (groups.length === 0 ? (
+                <p className="visibility-note">
+                  参加しているグループがありません。プロフィール画面でグループを作成、または参加してください。
+                </p>
+              ) : (
+                <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+                  <label className="field__label" htmlFor="cz-group">
+                    どのグループに残す？
+                  </label>
+                  <select
+                    id="cz-group"
+                    className="input"
+                    value={groupId}
+                    onChange={(e) => setGroupId(e.target.value)}
+                  >
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name}（{g.id}）
+                      </option>
+                    ))}
+                  </select>
+                  <p className="visibility-note">
+                    このグループに参加している人だけが、地図で見つけて開封できます。
+                  </p>
+                </div>
+              ))}
+
+            {visibility === 'public' && (
+              <p className="visibility-note">
+                このことづては、場所を訪れたすべてのユーザーが開封できます。
+              </p>
+            )}
+          </div>
+        )}
 
         {/* 投稿者の名前（プロフィール連動） */}
         <div className="field">
           <span className="field__label">あなたの呼び名</span>
-          {visibility === 'group' ? (
+          {currentVisibility === 'group' ? (
             <div className="visibility-note" style={{ color: 'var(--c-ink)', fontWeight: 'bold', fontSize: '0.95rem', marginTop: 4 }}>
               {profile.avatarEmoji} {profile.name} <small style={{ fontWeight: 'normal', color: 'var(--c-ink-2)' }}>（グループ限定のため匿名にできません）</small>
             </div>

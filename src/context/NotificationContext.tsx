@@ -21,7 +21,8 @@ interface NotificationContextType {
     title: string,
     message: string,
     type: 'near' | 'unlockable' | 'system' | 'received',
-    relatedId?: string
+    relatedId?: string,
+    recipientUserId?: string
   ) => AppNotification
   markAsRead: (id: string) => void
   markAllAsRead: () => void
@@ -123,8 +124,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       title: string,
       message: string,
       type: 'near' | 'unlockable' | 'system' | 'received',
-      relatedId?: string
+      relatedId?: string,
+      recipientUserId?: string
     ) => {
+      const targetUserId = recipientUserId ?? remoteUserId
       const newNotif: AppNotification = {
         id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         title,
@@ -135,10 +138,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         read: false,
       }
 
-      setNotifications((prev) => [newNotif, ...prev])
+      const shouldStoreLocally = !useRemote || !targetUserId || targetUserId === remoteUserId
+      if (shouldStoreLocally) {
+        setNotifications((prev) => [newNotif, ...prev])
+      }
 
-      if (useRemote && remoteUserId) {
-        createRemoteNotification(remoteUserId, newNotif).catch((e) => {
+      if (useRemote && targetUserId) {
+        createRemoteNotification(targetUserId, newNotif).catch((e) => {
           console.warn('Remote notification could not be saved:', e)
         })
       }

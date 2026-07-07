@@ -38,6 +38,10 @@ export interface MediaItem {
  */
 export interface Kotozute {
   id: string
+  /** 返信先のことづてID（返信でない場合は未設定） */
+  replyToId?: string
+  /** スレッドの起点となることづてID（自分が起点なら自分のID） */
+  rootId?: string
   /** 残した位置 */
   location: LatLng
   /** 本文・言葉 */
