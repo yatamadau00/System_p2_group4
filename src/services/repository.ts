@@ -13,9 +13,9 @@ export type SeedKotozute = NewKotozute & { createdAt?: number }
  */
 export interface KotozuteRepository {
   /** すべてのことづてを取得（新しい順） */
-  list(): Promise<Kotozute[]>
+  list(userId?: string | null): Promise<Kotozute[]>
   /** 1件取得 */
-  get(id: string): Promise<Kotozute | undefined>
+  get(id: string, userId?: string | null): Promise<Kotozute | undefined>
   /** 新規作成して保存。確定した Kotozute を返す */
   create(input: NewKotozute): Promise<Kotozute>
   /** 削除 */
@@ -24,6 +24,11 @@ export interface KotozuteRepository {
   listOpenHistory(userId: string): Promise<KotozuteOpenHistory[]>
   /** 指定ユーザーの開封を記録。新規記録なら true */
   markOpened(kotozuteId: string, userId: string): Promise<boolean>
+  /** 指定ユーザーのいいね状態を切り替え、更新後の状態を返す */
+  toggleLike(
+    kotozuteId: string,
+    userId: string,
+  ): Promise<{ liked: boolean; likesCount: number }>
   /** 初回起動時にサンプルを投入（既にデータがあれば何もしない） */
   ensureSeed(seed: SeedKotozute[]): Promise<void>
 }
