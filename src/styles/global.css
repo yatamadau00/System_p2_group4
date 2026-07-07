@@ -169,6 +169,30 @@ a,
 }
 
 /* prefers-reduced-motion を尊重：演出を静止させる */
+
+/*
+@media (max-width: 480px) {
+  body {
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  p,
+  span,
+  div,
+  li {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  button,
+  a,
+  [role='button'] {
+    min-height: 44px;
+  }
+}
+*/
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
