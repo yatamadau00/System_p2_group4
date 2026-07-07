@@ -142,6 +142,7 @@
   color: var(--c-ink-2);
 }
 
+/*
 @media (max-width: 480px) {
   .nearby-deck {
     bottom: calc(var(--safe-bottom) + var(--sp-1));
@@ -177,3 +178,4 @@
     padding: var(--sp-3) var(--sp-3);
   }
 }
+*/
