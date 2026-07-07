@@ -525,6 +525,7 @@
   border-radius: 18px;
   padding: var(--sp-3);
   box-shadow: 0 10px 26px rgba(37, 29, 18, 0.05);
+  text-align: left;
 }
 
 .thread-reply__meta {
@@ -565,6 +566,22 @@
   font-size: 0.76rem;
   text-decoration: underline;
   text-underline-offset: 3px;
+  border: none;
+  cursor: pointer;
+}
+
+.thread-reply__report {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  color: var(--c-ink-3);
+  font-size: 0.76rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  border: none;
+  cursor: pointer;
 }
 
 /* ====== フレンド限定バッジ ====== */
