@@ -186,3 +186,44 @@
   letter-spacing: 0;
 }
 
+@media (max-width: 480px) {
+  .segmented {
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .segmented button {
+    font-size: 0.8rem;
+    padding: 8px 6px;
+  }
+
+  .cz-row {
+    align-items: flex-start;
+    gap: var(--sp-2);
+    padding: var(--sp-3);
+  }
+
+  .cz-row__main {
+    display: grid;
+    gap: 2px;
+  }
+
+  .cz-row__place,
+  .cz-row__sub {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: initial;
+    line-height: 1.45;
+  }
+
+  .cz-row__status {
+    align-self: flex-start;
+    margin-left: auto;
+  }
+
+  .cz-row__delete {
+    width: 34px;
+    height: 34px;
+  }
+}
+

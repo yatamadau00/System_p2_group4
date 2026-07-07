@@ -141,3 +141,39 @@
   line-height: 1.55;
   color: var(--c-ink-2);
 }
+
+@media (max-width: 480px) {
+  .nearby-deck {
+    bottom: calc(var(--safe-bottom) + var(--sp-1));
+  }
+
+  .nearby-scroll {
+    padding: var(--sp-2) var(--sp-3);
+  }
+
+  .nearby-card {
+    flex-basis: 84%;
+    max-width: min(320px, calc(100vw - 24px));
+    align-items: flex-start;
+    gap: var(--sp-2);
+    padding: var(--sp-3);
+  }
+
+  .nearby-card__place,
+  .nearby-card__meta {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: initial;
+    line-height: 1.45;
+  }
+
+  .nearby-card__sub {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .nearby-empty {
+    margin: 0 var(--sp-3);
+    padding: var(--sp-3) var(--sp-3);
+  }
+}
