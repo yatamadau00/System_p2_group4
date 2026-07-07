@@ -169,6 +169,8 @@ a,
 }
 
 /* prefers-reduced-motion を尊重：演出を静止させる */
+
+/*
 @media (max-width: 480px) {
   body {
     font-size: 15px;
@@ -189,6 +191,7 @@ a,
     min-height: 44px;
   }
 }
+*/
 
 @media (prefers-reduced-motion: reduce) {
   *,
