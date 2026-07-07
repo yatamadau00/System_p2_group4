@@ -42,6 +42,8 @@ interface Row {
   is_anonymous: boolean | null
   is_sample: boolean | null
   created_at: string
+  valid_from: string | null
+  valid_to: string | null
 }
 
 // ---- 「自分が残した」IDの端末ローカル記録（IndexedDB） ----
@@ -96,6 +98,8 @@ function rowToKotozute(row: Row, mineIds: Set<string>): Kotozute {
         ? row.visibility
         : undefined,
     groupId: row.group_id ?? undefined,
+    validFrom: row.valid_from ? new Date(row.valid_from).getTime() : undefined,
+    validTo: row.valid_to ? new Date(row.valid_to).getTime() : undefined,
   }
 }
 
@@ -179,6 +183,8 @@ export const supabaseRepository: KotozuteRepository = {
         visibility: input.visibility ?? 'public',
         group_id: input.groupId ?? null,
         is_sample: false,
+        valid_from: input.validFrom ? new Date(input.validFrom).toISOString() : null,
+        valid_to: input.validTo ? new Date(input.validTo).toISOString() : null,
       })
       .select('*, author:users!kotozute_author_id_fkey(display_name)')
       .single()
@@ -273,6 +279,8 @@ export const supabaseRepository: KotozuteRepository = {
         group_id: s.groupId ?? null,
         is_sample: true,
         created_at: new Date(s.createdAt ?? Date.now()).toISOString(),
+        valid_from: s.validFrom ? new Date(s.validFrom).toISOString() : null,
+        valid_to: s.validTo ? new Date(s.validTo).toISOString() : null,
       }
     })
     await supabase!.from('kotozute').insert(rows)

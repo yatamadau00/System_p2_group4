@@ -54,6 +54,8 @@ export function ComposeFlow({
   const [media, setMedia] = useState<MediaItem[]>([])
   const [recording, setRecording] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [validFromStr, setValidFromStr] = useState('')
+  const [validToStr, setValidToStr] = useState('')
 
   const imageInput = useRef<HTMLInputElement>(null)
   const videoInput = useRef<HTMLInputElement>(null)
@@ -89,6 +91,9 @@ export function ComposeFlow({
     if (!canSubmit || !submitLocation || submitting) return
     setSubmitting(true)
     try {
+      const validFrom = validFromStr ? new Date(validFromStr).getTime() : undefined
+      const validTo = validToStr ? new Date(validToStr).getTime() : undefined
+
       await onSubmit({
         location: submitLocation,
         message: message.trim(),
@@ -111,6 +116,8 @@ export function ComposeFlow({
         authorId: profile.id,
         replyToId: replyTarget?.id,
         rootId: replyTarget?.rootId ?? replyTarget?.id,
+        validFrom,
+        validTo,
       })
     } catch (e) {
       console.error(e)
@@ -307,6 +314,42 @@ export function ComposeFlow({
               onChange={(e) => setPlaceLabel(e.target.value)}
               placeholder="卒業した教室、いつもの帰り道…"
             />
+          </div>
+        )}
+
+        {/* 開封期間設定 */}
+        {!(replyTarget && mode === 'reply') && (
+          <div className="field">
+            <span className="field__label">開封できる期間 <small>（任意）</small></span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '6px' }}>
+              <div>
+                <label className="field__label" htmlFor="cz-valid-from" style={{ fontSize: '0.8rem', color: 'var(--c-ink-2)' }}>
+                  開始日時
+                </label>
+                <input
+                  id="cz-valid-from"
+                  className="input"
+                  type="datetime-local"
+                  value={validFromStr}
+                  onChange={(e) => setValidFromStr(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="field__label" htmlFor="cz-valid-to" style={{ fontSize: '0.8rem', color: 'var(--c-ink-2)' }}>
+                  終了日時
+                </label>
+                <input
+                  id="cz-valid-to"
+                  className="input"
+                  type="datetime-local"
+                  value={validToStr}
+                  onChange={(e) => setValidToStr(e.target.value)}
+                />
+              </div>
+            </div>
+            <p className="visibility-note">
+              期間を設定すると、その期間外はこの場所の地図上に表示されなくなります。
+            </p>
           </div>
         )}
 

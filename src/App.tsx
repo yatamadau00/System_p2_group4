@@ -55,9 +55,18 @@ export function App() {
   const position = geo.position
 
   // 表示可能なことづてにフィルター（全体公開 or 自分が作成 or 登録済みのフレンドが作成したもの）
+  // 期間外のもの、および返信（ピン表示不要）は除外
   const visibleItems = useMemo(() => {
+    const now = Date.now()
     return items.filter((item) => {
+      // 1. 開封有効期間のチェック
+      if (item.validFrom && now < item.validFrom) return false
+      if (item.validTo && now > item.validTo) return false
+
+      // 2. 返信は地図にピン表示しない
       if (item.replyToId) return false
+
+      // 3. 公開範囲や作成者によるフィルター
       if (item.mine) return true
       if (!item.visibility || item.visibility === 'public') return true
       if (item.visibility === 'group' && item.groupId && isInGroup(item.groupId)) {
