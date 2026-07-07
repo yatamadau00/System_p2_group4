@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { EnrichedKotozute } from '../lib/enrich'
 import { formatDistance } from '../lib/geo'
+import { groupColorIndex } from '../lib/groupColor'
 import { kindLabel } from '../lib/media'
 import { NEAR_RADIUS_M, UNLOCK_RADIUS_M } from '../config'
 import { MediaView } from './MediaView'
@@ -174,7 +175,7 @@ export function OpenView({
               {kotozute.placeLabel ?? 'この場所のことづて'}
             </div>
             <button
-              className="seal"
+              className={`seal${kotozute.visibility === 'group' && kotozute.groupId ? ` seal--gc-${groupColorIndex(kotozute.groupId)}` : ''}`}
               onClick={openSeal}
               disabled={phase === 'opening'}
               aria-label="封を開ける"
