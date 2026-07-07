@@ -21,6 +21,7 @@ import './App.css'
 
 type MapLayerKey = 'public' | 'group' | 'owned'
 type MapLayerVisibility = Record<MapLayerKey, boolean>
+type GroupLayerVisibility = Record<string, boolean>
 
 const initialMapLayerVisibility: MapLayerVisibility = {
   public: true,
@@ -32,6 +33,12 @@ function getMapLayerKey(item: Kotozute): MapLayerKey {
   if (item.mine || item.openedByCurrentUser) return 'owned'
   if (item.visibility === 'group') return 'group'
   return 'public'
+}
+
+function isGroupVisible(item: Kotozute, groupLayerVisibility: GroupLayerVisibility) {
+  if (item.visibility !== 'group') return true
+  if (!item.groupId) return false
+  return groupLayerVisibility[item.groupId] ?? true
 }
 
 export function App() {
@@ -74,6 +81,7 @@ export function App() {
   const [mapLayerVisibility, setMapLayerVisibility] = useState<MapLayerVisibility>(
     initialMapLayerVisibility,
   )
+  const [groupLayerVisibility, setGroupLayerVisibility] = useState<GroupLayerVisibility>({})
 
   const mapRef = useRef<google.maps.Map | null>(null)
 
@@ -95,8 +103,14 @@ export function App() {
   // 現在地からの距離・近接状態を付与
   const enriched = useMemo(() => enrich(visibleItems, position), [visibleItems, position])
   const mapItems = useMemo(
-    () => enriched.filter((item) => mapLayerVisibility[getMapLayerKey(item)]),
-    [enriched, mapLayerVisibility],
+    () =>
+      enriched.filter((item) => {
+        const layerKey = getMapLayerKey(item)
+        if (!mapLayerVisibility[layerKey]) return false
+        if (layerKey !== 'group') return true
+        return isGroupVisible(item, groupLayerVisibility)
+      }),
+    [enriched, groupLayerVisibility, mapLayerVisibility],
   )
   const unlockableCount = useMemo(
     () => mapItems.filter((k) => k.proximity === 'unlockable').length,
@@ -232,6 +246,13 @@ export function App() {
     setMapLayerVisibility((current) => ({
       ...current,
       [key]: !current[key],
+    }))
+  }, [])
+
+  const handleToggleGroupLayer = useCallback((groupId: string) => {
+    setGroupLayerVisibility((current) => ({
+      ...current,
+      [groupId]: !(current[groupId] ?? true),
     }))
   }, [])
 
@@ -433,6 +454,9 @@ export function App() {
         onOpenNotifications={() => setShowNotifications(true)}
         mapLayerVisibility={mapLayerVisibility}
         onToggleMapLayer={handleToggleMapLayer}
+        groups={groups}
+        groupLayerVisibility={groupLayerVisibility}
+        onToggleGroupLayer={handleToggleGroupLayer}
       />
 
       {/* 位置情報の状態フィードバック（オーバーレイ中は隠す） */}
