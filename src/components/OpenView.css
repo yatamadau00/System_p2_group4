@@ -480,6 +480,30 @@
   justify-content: center;
   gap: var(--sp-3);
   padding-top: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.letter__like {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--c-washi-2);
+  border: 1px solid rgba(191, 87, 74, 0.26);
+  border-radius: 999px;
+  color: #bf574a;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 6px 11px;
+}
+
+.letter__like--liked {
+  background: #fff1ef;
+  color: #b8413e;
+}
+
+.letter__like:disabled {
+  opacity: 0.64;
+  cursor: wait;
 }
 
 .letter__reply {
@@ -600,4 +624,3 @@
   letter-spacing: 0;
   vertical-align: middle;
 }
-

@@ -70,6 +70,10 @@ export interface Kotozute {
   groupId?: string
   /** 現在のログインユーザーが開封済みか */
   openedByCurrentUser?: boolean
+  /** いいねされた数 */
+  likesCount?: number
+  /** 現在のログインユーザーがいいね済みか */
+  likedByCurrentUser?: boolean
 }
 
 /** ユーザーがことづてを取得（開封）した履歴 */
