@@ -203,18 +203,20 @@ export const supabaseRepository: KotozuteRepository = {
     await removeMineId(id)
   },
 
-  async listOpenedIds(userId) {
+  async listOpenHistory(userId) {
     const { data, error } = await supabase!
       .from('kotozute_opens')
-      .select('kotozute_id')
+      .select('kotozute_id, opened_at')
       .eq('user_id', userId)
+      .order('opened_at', { ascending: false })
     if (error) {
-      console.warn('Kotozute open state could not be loaded:', error)
-      return new Set()
+      console.warn('Kotozute open history could not be loaded:', error)
+      return []
     }
-    return new Set(
-      (data as { kotozute_id: string }[]).map((row) => row.kotozute_id),
-    )
+    return (data as { kotozute_id: string; opened_at: string }[]).map((row) => ({
+      kotozuteId: row.kotozute_id,
+      openedAt: new Date(row.opened_at).getTime(),
+    }))
   },
 
   async markOpened(kotozuteId, userId) {
@@ -235,6 +237,7 @@ export const supabaseRepository: KotozuteRepository = {
       .insert({
         user_id: userId,
         kotozute_id: kotozuteId,
+        opened_at: new Date().toISOString(),
       })
     if (error) {
       console.warn('Kotozute open state could not be saved:', error)

@@ -22,7 +22,7 @@ import './App.css'
 export function App() {
   const geo = useGeolocation(true)
   const { currentUser, logout } = useAuth()
-  const { items, loading, create, remove, markOpened } = useKotozute(
+  const { items, openHistory, loading, create, remove, markOpened } = useKotozute(
     currentUser?.id,
   )
   const { unreadCount, addNotification } = useNotifications()
@@ -440,6 +440,7 @@ export function App() {
       {showProfile && (
         <ProfileSheet
           items={visibleItems}
+          openHistory={openHistory}
           profile={profile}
           updateProfile={updateProfile}
           groups={groups}
