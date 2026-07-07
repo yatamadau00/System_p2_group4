@@ -67,6 +67,19 @@ export function useKotozute(userId?: string | null) {
     [refresh],
   )
 
+  const update = useCallback(
+    async (
+      id: string,
+      patch: Partial<Pick<Kotozute, 'message' | 'placeLabel' | 'link' | 'media'>>,
+    ) => {
+      const repo = getRepository()
+      const updated = await repo.update(id, patch)
+      await refresh()
+      return updated
+    },
+    [refresh],
+  )
+
   const remove = useCallback(
     async (id: string) => {
       const repo = getRepository()
@@ -104,6 +117,7 @@ export function useKotozute(userId?: string | null) {
     loading,
     error,
     create,
+    update,
     remove,
     refresh,
     markOpened,

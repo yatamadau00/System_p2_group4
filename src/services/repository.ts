@@ -18,6 +18,11 @@ export interface KotozuteRepository {
   get(id: string, userId?: string | null): Promise<Kotozute | undefined>
   /** 新規作成して保存。確定した Kotozute を返す */
   create(input: NewKotozute): Promise<Kotozute>
+  /** 本文・場所名・リンク・メディアを更新する（自分のことづての編集用） */
+  update(
+    id: string,
+    patch: Partial<Pick<Kotozute, 'message' | 'placeLabel' | 'link' | 'media'>>,
+  ): Promise<Kotozute>
   /** 削除 */
   remove(id: string): Promise<void>
   /** 指定ユーザーのことづて取得履歴を取得（新しい順） */

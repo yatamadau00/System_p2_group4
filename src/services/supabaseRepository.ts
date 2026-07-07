@@ -240,6 +240,54 @@ export const supabaseRepository: KotozuteRepository = {
     return rowToKotozute(data as Row, new Set([id]))
   },
 
+  async update(id, patch) {
+    const row: Record<string, unknown> = {}
+    if (patch.message !== undefined) row.message = patch.message
+    if (patch.placeLabel !== undefined) row.place_label = patch.placeLabel || null
+    if (patch.link !== undefined) row.link = patch.link || null
+
+    // メディアの更新：新規（blob）はアップロード、既存（url）はそのまま残す
+    if (patch.media !== undefined) {
+      const media: MediaJson[] = []
+      for (const m of patch.media) {
+        if (m.blob) {
+          const path = `${id}/${uid()}.${extFor(m.mimeType, m.fileName, m.kind)}`
+          const { error: upErr } = await supabase!.storage
+            .from(MEDIA_BUCKET)
+            .upload(path, m.blob, { contentType: m.mimeType, upsert: false })
+          if (upErr) throw upErr
+          const { data: pub } = supabase!.storage
+            .from(MEDIA_BUCKET)
+            .getPublicUrl(path)
+          media.push({
+            kind: m.kind,
+            url: pub.publicUrl,
+            mime_type: m.mimeType,
+            file_name: m.fileName,
+          })
+        } else if (m.url) {
+          media.push({
+            kind: m.kind,
+            url: m.url,
+            mime_type: m.mimeType,
+            file_name: m.fileName,
+          })
+        }
+      }
+      row.media = media
+    }
+
+    const { data, error } = await supabase!
+      .from('kotozute')
+      .update(row)
+      .eq('id', id)
+      .select('*, author:users!kotozute_author_id_fkey(display_name)')
+      .single()
+    if (error) throw error
+    const mine = await getMineIds()
+    return rowToKotozute(data as Row, mine)
+  },
+
   async remove(id) {
     // 付随メディアもベストエフォートで削除
     const { data: files } = await supabase!.storage
