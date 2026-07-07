@@ -75,7 +75,7 @@ export function OpenView({
     (!!currentUser && kotozute.authorId === currentUser.id)
   const initiallyUnlockable = kotozute.proximity === 'unlockable'
   const [phase, setPhase] = useState<Phase>(
-    isOwn ? 'opened' : initiallyUnlockable ? 'ready' : 'locked',
+    isOwn || initiallyUnlockable ? 'ready' : 'locked',
   )
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [reportTargetId, setReportTargetId] = useState<string | null>(null)
