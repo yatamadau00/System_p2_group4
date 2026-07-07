@@ -225,7 +225,7 @@ export function MapScreen(props: MapScreenProps) {
         aria-pressed={mapLayerVisibility.owned}
         onClick={() => onToggleMapLayer('owned')}
       >
-        自分/取得済み
+        自作/取得済み
       </button>
     </div>
   )
