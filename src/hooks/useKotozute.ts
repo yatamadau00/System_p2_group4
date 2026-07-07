@@ -111,6 +111,17 @@ export function useKotozute(userId?: string | null) {
     [refresh, userId],
   )
 
+  const toggleFavorite = useCallback(
+    async (id: string) => {
+      if (!userId) return null
+      const repo = getRepository()
+      const result = await repo.toggleFavorite(id, userId)
+      await refresh()
+      return result
+    },
+    [refresh, userId],
+  )
+
   return {
     items,
     openHistory,
@@ -122,5 +133,6 @@ export function useKotozute(userId?: string | null) {
     refresh,
     markOpened,
     toggleLike,
+    toggleFavorite,
   }
 }

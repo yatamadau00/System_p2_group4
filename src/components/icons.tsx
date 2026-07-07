@@ -134,6 +134,15 @@ export const HeartIcon = (p: IconProps & { filled?: boolean }) => {
   )
 }
 
+export const StarIcon = (p: IconProps & { filled?: boolean }) => {
+  const { filled, ...props } = p
+  return (
+    <svg {...base(props)} fill={filled ? 'currentColor' : 'none'}>
+      <path d="M12 3.4l2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" />
+    </svg>
+  )
+}
+
 /** 封筒をくわえた伝書鳩。PNG画像を埋め込んで表示する。 */
 export const PigeonIcon = (props: ImgHTMLAttributes<HTMLImageElement>) => (
   <img

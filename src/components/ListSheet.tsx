@@ -11,6 +11,7 @@ import {
   TrashIcon,
   VideoIcon,
   LockIcon,
+  StarIcon,
 } from './icons'
 import './ListSheet.css'
 
@@ -26,6 +27,7 @@ interface ListSheetProps {
   hasPosition: boolean
   onSelect: (id: string) => void
   onDelete: (id: string) => void
+  onToggleFavorite: (id: string) => void
   onClose: () => void
 }
 
@@ -34,13 +36,24 @@ export function ListSheet({
   hasPosition,
   onSelect,
   onDelete,
+  onToggleFavorite,
   onClose,
 }: ListSheetProps) {
-  const [tab, setTab] = useState<'all' | 'mine'>('all')
+  const [tab, setTab] = useState<'all' | 'favorite' | 'mine'>('all')
 
   const list = useMemo(() => {
-    const filtered = tab === 'mine' ? items.filter((k) => k.mine) : items
+    const filtered =
+      tab === 'mine'
+        ? items.filter((k) => k.mine)
+        : tab === 'favorite'
+          ? items.filter((k) => k.favoritedByCurrentUser)
+          : items
     return [...filtered].sort((a, b) => {
+      if (tab === 'favorite') {
+        if (!!a.openedByCurrentUser !== !!b.openedByCurrentUser) {
+          return a.openedByCurrentUser ? 1 : -1
+        }
+      }
       if (a.distance != null && b.distance != null) return a.distance - b.distance
       return b.createdAt - a.createdAt
     })
@@ -63,6 +76,13 @@ export function ListSheet({
         >
           わたしのことづて
         </button>
+        <button
+          role="tab"
+          aria-pressed={tab === 'favorite'}
+          onClick={() => setTab('favorite')}
+        >
+          お気に入り
+        </button>
       </div>
 
       {list.length === 0 ? (
@@ -73,11 +93,15 @@ export function ListSheet({
           <b>
             {tab === 'mine'
               ? 'まだ、ことづてを残していません'
+              : tab === 'favorite'
+                ? 'お気に入りはまだありません'
               : 'まだ、ことづてがありません'}
           </b>
           <p>
             {tab === 'mine'
               ? '思い出の場所に、最初のひとつを結んでみませんか。'
+              : tab === 'favorite'
+                ? '行きたい場所や、あとで開きたいことづてに星を付けておけます。'
               : 'この街のどこかに、誰かの想いが置かれるのを待っています。'}
           </p>
         </div>
@@ -123,6 +147,30 @@ export function ListSheet({
                       {statusText}
                     </span>
                   ) : null}
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className={`cz-row__favorite${k.favoritedByCurrentUser ? ' cz-row__favorite--active' : ''}`}
+                    aria-label={
+                      k.favoritedByCurrentUser
+                        ? 'お気に入りから外す'
+                        : 'お気に入りに追加'
+                    }
+                    aria-pressed={!!k.favoritedByCurrentUser}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onToggleFavorite(k.id)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        onToggleFavorite(k.id)
+                      }
+                    }}
+                  >
+                    <StarIcon width={18} height={18} filled={!!k.favoritedByCurrentUser} />
+                  </span>
                   {k.mine && (
                     <span
                       role="button"
