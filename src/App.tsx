@@ -53,6 +53,7 @@ export function App() {
     remove,
     markOpened,
     toggleLike,
+    toggleFavorite,
   } = useKotozute(currentUser?.id)
   const { unreadCount, addNotification } = useNotifications()
   const { profile, updateProfile } = useUserProfile(currentUser)
@@ -82,6 +83,7 @@ export function App() {
     initialMapLayerVisibility,
   )
   const [groupLayerVisibility, setGroupLayerVisibility] = useState<GroupLayerVisibility>({})
+  const [favoriteOnly, setFavoriteOnly] = useState(false)
 
   const mapRef = useRef<google.maps.Map | null>(null)
 
@@ -108,9 +110,14 @@ export function App() {
         const layerKey = getMapLayerKey(item)
         if (!mapLayerVisibility[layerKey]) return false
         if (layerKey !== 'group') return true
-        return isGroupVisible(item, groupLayerVisibility)
+        if (!isGroupVisible(item, groupLayerVisibility)) return false
+        return true
+      })
+        .filter((item) => {
+          if (!favoriteOnly) return true
+          return !!item.favoritedByCurrentUser
       }),
-    [enriched, groupLayerVisibility, mapLayerVisibility],
+    [enriched, favoriteOnly, groupLayerVisibility, mapLayerVisibility],
   )
   const unlockableCount = useMemo(
     () => mapItems.filter((k) => k.proximity === 'unlockable').length,
@@ -431,6 +438,25 @@ export function App() {
     [currentUser, toggleLike],
   )
 
+  const handleToggleFavorite = useCallback(
+    async (id: string) => {
+      if (!currentUser) {
+        setShowAuth(true)
+        return
+      }
+      try {
+        const result = await toggleFavorite(id)
+        if (result) {
+          setToast(result.favorited ? 'お気に入りに追加しました' : 'お気に入りから外しました')
+        }
+      } catch (e) {
+        console.warn('Failed to toggle kotozute favorite:', e)
+        setToast('お気に入りを更新できませんでした')
+      }
+    },
+    [currentUser, toggleFavorite],
+  )
+
   const overlayOpen =
     composing || showList || showProfile || !!selected || showAuth || showNotifications
 
@@ -454,6 +480,8 @@ export function App() {
         onOpenNotifications={() => setShowNotifications(true)}
         mapLayerVisibility={mapLayerVisibility}
         onToggleMapLayer={handleToggleMapLayer}
+        favoriteOnly={favoriteOnly}
+        onToggleFavoriteOnly={() => setFavoriteOnly((value) => !value)}
         groups={groups}
         groupLayerVisibility={groupLayerVisibility}
         onToggleGroupLayer={handleToggleGroupLayer}
@@ -515,6 +543,7 @@ export function App() {
             handleSelect(id)
           }}
           onDelete={handleDelete}
+          onToggleFavorite={handleToggleFavorite}
           onClose={() => setShowList(false)}
         />
       )}
@@ -561,6 +590,7 @@ export function App() {
           onOpened={handleOpened}
           onEdit={update}
           onToggleLike={handleToggleLike}
+          onToggleFavorite={handleToggleFavorite}
         />
       )}
 

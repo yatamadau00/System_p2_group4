@@ -422,6 +422,21 @@
   color: var(--c-amber-deep);
 }
 
+.map-layer--favorite::before {
+  border-radius: 0;
+  width: auto;
+  height: auto;
+  background: none;
+  content: '★';
+  line-height: 1;
+  opacity: 0.72;
+}
+
+.map-layer--favorite.map-layer--active::before {
+  color: #c49124;
+  opacity: 1;
+}
+
 .map-layer-group {
   position: relative;
 }

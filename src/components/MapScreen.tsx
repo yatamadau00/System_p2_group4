@@ -39,6 +39,8 @@ interface MapScreenProps {
   onOpenNotifications: () => void
   mapLayerVisibility: MapLayerVisibility
   onToggleMapLayer: (key: MapLayerKey) => void
+  favoriteOnly: boolean
+  onToggleFavoriteOnly: () => void
   groups: Group[]
   groupLayerVisibility: GroupLayerVisibility
   onToggleGroupLayer: (groupId: string) => void
@@ -70,6 +72,8 @@ export function MapScreen(props: MapScreenProps) {
     onOpenNotifications,
     mapLayerVisibility,
     onToggleMapLayer,
+    favoriteOnly,
+    onToggleFavoriteOnly,
     groups,
     groupLayerVisibility,
     onToggleGroupLayer,
@@ -226,6 +230,14 @@ export function MapScreen(props: MapScreenProps) {
         onClick={() => onToggleMapLayer('owned')}
       >
         自作/取得済み
+      </button>
+      <button
+        className={`map-layer map-layer--favorite${favoriteOnly ? ' map-layer--active' : ''}`}
+        type="button"
+        aria-pressed={favoriteOnly}
+        onClick={onToggleFavoriteOnly}
+      >
+        お気に入り
       </button>
     </div>
   )

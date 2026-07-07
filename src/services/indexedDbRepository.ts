@@ -40,10 +40,20 @@ interface KotozuteDB extends DBSchema {
     }
     indexes: { userId: string; kotozuteId: string }
   }
+  kotozuteFavorites: {
+    key: string
+    value: {
+      id: string
+      userId: string
+      kotozuteId: string
+      createdAt: number
+    }
+    indexes: { userId: string; kotozuteId: string }
+  }
 }
 
 const DB_NAME = 'kotozute-db'
-const DB_VERSION = 4
+const DB_VERSION = 5
 const SEEDED_KEY = 'seeded'
 
 let dbPromise: Promise<IDBPDatabase<KotozuteDB>> | null = null
@@ -84,6 +94,13 @@ function db() {
           likeStore.createIndex('userId', 'userId')
           likeStore.createIndex('kotozuteId', 'kotozuteId')
         }
+        if (oldVersion < 5) {
+          const favoriteStore = database.createObjectStore('kotozuteFavorites', {
+            keyPath: 'id',
+          })
+          favoriteStore.createIndex('userId', 'userId')
+          favoriteStore.createIndex('kotozuteId', 'kotozuteId')
+        }
       },
     })
   }
@@ -110,42 +127,50 @@ function normalize(record: Kotozute): Kotozute {
     rootId: record.rootId ?? record.replyToId ?? record.id,
     likesCount: record.likesCount ?? 0,
     likedByCurrentUser: record.likedByCurrentUser ?? false,
+    favoritedByCurrentUser: record.favoritedByCurrentUser ?? false,
   }
 }
 
-async function attachLikes(
+async function attachUserState(
   records: Kotozute[],
   userId?: string | null,
 ): Promise<Kotozute[]> {
   const database = await db()
   const likes = await database.getAll('kotozuteLikes')
+  const favorites = await database.getAll('kotozuteFavorites')
   const counts = new Map<string, number>()
   const likedByUser = new Set<string>()
+  const favoritedByUser = new Set<string>()
 
   likes.forEach((like) => {
     counts.set(like.kotozuteId, (counts.get(like.kotozuteId) ?? 0) + 1)
     if (userId && like.userId === userId) likedByUser.add(like.kotozuteId)
   })
 
+  favorites.forEach((favorite) => {
+    if (userId && favorite.userId === userId) favoritedByUser.add(favorite.kotozuteId)
+  })
+
   return records.map((record) => ({
     ...normalize(record),
     likesCount: counts.get(record.id) ?? 0,
     likedByCurrentUser: likedByUser.has(record.id),
+    favoritedByCurrentUser: favoritedByUser.has(record.id),
   }))
 }
 
 export const indexedDbRepository: KotozuteRepository = {
   async list(userId) {
     const all = await (await db()).getAll('kotozute')
-    const withLikes = await attachLikes(all, userId)
-    return withLikes.sort((a, b) => b.createdAt - a.createdAt)
+    const withState = await attachUserState(all, userId)
+    return withState.sort((a, b) => b.createdAt - a.createdAt)
   },
 
   async get(id, userId) {
     const record = await (await db()).get('kotozute', id)
     if (!record) return undefined
-    const [withLikes] = await attachLikes([record], userId)
-    return withLikes
+    const [withState] = await attachUserState([record], userId)
+    return withState
   },
 
   async create(input: NewKotozute) {
@@ -179,7 +204,7 @@ export const indexedDbRepository: KotozuteRepository = {
   async remove(id) {
     const database = await db()
     const tx = database.transaction(
-      ['kotozute', 'kotozuteOpens', 'kotozuteLikes'],
+      ['kotozute', 'kotozuteOpens', 'kotozuteLikes', 'kotozuteFavorites'],
       'readwrite',
     )
     await tx.objectStore('kotozute').delete(id)
@@ -190,6 +215,13 @@ export const indexedDbRepository: KotozuteRepository = {
     const likes = await tx.objectStore('kotozuteLikes').index('kotozuteId').getAll(id)
     await Promise.all(
       likes.map((like) => tx.objectStore('kotozuteLikes').delete(like.id)),
+    )
+    const favorites = await tx
+      .objectStore('kotozuteFavorites')
+      .index('kotozuteId')
+      .getAll(id)
+    await Promise.all(
+      favorites.map((favorite) => tx.objectStore('kotozuteFavorites').delete(favorite.id)),
     )
     await tx.done
   },
@@ -238,6 +270,23 @@ export const indexedDbRepository: KotozuteRepository = {
       liked: !existing,
       likesCount: likes.length,
     }
+  },
+
+  async toggleFavorite(kotozuteId, userId) {
+    const database = await db()
+    const id = `${userId}:${kotozuteId}`
+    const existing = await database.get('kotozuteFavorites', id)
+    if (existing) {
+      await database.delete('kotozuteFavorites', id)
+    } else {
+      await database.put('kotozuteFavorites', {
+        id,
+        userId,
+        kotozuteId,
+        createdAt: Date.now(),
+      })
+    }
+    return { favorited: !existing }
   },
 
   async ensureSeed(seed: SeedKotozute[]) {

@@ -74,6 +74,8 @@ export interface Kotozute {
   likesCount?: number
   /** 現在のログインユーザーがいいね済みか */
   likedByCurrentUser?: boolean
+  /** 現在のログインユーザーがお気に入り済みか */
+  favoritedByCurrentUser?: boolean
 }
 
 /** ユーザーがことづてを取得（開封）した履歴 */
