@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { EnrichedKotozute } from '../lib/enrich'
 import type { AttachmentKind, MediaItem } from '../types'
 import { formatDistance } from '../lib/geo'
-import { groupColorIndex } from '../lib/groupColor'
+import { groupColorIndex, groupSealStyle } from '../lib/groupColor'
 import { kindLabel, uid } from '../lib/media'
 import { NEAR_RADIUS_M, UNLOCK_RADIUS_M } from '../config'
 import { MediaView } from './MediaView'
@@ -16,6 +16,7 @@ import {
   ImageIcon,
   LinkIcon,
   LockIcon,
+  StarIcon,
   TrashIcon,
   VideoIcon,
 } from './icons'
@@ -42,6 +43,7 @@ interface OpenViewProps {
   currentUserId: string | null
   onOpened?: (id: string) => void
   onToggleLike: (id: string) => Promise<void>
+  onToggleFavorite: (id: string) => Promise<void>
   /** 自分のことづての本文・場所名・リンクを編集する */
   onEdit?: (
     id: string,
@@ -63,6 +65,7 @@ export function OpenView({
   currentUserId,
   onOpened,
   onToggleLike,
+  onToggleFavorite,
   onEdit,
 }: OpenViewProps) {
   const { currentUser } = useAuth()
@@ -72,7 +75,7 @@ export function OpenView({
     (!!currentUser && kotozute.authorId === currentUser.id)
   const initiallyUnlockable = kotozute.proximity === 'unlockable'
   const [phase, setPhase] = useState<Phase>(
-    isOwn ? 'opened' : initiallyUnlockable ? 'ready' : 'locked',
+    isOwn || initiallyUnlockable ? 'ready' : 'locked',
   )
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [reportTargetId, setReportTargetId] = useState<string | null>(null)
@@ -200,7 +203,12 @@ export function OpenView({
         }}
       >
         {phase === 'locked' && (
-          <LockedView kotozute={kotozute} progress={progress} titleId={titleId} />
+          <LockedView
+            kotozute={kotozute}
+            progress={progress}
+            titleId={titleId}
+            onToggleFavorite={onToggleFavorite}
+          />
         )}
 
         {(phase === 'ready' || phase === 'opening') && (
@@ -209,7 +217,10 @@ export function OpenView({
               {kotozute.placeLabel ?? 'この場所のことづて'}
             </div>
             <button
-              className={`seal${kotozute.visibility === 'group' && kotozute.groupId ? ` seal--gc-${groupColorIndex(kotozute.groupId)}` : ''}`}
+              className="seal"
+              style={kotozute.visibility === 'group' && kotozute.groupId
+                ? groupSealStyle(groupColorIndex(kotozute.groupId))
+                : undefined}
               onClick={openSeal}
               disabled={phase === 'opening'}
               aria-label="封を開ける"
@@ -222,6 +233,11 @@ export function OpenView({
               <br />
               そっと、封を開けてみてください。
             </p>
+            <FavoriteButton
+              kotozute={kotozute}
+              onToggleFavorite={onToggleFavorite}
+              tone="night"
+            />
           </div>
         )}
 
@@ -234,6 +250,7 @@ export function OpenView({
             replies={replies}
             onReportClick={handleOpenReport}
             onToggleLike={onToggleLike}
+            onToggleFavorite={onToggleFavorite}
             canEdit={isOwn && !!onEdit}
             onEdit={onEdit}
           />
@@ -302,10 +319,12 @@ function LockedView({
   kotozute,
   progress,
   titleId,
+  onToggleFavorite,
 }: {
   kotozute: EnrichedKotozute
   progress: number
   titleId: string
+  onToggleFavorite: (id: string) => Promise<void>
 }) {
   const d = kotozute.distance
   const remaining = d != null ? Math.max(0, d - UNLOCK_RADIUS_M) : null
@@ -361,7 +380,45 @@ function LockedView({
       <div className="locked__peek">
         {kindLabel(kotozute)}が、ここで待っています
       </div>
+      <FavoriteButton
+        kotozute={kotozute}
+        onToggleFavorite={onToggleFavorite}
+        tone="night"
+      />
     </div>
+  )
+}
+
+function FavoriteButton({
+  kotozute,
+  onToggleFavorite,
+  tone = 'paper',
+}: {
+  kotozute: EnrichedKotozute
+  onToggleFavorite: (id: string) => Promise<void>
+  tone?: 'night' | 'paper'
+}) {
+  const [favoriteBusy, setFavoriteBusy] = useState(false)
+
+  return (
+    <button
+      className={`favorite-action favorite-action--${tone}${
+        kotozute.favoritedByCurrentUser ? ' favorite-action--active' : ''
+      }`}
+      onClick={async () => {
+        setFavoriteBusy(true)
+        try {
+          await onToggleFavorite(kotozute.id)
+        } finally {
+          setFavoriteBusy(false)
+        }
+      }}
+      disabled={favoriteBusy}
+      aria-pressed={!!kotozute.favoritedByCurrentUser}
+    >
+      <StarIcon width={16} height={16} filled={!!kotozute.favoritedByCurrentUser} />
+      {kotozute.favoritedByCurrentUser ? 'お気に入り済み' : 'お気に入り'}
+    </button>
   )
 }
 
@@ -373,6 +430,7 @@ function Letter({
   replies,
   onReportClick,
   onToggleLike,
+  onToggleFavorite,
   canEdit,
   onEdit,
 }: {
@@ -383,6 +441,7 @@ function Letter({
   replies: EnrichedKotozute[]
   onReportClick: (id: string) => void
   onToggleLike: (id: string) => Promise<void>
+  onToggleFavorite: (id: string) => Promise<void>
   canEdit?: boolean
   onEdit?: (
     id: string,
@@ -677,6 +736,10 @@ function Letter({
       )}
 
       <div className="letter__actions">
+        <FavoriteButton
+          kotozute={kotozute}
+          onToggleFavorite={onToggleFavorite}
+        />
         <button
           className={`letter__like${kotozute.likedByCurrentUser ? ' letter__like--liked' : ''}`}
           onClick={async () => {

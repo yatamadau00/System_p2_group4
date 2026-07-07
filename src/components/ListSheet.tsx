@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { EnrichedKotozute } from '../lib/enrich'
 import { formatDistance } from '../lib/geo'
 import { primaryKind } from '../lib/media'
@@ -11,6 +11,7 @@ import {
   TrashIcon,
   VideoIcon,
   LockIcon,
+  StarIcon,
 } from './icons'
 import './ListSheet.css'
 
@@ -24,23 +25,52 @@ const KIND_ICON = {
 interface ListSheetProps {
   items: EnrichedKotozute[]
   hasPosition: boolean
+  savedScroll?: number
+  savedTab?: 'all' | 'favorite' | 'mine'
+  onSaveScroll?: (scrollTop: number) => void
+  onSaveTab?: (tab: 'all' | 'favorite' | 'mine') => void
   onSelect: (id: string) => void
   onDelete: (id: string) => void
+  onToggleFavorite: (id: string) => void
   onClose: () => void
 }
 
 export function ListSheet({
   items,
   hasPosition,
+  savedScroll = 0,
+  savedTab = 'all',
+  onSaveScroll,
+  onSaveTab,
   onSelect,
   onDelete,
+  onToggleFavorite,
   onClose,
 }: ListSheetProps) {
-  const [tab, setTab] = useState<'all' | 'mine'>('all')
+  const [tab, setTab] = useState<'all' | 'favorite' | 'mine'>(savedTab)
+  const listRef = useRef<HTMLUListElement>(null)
+
+  // マウント時にスクロール位置を復元
+  useEffect(() => {
+    if (savedScroll > 0) {
+      const body = listRef.current?.closest('.sheet__body') as HTMLElement | null
+      if (body) body.scrollTop = savedScroll
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const list = useMemo(() => {
-    const filtered = tab === 'mine' ? items.filter((k) => k.mine) : items
+    const filtered =
+      tab === 'mine'
+        ? items.filter((k) => k.mine)
+        : tab === 'favorite'
+          ? items.filter((k) => k.favoritedByCurrentUser)
+          : items
     return [...filtered].sort((a, b) => {
+      if (tab === 'favorite') {
+        if (!!a.openedByCurrentUser !== !!b.openedByCurrentUser) {
+          return a.openedByCurrentUser ? 1 : -1
+        }
+      }
       if (a.distance != null && b.distance != null) return a.distance - b.distance
       return b.createdAt - a.createdAt
     })
@@ -63,6 +93,13 @@ export function ListSheet({
         >
           わたしのことづて
         </button>
+        <button
+          role="tab"
+          aria-pressed={tab === 'favorite'}
+          onClick={() => setTab('favorite')}
+        >
+          お気に入り
+        </button>
       </div>
 
       {list.length === 0 ? (
@@ -73,16 +110,20 @@ export function ListSheet({
           <b>
             {tab === 'mine'
               ? 'まだ、ことづてを残していません'
+              : tab === 'favorite'
+                ? 'お気に入りはまだありません'
               : 'まだ、ことづてがありません'}
           </b>
           <p>
             {tab === 'mine'
               ? '思い出の場所に、最初のひとつを結んでみませんか。'
+              : tab === 'favorite'
+                ? '行きたい場所や、あとで開きたいことづてに星を付けておけます。'
               : 'この街のどこかに、誰かの想いが置かれるのを待っています。'}
           </p>
         </div>
       ) : (
-        <ul className="cz-list">
+        <ul className="cz-list" ref={listRef}>
           {list.map((k) => {
             const Icon = KIND_ICON[primaryKind(k)]
             const statusText =
@@ -100,7 +141,12 @@ export function ListSheet({
                 : 'なまえのない誰かから'
             return (
               <li key={k.id}>
-                <button className="cz-row" onClick={() => onSelect(k.id)}>
+                <button className="cz-row" onClick={() => {
+                  const body = listRef.current?.closest('.sheet__body') as HTMLElement | null
+                  onSaveScroll?.(body?.scrollTop ?? 0)
+                  onSaveTab?.(tab)
+                  onSelect(k.id)
+                }}>
                   <span className={`cz-row__badge cz-row__badge--${k.proximity}`}>
                     <Icon />
                   </span>
@@ -123,6 +169,30 @@ export function ListSheet({
                       {statusText}
                     </span>
                   ) : null}
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className={`cz-row__favorite${k.favoritedByCurrentUser ? ' cz-row__favorite--active' : ''}`}
+                    aria-label={
+                      k.favoritedByCurrentUser
+                        ? 'お気に入りから外す'
+                        : 'お気に入りに追加'
+                    }
+                    aria-pressed={!!k.favoritedByCurrentUser}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onToggleFavorite(k.id)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        onToggleFavorite(k.id)
+                      }
+                    }}
+                  >
+                    <StarIcon width={18} height={18} filled={!!k.favoritedByCurrentUser} />
+                  </span>
                   {k.mine && (
                     <span
                       role="button"

@@ -78,6 +78,8 @@ export interface Kotozute {
   likesCount?: number
   /** 現在のログインユーザーがいいね済みか */
   likedByCurrentUser?: boolean
+  /** 現在のログインユーザーがお気に入り済みか */
+  favoritedByCurrentUser?: boolean
 }
 
 /** ユーザーがことづてを取得（開封）した履歴 */
@@ -97,6 +99,7 @@ export interface UserProfile {
   bio: string
   avatarEmoji: string
   avatarColor: string
+  avatarImageUrl?: string | null
   friendCode: string
 }
 
@@ -152,6 +155,8 @@ export interface User {
   avatarEmoji?: string
   /** アバター背景色 */
   avatarColor?: string
+  /** アップロードしたアバター画像 */
+  avatarImageUrl?: string | null
   /** フレンド追加用コード */
   friendCode?: string
   /** パスワードのSHA-256ハッシュ */

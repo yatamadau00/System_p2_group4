@@ -16,7 +16,7 @@ import { useUserProfile, useGroups } from './services/socialService'
 import { NotificationSheet } from './components/NotificationSheet'
 import { enrich } from './lib/enrich'
 import { DEFAULT_ZOOM } from './config'
-import type { Kotozute, NewKotozute } from './types'
+import type { Kotozute, NewKotozute, Proximity } from './types'
 import './App.css'
 
 type MapLayerKey = 'public' | 'group' | 'owned'
@@ -53,6 +53,7 @@ export function App() {
     remove,
     markOpened,
     toggleLike,
+    toggleFavorite,
   } = useKotozute(currentUser?.id)
   const { unreadCount, addNotification } = useNotifications()
   const { profile, updateProfile } = useUserProfile(currentUser)
@@ -82,8 +83,11 @@ export function App() {
     initialMapLayerVisibility,
   )
   const [groupLayerVisibility, setGroupLayerVisibility] = useState<GroupLayerVisibility>({})
+  const [favoriteOnly, setFavoriteOnly] = useState(false)
 
   const mapRef = useRef<google.maps.Map | null>(null)
+  const listScrollRef = useRef(0)
+  const listTabRef = useRef<'all' | 'favorite' | 'mine'>('all')
 
   const position = geo.position
 
@@ -102,7 +106,7 @@ export function App() {
 
   // 現在地からの距離・近接状態を付与
   const enriched = useMemo(() => enrich(visibleItems, position), [visibleItems, position])
-  // 地図に表示するピン（期間内、かつ表示レイヤーに合致するもののみ）
+  // 地図に表示するピン（期間内、表示レイヤー、お気に入り条件に合致するもののみ）
   const mapItems = useMemo(() => {
     const now = Date.now()
     return enriched.filter((item) => {
@@ -113,10 +117,16 @@ export function App() {
       // 2. 地図レイヤー切り替えのチェック
       const layerKey = getMapLayerKey(item)
       if (!mapLayerVisibility[layerKey]) return false
-      if (layerKey !== 'group') return true
-      return isGroupVisible(item, groupLayerVisibility)
+      if (layerKey === 'group' && !isGroupVisible(item, groupLayerVisibility)) {
+        return false
+      }
+
+      // 3. お気に入りだけ表示する横断フィルタ
+      if (favoriteOnly && !item.favoritedByCurrentUser) return false
+
+      return true
     })
-  }, [enriched, groupLayerVisibility, mapLayerVisibility])
+  }, [enriched, favoriteOnly, groupLayerVisibility, mapLayerVisibility])
   const unlockableCount = useMemo(
     () => mapItems.filter((k) => k.proximity === 'unlockable').length,
     [mapItems],
@@ -181,67 +191,43 @@ export function App() {
     return () => window.clearTimeout(t)
   }, [toast])
 
-  // すでに通知済みのキー (kotozuteId + '_' + type) の集合を localStorage と同期
-  const [notifiedKeys, setNotifiedKeys] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem('kotozute_notified_keys')
-      return stored ? new Set(JSON.parse(stored)) : new Set()
-    } catch {
-      return new Set()
-    }
-  })
+  const previousProximityRef = useRef(new Map<string, Proximity>())
 
+  // 位置情報とことづての状態を監視し、射程圏外から圏内に入った瞬間だけ通知する。
   useEffect(() => {
-    try {
-      localStorage.setItem('kotozute_notified_keys', JSON.stringify(Array.from(notifiedKeys)))
-    } catch (e) {
-      console.warn('Failed to save notified keys to localStorage', e)
-    }
-  }, [notifiedKeys])
-
-  // 位置情報とことづての状態を監視し、新規近接を通知
-  useEffect(() => {
-    if (!position || enriched.length === 0) return
-
-    let updated = false
-    const newKeys = new Set(notifiedKeys)
+    const previous = previousProximityRef.current
+    const currentIds = new Set(enriched.map((item) => item.id))
 
     enriched.forEach((item) => {
-      const nearKey = `${item.id}_near`
-      const unlockKey = `${item.id}_unlockable`
+      const before = previous.get(item.id)
+      const enteredUnlockRadius =
+        position &&
+        item.proximity === 'unlockable' &&
+        before !== 'unlockable'
 
-      if (item.proximity === 'unlockable') {
-        if (!newKeys.has(unlockKey)) {
-          const label = item.placeLabel || item.authorName || '近くのことづて'
-          addNotification(
-            'ことづてが開封可能になりました',
-            `『${label}』が開封できます。封を開けてみましょう。`,
-            'unlockable',
-            item.id
-          )
-          newKeys.add(unlockKey)
-          newKeys.add(nearKey) // 近接通知は不要にする
-          updated = true
-        }
-      } else if (item.proximity === 'near') {
-        if (!newKeys.has(nearKey) && !newKeys.has(unlockKey)) {
-          const label = item.placeLabel || item.authorName || 'ことづて'
-          addNotification(
-            '近くにことづてがあります',
-            `『${label}』に近づいています。あと少し歩いてみましょう。`,
-            'near',
-            item.id
-          )
-          newKeys.add(nearKey)
-          updated = true
-        }
+      if (enteredUnlockRadius && !item.mine && !item.openedByCurrentUser) {
+        const label = item.placeLabel || item.authorName || '近くのことづて'
+        addNotification(
+          'ことづての射程圏内に入りました',
+          `『${label}』が開封できます。封を開けてみましょう。`,
+          'unlockable',
+          item.id,
+        )
+      }
+
+      previous.set(item.id, item.proximity)
+    })
+
+    previous.forEach((_, id) => {
+      if (!currentIds.has(id)) {
+        previous.delete(id)
       }
     })
 
-    if (updated) {
-      setNotifiedKeys(newKeys)
+    if (!position) {
+      previous.clear()
     }
-  }, [enriched, position, addNotification, notifiedKeys])
+  }, [addNotification, enriched, position])
 
   const handleMapLoad = useCallback((map: google.maps.Map | null) => {
     mapRef.current = map
@@ -436,6 +422,25 @@ export function App() {
     [currentUser, toggleLike],
   )
 
+  const handleToggleFavorite = useCallback(
+    async (id: string) => {
+      if (!currentUser) {
+        setShowAuth(true)
+        return
+      }
+      try {
+        const result = await toggleFavorite(id)
+        if (result) {
+          setToast(result.favorited ? 'お気に入りに追加しました' : 'お気に入りから外しました')
+        }
+      } catch (e) {
+        console.warn('Failed to toggle kotozute favorite:', e)
+        setToast('お気に入りを更新できませんでした')
+      }
+    },
+    [currentUser, toggleFavorite],
+  )
+
   const overlayOpen =
     composing || showList || showProfile || !!selected || showAuth || showNotifications
 
@@ -459,6 +464,8 @@ export function App() {
         onOpenNotifications={() => setShowNotifications(true)}
         mapLayerVisibility={mapLayerVisibility}
         onToggleMapLayer={handleToggleMapLayer}
+        favoriteOnly={favoriteOnly}
+        onToggleFavoriteOnly={() => setFavoriteOnly((value) => !value)}
         groups={groups}
         groupLayerVisibility={groupLayerVisibility}
         onToggleGroupLayer={handleToggleGroupLayer}
@@ -514,12 +521,18 @@ export function App() {
         <ListSheet
           items={enriched}
           hasPosition={!!position}
+          savedScroll={listScrollRef.current}
+          savedTab={listTabRef.current}
+          onSaveScroll={(v) => { listScrollRef.current = v }}
+          onSaveTab={(t) => { listTabRef.current = t }}
           onSelect={(id) => {
             setShowList(false)
+            handleHighlight(id)
             setOpenedFromList(true)
-            handleSelect(id)
+            setTimeout(() => handleSelect(id), 600)
           }}
           onDelete={handleDelete}
+          onToggleFavorite={handleToggleFavorite}
           onClose={() => setShowList(false)}
         />
       )}
@@ -566,6 +579,7 @@ export function App() {
           onOpened={handleOpened}
           onEdit={update}
           onToggleLike={handleToggleLike}
+          onToggleFavorite={handleToggleFavorite}
         />
       )}
 

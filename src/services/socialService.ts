@@ -17,6 +17,7 @@ function userToProfile(user: User): UserProfile {
     bio: user.bio ?? DEFAULT_BIO,
     avatarEmoji: user.avatarEmoji ?? DEFAULT_AVATAR_EMOJI,
     avatarColor: user.avatarColor ?? DEFAULT_AVATAR_COLOR,
+    avatarImageUrl: user.avatarImageUrl ?? null,
     friendCode: user.friendCode || `KOTO-${user.id.slice(0, 4).toUpperCase()}`,
   }
 }
@@ -30,6 +31,7 @@ function createDefaultProfile(): UserProfile {
     bio: DEFAULT_BIO,
     avatarEmoji: DEFAULT_AVATAR_EMOJI,
     avatarColor: DEFAULT_AVATAR_COLOR,
+    avatarImageUrl: null,
     friendCode: `KOTO-${codeNum}`,
   }
 }
@@ -84,6 +86,7 @@ export function useUserProfile(currentUser: User | null) {
           bio: nextProfile.bio,
           avatarEmoji: nextProfile.avatarEmoji,
           avatarColor: nextProfile.avatarColor,
+          avatarImageUrl: nextProfile.avatarImageUrl ?? null,
         })
         setProfile(userToProfile(updated))
         return
