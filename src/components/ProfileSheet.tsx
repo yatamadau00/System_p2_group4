@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ChangeEvent } from 'react'
 import type {
   UserProfile,
   Group,
@@ -36,6 +36,48 @@ interface ProfileSheetProps {
 const AVATAR_EMOJIS = ['🦉', '🕊️', '🌸', '🌲', 'そ', 'み', 'は', '🦊', '🐱', '🍀', '🌟', '🎏']
 // 選択可能なアバター背景色
 const AVATAR_COLORS = ['#f1e8d6', '#e2ecc8', '#ffdce3', '#dceffd', '#fceecb', '#ffd8b3', '#e8dffd']
+const AVATAR_EXPORT_SIZE = 320
+
+function createEditedAvatarDataUrl(
+  src: string,
+  zoom: number,
+  offsetX: number,
+  offsetY: number,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = AVATAR_EXPORT_SIZE
+      canvas.height = AVATAR_EXPORT_SIZE
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('画像を編集できませんでした'))
+        return
+      }
+
+      const baseScale = Math.max(
+        AVATAR_EXPORT_SIZE / image.width,
+        AVATAR_EXPORT_SIZE / image.height,
+      )
+      const scale = baseScale * zoom
+      const drawWidth = image.width * scale
+      const drawHeight = image.height * scale
+      const maxShiftX = Math.max(0, (drawWidth - AVATAR_EXPORT_SIZE) / 2)
+      const maxShiftY = Math.max(0, (drawHeight - AVATAR_EXPORT_SIZE) / 2)
+      const drawX =
+        (AVATAR_EXPORT_SIZE - drawWidth) / 2 + (offsetX / 100) * maxShiftX
+      const drawY =
+        (AVATAR_EXPORT_SIZE - drawHeight) / 2 + (offsetY / 100) * maxShiftY
+
+      ctx.clearRect(0, 0, AVATAR_EXPORT_SIZE, AVATAR_EXPORT_SIZE)
+      ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight)
+      resolve(canvas.toDataURL('image/jpeg', 0.9))
+    }
+    image.onerror = () => reject(new Error('画像の読み込みに失敗しました'))
+    image.src = src
+  })
+}
 
 export function ProfileSheet({
   items,
@@ -58,6 +100,11 @@ export function ProfileSheet({
   const [editBio, setEditBio] = useState(profile.bio)
   const [editEmoji, setEditEmoji] = useState(profile.avatarEmoji)
   const [editColor, setEditColor] = useState(profile.avatarColor)
+  const [editImageUrl, setEditImageUrl] = useState(profile.avatarImageUrl ?? null)
+  const [avatarEditorSrc, setAvatarEditorSrc] = useState<string | null>(null)
+  const [avatarZoom, setAvatarZoom] = useState(1)
+  const [avatarOffsetX, setAvatarOffsetX] = useState(0)
+  const [avatarOffsetY, setAvatarOffsetY] = useState(0)
   const [savingProfile, setSavingProfile] = useState(false)
 
   // グループ関連
@@ -81,10 +128,13 @@ export function ProfileSheet({
       .filter((record): record is { item: Kotozute; openedAt: number } => !!record)
   }, [items, openHistory])
 
-  const handleSaveProfile = async () => {
+  const saveProfile = async (
+    nextImageUrl = editImageUrl,
+    options: { closeAfterSave?: boolean } = {},
+  ): Promise<boolean> => {
     if (!editName.trim()) {
       alert('名前を入力してください')
-      return
+      return false
     }
     setSavingProfile(true)
     try {
@@ -93,13 +143,20 @@ export function ProfileSheet({
         bio: editBio.trim(),
         avatarEmoji: editEmoji,
         avatarColor: editColor,
+        avatarImageUrl: nextImageUrl,
       })
-      setIsEditing(false)
+      if (options.closeAfterSave ?? true) setIsEditing(false)
+      return true
     } catch (err: any) {
       alert(err.message || 'プロフィールの保存に失敗しました')
+      return false
     } finally {
       setSavingProfile(false)
     }
+  }
+
+  const handleSaveProfile = () => {
+    void saveProfile()
   }
 
   const handleCancelEdit = () => {
@@ -107,7 +164,66 @@ export function ProfileSheet({
     setEditBio(profile.bio)
     setEditEmoji(profile.avatarEmoji)
     setEditColor(profile.avatarColor)
+    setEditImageUrl(profile.avatarImageUrl ?? null)
+    setAvatarEditorSrc(null)
+    setAvatarZoom(1)
+    setAvatarOffsetX(0)
+    setAvatarOffsetY(0)
     setIsEditing(false)
+  }
+
+  const handleAvatarImageChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('画像ファイルを選択してください')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert('画像は2MB以下にしてください')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setAvatarEditorSrc(reader.result)
+        setAvatarZoom(1)
+        setAvatarOffsetX(0)
+        setAvatarOffsetY(0)
+      }
+    }
+    reader.onerror = () => {
+      alert('画像の読み込みに失敗しました')
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleApplyAvatarEdit = async () => {
+    if (!avatarEditorSrc) return
+    try {
+      const nextImageUrl = await createEditedAvatarDataUrl(
+        avatarEditorSrc,
+        avatarZoom,
+        avatarOffsetX,
+        avatarOffsetY,
+      )
+      const saved = await saveProfile(nextImageUrl, { closeAfterSave: false })
+      if (!saved) return
+      setEditImageUrl(nextImageUrl)
+      setAvatarEditorSrc(null)
+    } catch (err: any) {
+      alert(err.message || '画像の編集に失敗しました')
+    }
+  }
+
+  const handleRemoveAvatarImage = () => {
+    setEditImageUrl(null)
+    setAvatarEditorSrc(null)
+    setAvatarZoom(1)
+    setAvatarOffsetX(0)
+    setAvatarOffsetY(0)
   }
 
   const copyCode = (code: string) => {
@@ -191,9 +307,111 @@ export function ProfileSheet({
                       className="profile-card__avatar"
                       style={{ backgroundColor: editColor }}
                     >
-                      {editEmoji}
+                      {editImageUrl ? (
+                        <img src={editImageUrl} alt="" className="profile-card__avatar-image" />
+                      ) : (
+                        editEmoji
+                      )}
                     </div>
                     <div className="avatar-pickers">
+                      <div className="avatar-picker-group">
+                        <label htmlFor="avatar-image">画像</label>
+                        <div className="avatar-image-actions">
+                          <label className="btn btn--soft avatar-image-button" htmlFor="avatar-image">
+                            画像を選択
+                          </label>
+                          <input
+                            id="avatar-image"
+                            className="avatar-image-input"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarImageChange}
+                          />
+                          {editImageUrl && (
+                            <button
+                              type="button"
+                              className="btn btn--soft avatar-image-button"
+                              onClick={() => setAvatarEditorSrc(editImageUrl)}
+                            >
+                              画像を編集
+                            </button>
+                          )}
+                          {editImageUrl && (
+                            <button
+                              type="button"
+                              className="btn btn--soft avatar-image-button"
+                              onClick={handleRemoveAvatarImage}
+                            >
+                              画像を解除
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {avatarEditorSrc && (
+                        <div className="avatar-editor" aria-label="プロフィール画像を編集">
+                          <div className="avatar-editor__preview">
+                            <img
+                              src={avatarEditorSrc}
+                              alt=""
+                              style={{
+                                transform: `translate(${avatarOffsetX}%, ${avatarOffsetY}%) scale(${avatarZoom})`,
+                              }}
+                            />
+                          </div>
+                          <div className="avatar-editor__controls">
+                            <label>
+                              拡大
+                              <input
+                                type="range"
+                                min="1"
+                                max="2.5"
+                                step="0.05"
+                                value={avatarZoom}
+                                onChange={(e) => setAvatarZoom(Number(e.target.value))}
+                              />
+                            </label>
+                            <label>
+                              左右
+                              <input
+                                type="range"
+                                min="-100"
+                                max="100"
+                                step="1"
+                                value={avatarOffsetX}
+                                onChange={(e) => setAvatarOffsetX(Number(e.target.value))}
+                              />
+                            </label>
+                            <label>
+                              上下
+                              <input
+                                type="range"
+                                min="-100"
+                                max="100"
+                                step="1"
+                                value={avatarOffsetY}
+                                onChange={(e) => setAvatarOffsetY(Number(e.target.value))}
+                              />
+                            </label>
+                          </div>
+                          <div className="avatar-editor__actions">
+                            <button
+                              type="button"
+                              className="btn btn--soft avatar-image-button"
+                              onClick={() => setAvatarEditorSrc(null)}
+                            >
+                              閉じる
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn--primary avatar-image-button"
+                              onClick={handleApplyAvatarEdit}
+                              disabled={savingProfile}
+                            >
+                              {savingProfile ? '保存中…' : '加工して保存'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       <div className="avatar-picker-group">
                         <label>絵文字</label>
                         <div className="picker-options">
@@ -265,7 +483,11 @@ export function ProfileSheet({
                       className="profile-card__avatar"
                       style={{ backgroundColor: profile.avatarColor }}
                     >
-                      {profile.avatarEmoji}
+                      {profile.avatarImageUrl ? (
+                        <img src={profile.avatarImageUrl} alt="" className="profile-card__avatar-image" />
+                      ) : (
+                        profile.avatarEmoji
+                      )}
                     </div>
                     <div className="profile-card__title">
                       <h3>{profile.name}</h3>

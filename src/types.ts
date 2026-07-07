@@ -99,6 +99,7 @@ export interface UserProfile {
   bio: string
   avatarEmoji: string
   avatarColor: string
+  avatarImageUrl?: string | null
   friendCode: string
 }
 
@@ -154,6 +155,8 @@ export interface User {
   avatarEmoji?: string
   /** アバター背景色 */
   avatarColor?: string
+  /** アップロードしたアバター画像 */
+  avatarImageUrl?: string | null
   /** フレンド追加用コード */
   friendCode?: string
   /** パスワードのSHA-256ハッシュ */

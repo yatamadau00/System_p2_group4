@@ -161,7 +161,11 @@ export function MapScreen(props: MapScreenProps) {
       style={{ backgroundColor: profile.avatarColor }}
       aria-label="プロフィールをひらく"
     >
-      {profile.avatarEmoji}
+      {profile.avatarImageUrl ? (
+        <img src={profile.avatarImageUrl} alt="" className="map-btn__avatar-image" />
+      ) : (
+        profile.avatarEmoji
+      )}
     </button>
   )
 
