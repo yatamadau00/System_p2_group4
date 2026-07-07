@@ -22,9 +22,16 @@ import './App.css'
 export function App() {
   const geo = useGeolocation(true)
   const { currentUser, logout } = useAuth()
-  const { items, openHistory, loading, create, remove, markOpened } = useKotozute(
-    currentUser?.id,
-  )
+  const {
+    items,
+    openHistory,
+    loading,
+    create,
+    update,
+    remove,
+    markOpened,
+    toggleLike,
+  } = useKotozute(currentUser?.id)
   const { unreadCount, addNotification } = useNotifications()
   const { profile, updateProfile } = useUserProfile(currentUser)
   const {
@@ -366,6 +373,25 @@ export function App() {
     [currentUser, markOpened],
   )
 
+  const handleToggleLike = useCallback(
+    async (id: string) => {
+      if (!currentUser) {
+        setShowAuth(true)
+        return
+      }
+      try {
+        const result = await toggleLike(id)
+        if (result) {
+          setToast(result.liked ? 'いいねしました' : 'いいねを取り消しました')
+        }
+      } catch (e) {
+        console.warn('Failed to toggle kotozute like:', e)
+        setToast('いいねを更新できませんでした')
+      }
+    },
+    [currentUser, toggleLike],
+  )
+
   const overlayOpen =
     composing || showList || showProfile || !!selected || showAuth || showNotifications
 
@@ -489,6 +515,8 @@ export function App() {
           onDeleteReply={handleDeleteReply}
           currentUserId={currentUser?.id ?? null}
           onOpened={handleOpened}
+          onEdit={update}
+          onToggleLike={handleToggleLike}
         />
       )}
 

@@ -74,6 +74,10 @@ export interface Kotozute {
   validFrom?: number
   /** 開封可能期間の終了日時（epoch ms、任意） */
   validTo?: number
+  /** いいねされた数 */
+  likesCount?: number
+  /** 現在のログインユーザーがいいね済みか */
+  likedByCurrentUser?: boolean
 }
 
 /** ユーザーがことづてを取得（開封）した履歴 */

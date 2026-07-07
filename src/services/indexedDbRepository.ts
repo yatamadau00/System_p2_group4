@@ -30,10 +30,20 @@ interface KotozuteDB extends DBSchema {
     }
     indexes: { userId: string; kotozuteId: string }
   }
+  kotozuteLikes: {
+    key: string
+    value: {
+      id: string
+      userId: string
+      kotozuteId: string
+      createdAt: number
+    }
+    indexes: { userId: string; kotozuteId: string }
+  }
 }
 
 const DB_NAME = 'kotozute-db'
-const DB_VERSION = 3
+const DB_VERSION = 4
 const SEEDED_KEY = 'seeded'
 
 let dbPromise: Promise<IDBPDatabase<KotozuteDB>> | null = null
@@ -67,6 +77,13 @@ function db() {
           openStore.createIndex('userId', 'userId')
           openStore.createIndex('kotozuteId', 'kotozuteId')
         }
+        if (oldVersion < 4) {
+          const likeStore = database.createObjectStore('kotozuteLikes', {
+            keyPath: 'id',
+          })
+          likeStore.createIndex('userId', 'userId')
+          likeStore.createIndex('kotozuteId', 'kotozuteId')
+        }
       },
     })
   }
@@ -91,18 +108,44 @@ function normalize(record: Kotozute): Kotozute {
     ...record,
     media: Array.isArray(record.media) ? record.media : [],
     rootId: record.rootId ?? record.replyToId ?? record.id,
+    likesCount: record.likesCount ?? 0,
+    likedByCurrentUser: record.likedByCurrentUser ?? false,
   }
 }
 
+async function attachLikes(
+  records: Kotozute[],
+  userId?: string | null,
+): Promise<Kotozute[]> {
+  const database = await db()
+  const likes = await database.getAll('kotozuteLikes')
+  const counts = new Map<string, number>()
+  const likedByUser = new Set<string>()
+
+  likes.forEach((like) => {
+    counts.set(like.kotozuteId, (counts.get(like.kotozuteId) ?? 0) + 1)
+    if (userId && like.userId === userId) likedByUser.add(like.kotozuteId)
+  })
+
+  return records.map((record) => ({
+    ...normalize(record),
+    likesCount: counts.get(record.id) ?? 0,
+    likedByCurrentUser: likedByUser.has(record.id),
+  }))
+}
+
 export const indexedDbRepository: KotozuteRepository = {
-  async list() {
+  async list(userId) {
     const all = await (await db()).getAll('kotozute')
-    return all.map(normalize).sort((a, b) => b.createdAt - a.createdAt)
+    const withLikes = await attachLikes(all, userId)
+    return withLikes.sort((a, b) => b.createdAt - a.createdAt)
   },
 
-  async get(id) {
+  async get(id, userId) {
     const record = await (await db()).get('kotozute', id)
-    return record ? normalize(record) : undefined
+    if (!record) return undefined
+    const [withLikes] = await attachLikes([record], userId)
+    return withLikes
   },
 
   async create(input: NewKotozute) {
@@ -118,13 +161,35 @@ export const indexedDbRepository: KotozuteRepository = {
     return record
   },
 
+  async update(id, patch) {
+    const database = await db()
+    const existing = await database.get('kotozute', id)
+    if (!existing) throw new Error('ことづてが見つかりません')
+    const updated: Kotozute = {
+      ...existing,
+      ...(patch.message !== undefined ? { message: patch.message } : {}),
+      ...(patch.placeLabel !== undefined ? { placeLabel: patch.placeLabel } : {}),
+      ...(patch.link !== undefined ? { link: patch.link } : {}),
+      ...(patch.media !== undefined ? { media: patch.media } : {}),
+    }
+    await database.put('kotozute', updated)
+    return normalize(updated)
+  },
+
   async remove(id) {
     const database = await db()
-    const tx = database.transaction(['kotozute', 'kotozuteOpens'], 'readwrite')
+    const tx = database.transaction(
+      ['kotozute', 'kotozuteOpens', 'kotozuteLikes'],
+      'readwrite',
+    )
     await tx.objectStore('kotozute').delete(id)
     const opens = await tx.objectStore('kotozuteOpens').index('kotozuteId').getAll(id)
     await Promise.all(
       opens.map((open) => tx.objectStore('kotozuteOpens').delete(open.id)),
+    )
+    const likes = await tx.objectStore('kotozuteLikes').index('kotozuteId').getAll(id)
+    await Promise.all(
+      likes.map((like) => tx.objectStore('kotozuteLikes').delete(like.id)),
     )
     await tx.done
   },
@@ -152,6 +217,27 @@ export const indexedDbRepository: KotozuteRepository = {
       openedAt: Date.now(),
     })
     return true
+  },
+
+  async toggleLike(kotozuteId, userId) {
+    const database = await db()
+    const id = `${userId}:${kotozuteId}`
+    const existing = await database.get('kotozuteLikes', id)
+    if (existing) {
+      await database.delete('kotozuteLikes', id)
+    } else {
+      await database.put('kotozuteLikes', {
+        id,
+        userId,
+        kotozuteId,
+        createdAt: Date.now(),
+      })
+    }
+    const likes = await database.getAllFromIndex('kotozuteLikes', 'kotozuteId', kotozuteId)
+    return {
+      liked: !existing,
+      likesCount: likes.length,
+    }
   },
 
   async ensureSeed(seed: SeedKotozute[]) {

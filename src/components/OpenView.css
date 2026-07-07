@@ -200,13 +200,7 @@
   transition: transform var(--dur-2) var(--ease-soft);
 }
 
-.seal::before {
-  content: '';
-  position: absolute;
-  inset: 12px;
-  border-radius: 50%;
-  border: 2px dashed rgba(255, 248, 240, 0.55);
-}
+/* 破線なし */
 
 .seal__glyph {
   width: 88px;
@@ -226,6 +220,14 @@
 .seal:active {
   transform: scale(0.95);
 }
+
+/* ====== グループカラー seal（ピンパレットと同じ6色）====== */
+.seal--gc-0 { background: radial-gradient(circle at 38% 32%, #52d0d8, #2eb8c0 70%); box-shadow: inset 0 3px 10px rgba(180,255,255,0.4), inset 0 -6px 14px rgba(10,80,90,0.5), 0 10px 30px rgba(46,184,192,0.5); }
+.seal--gc-1 { background: radial-gradient(circle at 38% 32%, #a87ef8, #8b5cf6 70%); box-shadow: inset 0 3px 10px rgba(220,200,255,0.4), inset 0 -6px 14px rgba(40,20,100,0.5), 0 10px 30px rgba(139,92,246,0.5); }
+.seal--gc-2 { background: radial-gradient(circle at 38% 32%, #f070b0, #e84393 70%); box-shadow: inset 0 3px 10px rgba(255,180,230,0.4), inset 0 -6px 14px rgba(100,10,60,0.5), 0 10px 30px rgba(232,67,147,0.5); }
+.seal--gc-3 { background: radial-gradient(circle at 38% 32%, #42d49a, #10b981 70%); box-shadow: inset 0 3px 10px rgba(180,255,220,0.4), inset 0 -6px 14px rgba(5,60,35,0.5), 0 10px 30px rgba(16,185,129,0.5); }
+.seal--gc-4 { background: radial-gradient(circle at 38% 32%, #70a8f8, #3b82f6 70%); box-shadow: inset 0 3px 10px rgba(180,210,255,0.4), inset 0 -6px 14px rgba(10,30,90,0.5), 0 10px 30px rgba(59,130,246,0.5); }
+.seal--gc-5 { background: radial-gradient(circle at 38% 32%, #f47070, #ef4444 70%); box-shadow: inset 0 3px 10px rgba(255,180,180,0.4), inset 0 -6px 14px rgba(100,10,10,0.5), 0 10px 30px rgba(239,68,68,0.5); }
 
 /* 封が割れる演出 */
 .open--opening .seal {
@@ -478,6 +480,30 @@
   justify-content: center;
   gap: var(--sp-3);
   padding-top: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.letter__like {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--c-washi-2);
+  border: 1px solid rgba(191, 87, 74, 0.26);
+  border-radius: 999px;
+  color: #bf574a;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 6px 11px;
+}
+
+.letter__like--liked {
+  background: #fff1ef;
+  color: #b8413e;
+}
+
+.letter__like:disabled {
+  opacity: 0.64;
+  cursor: wait;
 }
 
 .letter__reply {
@@ -598,4 +624,3 @@
   letter-spacing: 0;
   vertical-align: middle;
 }
-
