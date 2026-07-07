@@ -16,7 +16,7 @@ import { useUserProfile, useGroups } from './services/socialService'
 import { NotificationSheet } from './components/NotificationSheet'
 import { enrich } from './lib/enrich'
 import { DEFAULT_ZOOM } from './config'
-import type { Kotozute, NewKotozute } from './types'
+import type { Kotozute, NewKotozute, Proximity } from './types'
 import './App.css'
 
 export function App() {
@@ -140,67 +140,43 @@ export function App() {
     return () => window.clearTimeout(t)
   }, [toast])
 
-  // すでに通知済みのキー (kotozuteId + '_' + type) の集合を localStorage と同期
-  const [notifiedKeys, setNotifiedKeys] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem('kotozute_notified_keys')
-      return stored ? new Set(JSON.parse(stored)) : new Set()
-    } catch {
-      return new Set()
-    }
-  })
+  const previousProximityRef = useRef(new Map<string, Proximity>())
 
+  // 位置情報とことづての状態を監視し、射程圏外から圏内に入った瞬間だけ通知する。
   useEffect(() => {
-    try {
-      localStorage.setItem('kotozute_notified_keys', JSON.stringify(Array.from(notifiedKeys)))
-    } catch (e) {
-      console.warn('Failed to save notified keys to localStorage', e)
-    }
-  }, [notifiedKeys])
-
-  // 位置情報とことづての状態を監視し、新規近接を通知
-  useEffect(() => {
-    if (!position || enriched.length === 0) return
-
-    let updated = false
-    const newKeys = new Set(notifiedKeys)
+    const previous = previousProximityRef.current
+    const currentIds = new Set(enriched.map((item) => item.id))
 
     enriched.forEach((item) => {
-      const nearKey = `${item.id}_near`
-      const unlockKey = `${item.id}_unlockable`
+      const before = previous.get(item.id)
+      const enteredUnlockRadius =
+        position &&
+        item.proximity === 'unlockable' &&
+        before !== 'unlockable'
 
-      if (item.proximity === 'unlockable') {
-        if (!newKeys.has(unlockKey)) {
-          const label = item.placeLabel || item.authorName || '近くのことづて'
-          addNotification(
-            'ことづてが開封可能になりました',
-            `『${label}』が開封できます。封を開けてみましょう。`,
-            'unlockable',
-            item.id
-          )
-          newKeys.add(unlockKey)
-          newKeys.add(nearKey) // 近接通知は不要にする
-          updated = true
-        }
-      } else if (item.proximity === 'near') {
-        if (!newKeys.has(nearKey) && !newKeys.has(unlockKey)) {
-          const label = item.placeLabel || item.authorName || 'ことづて'
-          addNotification(
-            '近くにことづてがあります',
-            `『${label}』に近づいています。あと少し歩いてみましょう。`,
-            'near',
-            item.id
-          )
-          newKeys.add(nearKey)
-          updated = true
-        }
+      if (enteredUnlockRadius && !item.mine && !item.openedByCurrentUser) {
+        const label = item.placeLabel || item.authorName || '近くのことづて'
+        addNotification(
+          'ことづての射程圏内に入りました',
+          `『${label}』が開封できます。封を開けてみましょう。`,
+          'unlockable',
+          item.id,
+        )
+      }
+
+      previous.set(item.id, item.proximity)
+    })
+
+    previous.forEach((_, id) => {
+      if (!currentIds.has(id)) {
+        previous.delete(id)
       }
     })
 
-    if (updated) {
-      setNotifiedKeys(newKeys)
+    if (!position) {
+      previous.clear()
     }
-  }, [enriched, position, addNotification, notifiedKeys])
+  }, [addNotification, enriched, position])
 
   const handleMapLoad = useCallback((map: google.maps.Map | null) => {
     mapRef.current = map
