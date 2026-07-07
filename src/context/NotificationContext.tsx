@@ -15,6 +15,7 @@ interface NotificationContextType {
   notifications: AppNotification[]
   unreadCount: number
   permission: NotificationPermission
+  browserNotificationSupported: boolean
   requestPermission: () => Promise<NotificationPermission>
   addNotification: (
     title: string,
@@ -56,6 +57,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
     return 'default'
   })
+  const browserNotificationSupported =
+    typeof window !== 'undefined' &&
+    window.isSecureContext &&
+    'Notification' in window
 
   // 保存先を切り替える。ログイン中かつSupabase設定ありならDB、そうでなければ端末内。
   useEffect(() => {
@@ -88,18 +93,30 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(notifications))
   }, [notifications, useRemote])
 
+  useEffect(() => {
+    if (!browserNotificationSupported) return
+
+    const syncPermission = () => setPermission(Notification.permission)
+    window.addEventListener('focus', syncPermission)
+    document.addEventListener('visibilitychange', syncPermission)
+    return () => {
+      window.removeEventListener('focus', syncPermission)
+      document.removeEventListener('visibilitychange', syncPermission)
+    }
+  }, [browserNotificationSupported])
+
   // 未読件数
   const unreadCount = notifications.filter((n) => !n.read).length
 
   // 通知許可のリクエスト
   const requestPermission = useCallback(async () => {
-    if (typeof window === 'undefined' || !('Notification' in window)) {
+    if (!browserNotificationSupported) {
       return 'default'
     }
     const result = await Notification.requestPermission()
     setPermission(result)
     return result
-  }, [])
+  }, [browserNotificationSupported])
 
   // 通知の追加とブラウザ通知の送信
   const addNotification = useCallback(
@@ -204,6 +221,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         notifications,
         unreadCount,
         permission,
+        browserNotificationSupported,
         requestPermission,
         addNotification,
         markAsRead,
