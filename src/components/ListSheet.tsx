@@ -24,8 +24,6 @@ const KIND_ICON = {
 interface ListSheetProps {
   items: EnrichedKotozute[]
   hasPosition: boolean
-  highlightedId?: string | null
-  onHighlight: (id: string) => void
   onSelect: (id: string) => void
   onDelete: (id: string) => void
   onClose: () => void
@@ -34,8 +32,6 @@ interface ListSheetProps {
 export function ListSheet({
   items,
   hasPosition,
-  highlightedId,
-  onHighlight,
   onSelect,
   onDelete,
   onClose,
@@ -104,10 +100,7 @@ export function ListSheet({
                 : 'なまえのない誰かから'
             return (
               <li key={k.id}>
-                <button
-                  className={`cz-row${k.id === highlightedId ? ' cz-row--active' : ''}`}
-                  onClick={() => k.id === highlightedId ? onSelect(k.id) : onHighlight(k.id)}
-                >
+                <button className="cz-row" onClick={() => onSelect(k.id)}>
                   <span className={`cz-row__badge cz-row__badge--${k.proximity}`}>
                     <Icon />
                   </span>
