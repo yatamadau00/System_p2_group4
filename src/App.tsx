@@ -19,18 +19,20 @@ import { DEFAULT_ZOOM } from './config'
 import type { Kotozute, NewKotozute, Proximity } from './types'
 import './App.css'
 
-type MapLayerKey = 'public' | 'group' | 'owned'
+type MapLayerKey = 'public' | 'group' | 'created' | 'opened'
 type MapLayerVisibility = Record<MapLayerKey, boolean>
 type GroupLayerVisibility = Record<string, boolean>
 
 const initialMapLayerVisibility: MapLayerVisibility = {
   public: true,
   group: true,
-  owned: true,
+  created: true,
+  opened: true,
 }
 
 function getMapLayerKey(item: Kotozute): MapLayerKey {
-  if (item.mine || item.openedByCurrentUser) return 'owned'
+  if (item.mine) return 'created'
+  if (item.openedByCurrentUser) return 'opened'
   if (item.visibility === 'group') return 'group'
   return 'public'
 }
