@@ -253,6 +253,8 @@ export const indexedDbRepository: KotozuteRepository = {
         createdAt: item.createdAt ?? Date.now(),
         mine: item.mine ?? false,
         rootId: item.rootId ?? item.replyToId ?? generateId(),
+        validFrom: item.validFrom,
+        validTo: item.validTo,
       }
       await tx.objectStore('kotozute').put(record)
     }
