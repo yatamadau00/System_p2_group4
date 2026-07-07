@@ -22,7 +22,7 @@ import './App.css'
 export function App() {
   const geo = useGeolocation(true)
   const { currentUser, logout } = useAuth()
-  const { items, loading, create, remove, markOpened } = useKotozute(
+  const { items, loading, create, update, remove, markOpened } = useKotozute(
     currentUser?.id,
   )
   const { unreadCount, addNotification } = useNotifications()
@@ -449,6 +449,7 @@ export function App() {
           onDeleteReply={handleDeleteReply}
           currentUserId={currentUser?.id ?? null}
           onOpened={handleOpened}
+          onEdit={update}
         />
       )}
 

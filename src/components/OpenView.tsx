@@ -27,6 +27,11 @@ interface OpenViewProps {
   onDeleteReply: (id: string) => void
   currentUserId: string | null
   onOpened?: (id: string) => void
+  /** 自分のことづての本文・場所名・リンクを編集する */
+  onEdit?: (
+    id: string,
+    patch: Partial<Pick<EnrichedKotozute, 'message' | 'placeLabel' | 'link'>>,
+  ) => Promise<unknown>
 }
 
 /**
@@ -42,11 +47,16 @@ export function OpenView({
   onDeleteReply,
   currentUserId,
   onOpened,
+  onEdit,
 }: OpenViewProps) {
   const { currentUser } = useAuth()
+  // 自分のことづては、どこにいても閲覧・編集できる（距離ロックを無視）
+  const isOwn =
+    kotozute.mine ||
+    (!!currentUser && kotozute.authorId === currentUser.id)
   const initiallyUnlockable = kotozute.proximity === 'unlockable'
   const [phase, setPhase] = useState<Phase>(
-    initiallyUnlockable ? 'ready' : 'locked',
+    isOwn ? 'opened' : initiallyUnlockable ? 'ready' : 'locked',
   )
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [reportReason, setReportReason] = useState('spam')
@@ -58,13 +68,13 @@ export function OpenView({
 
   // 歩いて近づいたらロック→開封可能へ自動遷移（既に開封済みなら維持）
   useEffect(() => {
-    if (openedOnce.current) return
+    if (openedOnce.current || isOwn) return
     if (kotozute.proximity === 'unlockable') {
       setPhase((p) => (p === 'locked' ? 'ready' : p))
     } else {
       setPhase((p) => (p === 'ready' ? 'locked' : p))
     }
-  }, [kotozute.proximity])
+  }, [kotozute.proximity, isOwn])
 
   const openSeal = () => {
     openedOnce.current = true
@@ -198,6 +208,8 @@ export function OpenView({
             currentUserId={currentUserId}
             replies={replies}
             onReportClick={() => setIsReportModalOpen(true)}
+            canEdit={isOwn && !!onEdit}
+            onEdit={onEdit}
           />
         )}
       </div>
@@ -332,6 +344,8 @@ function Letter({
   currentUserId,
   replies,
   onReportClick,
+  canEdit,
+  onEdit,
 }: {
   kotozute: EnrichedKotozute
   onReply: () => void
@@ -339,10 +353,96 @@ function Letter({
   currentUserId: string | null
   replies: EnrichedKotozute[]
   onReportClick: () => void
+  canEdit?: boolean
+  onEdit?: (
+    id: string,
+    patch: Partial<Pick<EnrichedKotozute, 'message' | 'placeLabel' | 'link'>>,
+  ) => Promise<unknown>
 }) {
   const date = new Date(kotozute.createdAt)
   const dateStr = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
   const hasBody = kotozute.message.trim().length > 0 || !!kotozute.link
+
+  const [editing, setEditing] = useState(false)
+  const [editMessage, setEditMessage] = useState(kotozute.message)
+  const [editPlace, setEditPlace] = useState(kotozute.placeLabel ?? '')
+  const [editLink, setEditLink] = useState(kotozute.link ?? '')
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  const saveEdit = async () => {
+    if (!onEdit) return
+    setSavingEdit(true)
+    try {
+      await onEdit(kotozute.id, {
+        message: editMessage.trim(),
+        placeLabel: editPlace.trim() || undefined,
+        link: editLink.trim() || undefined,
+      })
+      setEditing(false)
+    } catch (err: any) {
+      alert(err.message || '編集を保存できませんでした')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="letter">
+        <div className="letter__place">ことづてを編集</div>
+        <div className="letter__card">
+          <div className="letter__message" style={{ display: 'grid', gap: 'var(--sp-3)' }}>
+            <label className="field">
+              <span className="field__label">ことば</span>
+              <textarea
+                className="textarea"
+                value={editMessage}
+                onChange={(e) => setEditMessage(e.target.value)}
+                rows={5}
+              />
+            </label>
+            <label className="field">
+              <span className="field__label">場所の呼び名（任意）</span>
+              <input
+                className="input"
+                value={editPlace}
+                onChange={(e) => setEditPlace(e.target.value)}
+                placeholder="卒業した教室、いつもの帰り道…"
+              />
+            </label>
+            <label className="field">
+              <span className="field__label">リンク（任意）</span>
+              <input
+                className="input"
+                type="url"
+                inputMode="url"
+                value={editLink}
+                onChange={(e) => setEditLink(e.target.value)}
+                placeholder="https://"
+              />
+            </label>
+          </div>
+        </div>
+        <div className="letter__actions" style={{ display: 'flex', gap: 'var(--sp-3)' }}>
+          <button
+            className="btn btn--soft"
+            onClick={() => {
+              setEditMessage(kotozute.message)
+              setEditPlace(kotozute.placeLabel ?? '')
+              setEditLink(kotozute.link ?? '')
+              setEditing(false)
+            }}
+            disabled={savingEdit}
+          >
+            キャンセル
+          </button>
+          <button className="btn btn--primary" onClick={saveEdit} disabled={savingEdit}>
+            {savingEdit ? '保存中…' : '保存する'}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="letter">
@@ -372,6 +472,18 @@ function Letter({
           </>
         )}
       </div>
+
+      {canEdit && (
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <button
+            className="btn btn--soft"
+            style={{ minHeight: 0, padding: '8px 16px', fontSize: '0.88rem' }}
+            onClick={() => setEditing(true)}
+          >
+            このことづてを編集
+          </button>
+        </div>
+      )}
 
       <div className="letter__card">
         {/* 添えられたメディアを順に表示（複数可） */}
