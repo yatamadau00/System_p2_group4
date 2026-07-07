@@ -136,6 +136,60 @@
   font-size: 0.82rem;
 }
 
+.avatar-editor {
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  background: rgba(80, 50, 20, 0.03);
+  border: 1px solid rgba(80, 50, 20, 0.08);
+  border-radius: var(--r-md);
+}
+
+.avatar-editor__preview {
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  overflow: hidden;
+  justify-self: start;
+  background: var(--c-washi-2);
+  border: 2px solid #fff;
+  box-shadow: inset 0 0 0 1px rgba(80, 50, 20, 0.08), var(--shadow-sm);
+}
+
+.avatar-editor__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform-origin: center;
+}
+
+.avatar-editor__controls {
+  display: grid;
+  gap: var(--sp-2);
+}
+
+.avatar-editor__controls label {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--c-ink-3);
+}
+
+.avatar-editor__controls input[type='range'] {
+  width: 100%;
+  accent-color: var(--c-amber-deep);
+}
+
+.avatar-editor__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
 .picker-options {
   display: flex;
   flex-wrap: wrap;

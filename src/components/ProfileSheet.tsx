@@ -36,6 +36,48 @@ interface ProfileSheetProps {
 const AVATAR_EMOJIS = ['🦉', '🕊️', '🌸', '🌲', 'そ', 'み', 'は', '🦊', '🐱', '🍀', '🌟', '🎏']
 // 選択可能なアバター背景色
 const AVATAR_COLORS = ['#f1e8d6', '#e2ecc8', '#ffdce3', '#dceffd', '#fceecb', '#ffd8b3', '#e8dffd']
+const AVATAR_EXPORT_SIZE = 320
+
+function createEditedAvatarDataUrl(
+  src: string,
+  zoom: number,
+  offsetX: number,
+  offsetY: number,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = AVATAR_EXPORT_SIZE
+      canvas.height = AVATAR_EXPORT_SIZE
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        reject(new Error('画像を編集できませんでした'))
+        return
+      }
+
+      const baseScale = Math.max(
+        AVATAR_EXPORT_SIZE / image.width,
+        AVATAR_EXPORT_SIZE / image.height,
+      )
+      const scale = baseScale * zoom
+      const drawWidth = image.width * scale
+      const drawHeight = image.height * scale
+      const maxShiftX = Math.max(0, (drawWidth - AVATAR_EXPORT_SIZE) / 2)
+      const maxShiftY = Math.max(0, (drawHeight - AVATAR_EXPORT_SIZE) / 2)
+      const drawX =
+        (AVATAR_EXPORT_SIZE - drawWidth) / 2 + (offsetX / 100) * maxShiftX
+      const drawY =
+        (AVATAR_EXPORT_SIZE - drawHeight) / 2 + (offsetY / 100) * maxShiftY
+
+      ctx.clearRect(0, 0, AVATAR_EXPORT_SIZE, AVATAR_EXPORT_SIZE)
+      ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight)
+      resolve(canvas.toDataURL('image/jpeg', 0.9))
+    }
+    image.onerror = () => reject(new Error('画像の読み込みに失敗しました'))
+    image.src = src
+  })
+}
 
 export function ProfileSheet({
   items,
@@ -59,6 +101,10 @@ export function ProfileSheet({
   const [editEmoji, setEditEmoji] = useState(profile.avatarEmoji)
   const [editColor, setEditColor] = useState(profile.avatarColor)
   const [editImageUrl, setEditImageUrl] = useState(profile.avatarImageUrl ?? null)
+  const [avatarEditorSrc, setAvatarEditorSrc] = useState<string | null>(null)
+  const [avatarZoom, setAvatarZoom] = useState(1)
+  const [avatarOffsetX, setAvatarOffsetX] = useState(0)
+  const [avatarOffsetY, setAvatarOffsetY] = useState(0)
   const [savingProfile, setSavingProfile] = useState(false)
 
   // グループ関連
@@ -110,6 +156,10 @@ export function ProfileSheet({
     setEditEmoji(profile.avatarEmoji)
     setEditColor(profile.avatarColor)
     setEditImageUrl(profile.avatarImageUrl ?? null)
+    setAvatarEditorSrc(null)
+    setAvatarZoom(1)
+    setAvatarOffsetX(0)
+    setAvatarOffsetY(0)
     setIsEditing(false)
   }
 
@@ -129,13 +179,40 @@ export function ProfileSheet({
     const reader = new FileReader()
     reader.onload = () => {
       if (typeof reader.result === 'string') {
-        setEditImageUrl(reader.result)
+        setAvatarEditorSrc(reader.result)
+        setAvatarZoom(1)
+        setAvatarOffsetX(0)
+        setAvatarOffsetY(0)
       }
     }
     reader.onerror = () => {
       alert('画像の読み込みに失敗しました')
     }
     reader.readAsDataURL(file)
+  }
+
+  const handleApplyAvatarEdit = async () => {
+    if (!avatarEditorSrc) return
+    try {
+      const nextImageUrl = await createEditedAvatarDataUrl(
+        avatarEditorSrc,
+        avatarZoom,
+        avatarOffsetX,
+        avatarOffsetY,
+      )
+      setEditImageUrl(nextImageUrl)
+      setAvatarEditorSrc(null)
+    } catch (err: any) {
+      alert(err.message || '画像の編集に失敗しました')
+    }
+  }
+
+  const handleRemoveAvatarImage = () => {
+    setEditImageUrl(null)
+    setAvatarEditorSrc(null)
+    setAvatarZoom(1)
+    setAvatarOffsetX(0)
+    setAvatarOffsetY(0)
   }
 
   const copyCode = (code: string) => {
@@ -243,13 +320,86 @@ export function ProfileSheet({
                             <button
                               type="button"
                               className="btn btn--soft avatar-image-button"
-                              onClick={() => setEditImageUrl(null)}
+                              onClick={() => setAvatarEditorSrc(editImageUrl)}
+                            >
+                              画像を編集
+                            </button>
+                          )}
+                          {editImageUrl && (
+                            <button
+                              type="button"
+                              className="btn btn--soft avatar-image-button"
+                              onClick={handleRemoveAvatarImage}
                             >
                               画像を解除
                             </button>
                           )}
                         </div>
                       </div>
+                      {avatarEditorSrc && (
+                        <div className="avatar-editor" aria-label="プロフィール画像を編集">
+                          <div className="avatar-editor__preview">
+                            <img
+                              src={avatarEditorSrc}
+                              alt=""
+                              style={{
+                                transform: `translate(${avatarOffsetX}%, ${avatarOffsetY}%) scale(${avatarZoom})`,
+                              }}
+                            />
+                          </div>
+                          <div className="avatar-editor__controls">
+                            <label>
+                              拡大
+                              <input
+                                type="range"
+                                min="1"
+                                max="2.5"
+                                step="0.05"
+                                value={avatarZoom}
+                                onChange={(e) => setAvatarZoom(Number(e.target.value))}
+                              />
+                            </label>
+                            <label>
+                              左右
+                              <input
+                                type="range"
+                                min="-100"
+                                max="100"
+                                step="1"
+                                value={avatarOffsetX}
+                                onChange={(e) => setAvatarOffsetX(Number(e.target.value))}
+                              />
+                            </label>
+                            <label>
+                              上下
+                              <input
+                                type="range"
+                                min="-100"
+                                max="100"
+                                step="1"
+                                value={avatarOffsetY}
+                                onChange={(e) => setAvatarOffsetY(Number(e.target.value))}
+                              />
+                            </label>
+                          </div>
+                          <div className="avatar-editor__actions">
+                            <button
+                              type="button"
+                              className="btn btn--soft avatar-image-button"
+                              onClick={() => setAvatarEditorSrc(null)}
+                            >
+                              閉じる
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn--primary avatar-image-button"
+                              onClick={handleApplyAvatarEdit}
+                            >
+                              加工を反映
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       <div className="avatar-picker-group">
                         <label>絵文字</label>
                         <div className="picker-options">
