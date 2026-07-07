@@ -57,7 +57,21 @@ export function useUserProfile(currentUser: User | null) {
   useEffect(() => {
     if (currentUser) {
       setProfile(userToProfile(currentUser))
+      return
     }
+    // ログアウト時：ログインユーザーの情報を残さず、ローカル/既定プロフィールへ戻す
+    const saved = localStorage.getItem(PROFILE_KEY)
+    if (saved) {
+      try {
+        setProfile(JSON.parse(saved) as UserProfile)
+        return
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    const defaultProfile = createDefaultProfile()
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(defaultProfile))
+    setProfile(defaultProfile)
   }, [currentUser])
 
   const updateProfile = useCallback(
