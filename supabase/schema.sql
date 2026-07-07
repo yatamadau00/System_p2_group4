@@ -38,7 +38,9 @@ create table public.kotozute (
   visibility text not null default 'public' check (visibility in ('public', 'group')),
   group_id text,
   is_sample boolean not null default false,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  valid_from timestamptz,
+  valid_to timestamptz
 );
 
 create table public.friends (
