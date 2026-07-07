@@ -19,6 +19,7 @@ create table public.users (
   bio text not null default '',
   avatar_emoji text not null default '🦉',
   avatar_color text not null default '#f1e8d6',
+  avatar_image_url text,
   friend_code text not null unique,
   created_at timestamptz not null default now()
 );
