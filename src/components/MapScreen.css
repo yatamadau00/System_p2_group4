@@ -524,6 +524,7 @@
   font-weight: 600;
   font-size: 1rem;
   letter-spacing: 0.14em;
+  white-space: nowrap;
 }
 
 .topbar__count {
@@ -572,6 +573,7 @@
   transition:
     background var(--dur-1),
     color var(--dur-1);
+  white-space: nowrap;
 }
 
 .topbar__btn:active {
