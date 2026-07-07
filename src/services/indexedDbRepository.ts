@@ -129,10 +129,15 @@ export const indexedDbRepository: KotozuteRepository = {
     await tx.done
   },
 
-  async listOpenedIds(userId) {
+  async listOpenHistory(userId) {
     const opens = await (await db())
       .getAllFromIndex('kotozuteOpens', 'userId', userId)
-    return new Set(opens.map((open) => open.kotozuteId))
+    return opens
+      .map((open) => ({
+        kotozuteId: open.kotozuteId,
+        openedAt: open.openedAt,
+      }))
+      .sort((a, b) => b.openedAt - a.openedAt)
   },
 
   async markOpened(kotozuteId, userId) {

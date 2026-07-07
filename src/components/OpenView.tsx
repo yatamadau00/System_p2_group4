@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { EnrichedKotozute } from '../lib/enrich'
 import { formatDistance } from '../lib/geo'
+import { groupColorIndex } from '../lib/groupColor'
 import { kindLabel } from '../lib/media'
 import { NEAR_RADIUS_M, UNLOCK_RADIUS_M } from '../config'
 import { MediaView } from './MediaView'
@@ -49,6 +50,7 @@ export function OpenView({
     initiallyUnlockable ? 'ready' : 'locked',
   )
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
+  const [reportTargetId, setReportTargetId] = useState<string | null>(null)
   const [reportReason, setReportReason] = useState('spam')
   const [reportDetails, setReportDetails] = useState('')
   const [reportError, setReportError] = useState<string | null>(null)
@@ -82,6 +84,7 @@ export function OpenView({
       setReportError('Supabase が設定されていません。')
       return
     }
+    if (!reportTargetId) return
 
     setReportError(null)
     setIsSubmittingReport(true)
@@ -92,7 +95,7 @@ export function OpenView({
       .from('reports')
       .insert([
         {
-          kotozute_id: kotozute.id,
+          kotozute_id: reportTargetId,
           reporter_id: reporterId,
           reason,
           details,
@@ -103,7 +106,8 @@ export function OpenView({
 
     if (error) {
       if (error.code === '23505') {
-        setReportError('このことづては既に通報されています。')
+        const itemType = reportTargetId === kotozute.id ? 'ことづて' : '返信'
+        setReportError(`この${itemType}は既に通報されています。`)
         return
       }
       setReportError(error.message)
@@ -113,7 +117,13 @@ export function OpenView({
     setIsReportModalOpen(false)
     setReportReason('spam')
     setReportDetails('')
-    alert('このことづてを報告しました。ご協力ありがとうございます。')
+    setReportTargetId(null)
+    alert('通報しました。ご協力ありがとうございます。')
+  }
+
+  const handleOpenReport = (id: string) => {
+    setReportTargetId(id)
+    setIsReportModalOpen(true)
   }
 
   // 距離リングの進捗（NEAR で 0、UNLOCK で 1）
@@ -174,7 +184,7 @@ export function OpenView({
               {kotozute.placeLabel ?? 'この場所のことづて'}
             </div>
             <button
-              className="seal"
+              className={`seal${kotozute.visibility === 'group' && kotozute.groupId ? ` seal--gc-${groupColorIndex(kotozute.groupId)}` : ''}`}
               onClick={openSeal}
               disabled={phase === 'opening'}
               aria-label="封を開ける"
@@ -197,7 +207,7 @@ export function OpenView({
             onDeleteReply={onDeleteReply}
             currentUserId={currentUserId}
             replies={replies}
-            onReportClick={() => setIsReportModalOpen(true)}
+            onReportClick={handleOpenReport}
           />
         )}
       </div>
@@ -208,7 +218,9 @@ export function OpenView({
             onClick={() => setIsReportModalOpen(false)}
           />
           <div className="report-modal__content">
-            <h2 id="report-modal-title">このことづてを通報する</h2>
+            <h2 id="report-modal-title">
+              {reportTargetId === kotozute.id ? 'このことづてを通報する' : 'この返信を通報する'}
+            </h2>
             <p>不適切だと思われる理由を選択してください。</p>
             <label className="report-modal__label">
               <span>理由</span>
@@ -338,7 +350,7 @@ function Letter({
   onDeleteReply: (id: string) => void
   currentUserId: string | null
   replies: EnrichedKotozute[]
-  onReportClick: () => void
+  onReportClick: (id: string) => void
 }) {
   const date = new Date(kotozute.createdAt)
   const dateStr = `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
@@ -409,7 +421,7 @@ function Letter({
         </button>
         <button
           className="letter__report"
-          onClick={onReportClick}
+          onClick={() => onReportClick(kotozute.id)}
         >
           <FlagIcon
             width={12}
@@ -444,7 +456,7 @@ function Letter({
                     ))}
                   </div>
                 )}
-                {((reply.authorId && reply.authorId === currentUserId) || (!reply.authorId && reply.mine)) && (
+                {((reply.authorId && reply.authorId === currentUserId) || (!reply.authorId && reply.mine)) ? (
                   <button
                     className="thread-reply__delete"
                     onClick={() => {
@@ -454,6 +466,19 @@ function Letter({
                   >
                     <TrashIcon width={14} height={14} />
                     削除
+                  </button>
+                ) : (
+                  <button
+                    className="thread-reply__report"
+                    onClick={() => onReportClick(reply.id)}
+                    aria-label="この返信を通報"
+                  >
+                    <FlagIcon
+                      width={12}
+                      height={12}
+                      style={{ display: 'inline', verticalAlign: '-1px', marginRight: 4 }}
+                    />
+                    この返信を報告する
                   </button>
                 )}
               </article>

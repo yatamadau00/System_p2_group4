@@ -47,6 +47,11 @@
   transform: scale(0.985);
 }
 
+.cz-row--active {
+  background: var(--c-amber-soft, rgba(240, 168, 95, 0.15));
+  box-shadow: 0 0 0 2px var(--c-amber);
+}
+
 .cz-row__badge {
   width: 46px;
   height: 46px;
