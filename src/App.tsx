@@ -55,18 +55,9 @@ export function App() {
   const position = geo.position
 
   // 表示可能なことづてにフィルター（全体公開 or 自分が作成 or 登録済みのフレンドが作成したもの）
-  // 期間外のもの、および返信（ピン表示不要）は除外
   const visibleItems = useMemo(() => {
-    const now = Date.now()
     return items.filter((item) => {
-      // 1. 開封有効期間のチェック
-      if (item.validFrom && now < item.validFrom) return false
-      if (item.validTo && now > item.validTo) return false
-
-      // 2. 返信は地図にピン表示しない
       if (item.replyToId) return false
-
-      // 3. 公開範囲や作成者によるフィルター
       if (item.mine) return true
       if (!item.visibility || item.visibility === 'public') return true
       if (item.visibility === 'group' && item.groupId && isInGroup(item.groupId)) {
@@ -78,17 +69,28 @@ export function App() {
 
   // 現在地からの距離・近接状態を付与
   const enriched = useMemo(() => enrich(visibleItems, position), [visibleItems, position])
+
+  // 地図に表示するピン（期間内のもののみ）
+  const mapItems = useMemo(() => {
+    const now = Date.now()
+    return enriched.filter((item) => {
+      if (item.validFrom && now < item.validFrom) return false
+      if (item.validTo && now > item.validTo) return false
+      return true
+    })
+  }, [enriched])
+
   const unlockableCount = useMemo(
-    () => enriched.filter((k) => k.proximity === 'unlockable').length,
-    [enriched],
+    () => mapItems.filter((k) => k.proximity === 'unlockable').length,
+    [mapItems],
   )
-  // 下部カルーセル＝現在地の半径内（＝いま開ける）ことづて。距離が近い順。
+  // 下部カルーセル＝現在地の半径内（＝いま開ける）かつ期間内のことづて。距離が近い順。
   const nearbyItems = useMemo(
     () =>
-      enriched
+      mapItems
         .filter((k) => k.proximity === 'unlockable')
         .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0)),
-    [enriched],
+    [mapItems],
   )
   const selected = useMemo(
     () => {
@@ -370,9 +372,9 @@ export function App() {
   return (
     <div className="app">
       <MapScreen
-        items={enriched}
+        items={mapItems}
         position={position}
-        totalCount={visibleItems.length}
+        totalCount={mapItems.length}
         unlockableCount={unlockableCount}
         highlightedId={highlightedId}
         onSelectPin={handleSelect}
