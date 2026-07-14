@@ -514,17 +514,19 @@
   transform: scale(0.92);
 }
 
-/* ====== 上部ブランドバー ====== */
+/* ====== 上部トップバー（ブランド＋ユーザーを統合） ====== */
 .topbar {
   position: absolute;
-  top: calc(var(--safe-top) + var(--sp-4));
+  top: calc(var(--safe-top) + var(--sp-3));
+  /* 元デザインどおり画面中央に、内容ぶんの幅で配置する */
   left: 50%;
   transform: translateX(-50%);
+  max-width: calc(100vw - var(--sp-4) * 2);
   z-index: var(--z-overlay);
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-4);
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
   border-radius: var(--r-pill);
   background: var(--c-night-veil);
   backdrop-filter: blur(10px);
@@ -533,13 +535,26 @@
   box-shadow: var(--shadow-md);
 }
 
+/* --- 左：ブランド --- */
+.topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
 .topbar__mark {
   width: 22px;
   height: 22px;
+  flex-shrink: 0;
   border-radius: 50% 50% 50% 3px;
   transform: rotate(45deg);
   background: linear-gradient(160deg, #f0a85f, var(--c-amber-deep));
   box-shadow: 0 0 10px var(--c-amber-glow);
+}
+
+.topbar__brand-text {
+  min-width: 0;
 }
 
 .topbar__title {
@@ -554,76 +569,69 @@
   font-size: 0.74rem;
   color: #c0c5cf;
   letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* ユーザー認証関連のスタイリング */
-.topbar__divider {
-  width: 1px;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.15);
-  margin: 0 var(--sp-1);
-}
-
-.topbar__auth {
-  display: flex;
-  align-items: center;
-}
-
+/* --- 右：ユーザーチップ（アバター＋名前 → プロフィール） --- */
 .topbar__user {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
+  min-width: 0;
+  flex-shrink: 0;
+  padding: 4px 4px 4px 12px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--c-on-night);
+  transition:
+    background var(--dur-1),
+    transform var(--dur-1) var(--ease-soft);
+}
+
+.topbar__user:active {
+  transform: scale(0.96);
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .topbar__username {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  max-width: 80px;
+  min-width: 0;
+  max-width: 104px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--c-on-night);
 }
 
-.topbar__btn {
-  font-size: 0.76rem;
-  font-weight: 700;
+.topbar__user--guest .topbar__username {
   color: var(--c-amber-soft);
-  padding: 4px 10px;
-  border-radius: var(--r-pill);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transition:
-    background var(--dur-1),
-    color var(--dur-1);
-  white-space: nowrap;
 }
 
-.topbar__btn:active {
-  background: rgba(255, 255, 255, 0.18);
-  color: var(--c-amber);
-}
-
-/* ====== プロフィールボタン ====== */
-.map-btn--profile {
-  position: absolute;
-  top: calc(var(--safe-top) + var(--sp-4));
-  right: var(--sp-4);
-  z-index: var(--z-overlay);
-  width: 48px;
-  height: 48px;
-  padding: 0;
-  font-size: 1.4rem;
+.topbar__avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
   display: grid;
   place-items: center;
+  font-size: 1.1rem;
   border: 2px solid #fff;
-  box-shadow: var(--shadow-md);
-  cursor: pointer;
+  box-shadow: var(--shadow-sm);
   user-select: none;
   overflow: hidden;
 }
 
-.map-btn__avatar-image {
+.topbar__avatar--guest {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--c-amber-soft);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.topbar__avatar-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -651,6 +659,25 @@
   .map-controls {
     right: var(--sp-3);
     bottom: calc(var(--safe-bottom) + 178px);
+  }
+}
+
+/* 狭幅：ユーザー名は隠してアバターのみ（タップ領域は確保） */
+@media (max-width: 400px) {
+  .topbar__user {
+    padding: 3px;
+    gap: 0;
+    background: transparent;
+    border-color: transparent;
+  }
+
+  .topbar__username {
+    display: none;
+  }
+
+  .topbar__avatar {
+    width: 40px;
+    height: 40px;
   }
 }
 

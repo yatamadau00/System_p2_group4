@@ -476,3 +476,20 @@
   flex-wrap: wrap;
   gap: var(--sp-2);
 }
+
+/* ====== アカウント操作（ログアウト） ====== */
+.account-section {
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-4);
+  border-top: 1px solid rgba(80, 50, 20, 0.08);
+}
+
+.account-logout {
+  color: var(--c-danger);
+  background: rgba(181, 82, 74, 0.08);
+  border: 1px solid rgba(181, 82, 74, 0.18);
+}
+
+.account-logout:active {
+  background: rgba(181, 82, 74, 0.16);
+}

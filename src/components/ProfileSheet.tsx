@@ -32,6 +32,7 @@ interface ProfileSheetProps {
   getGroupMembers: (id: string) => Promise<GroupMember[]>
   onSelectKotozute: (id: string) => void
   onDeleteKotozute: (id: string) => void
+  onLogout: () => void
   onClose: () => void
 }
 
@@ -95,6 +96,7 @@ export function ProfileSheet({
   getGroupMembers,
   onSelectKotozute,
   onDeleteKotozute,
+  onLogout,
   onClose,
 }: ProfileSheetProps) {
   const [tab, setTab] = useState<'profile' | 'groups'>('profile')
@@ -619,6 +621,18 @@ export function ProfileSheet({
                   ))}
                 </ul>
               )}
+            </div>
+
+            {/* アカウント操作（ログアウト） */}
+            <div className="account-section">
+              <button
+                className="btn btn--soft btn--block account-logout"
+                onClick={() => {
+                  if (confirm('ログアウトしますか？')) onLogout()
+                }}
+              >
+                ログアウト
+              </button>
             </div>
           </div>
         ) : (
