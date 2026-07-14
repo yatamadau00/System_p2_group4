@@ -547,6 +547,7 @@ export function App() {
       {!overlayOpen && !loading && (
         <NearbyDeck
           items={nearbyItems}
+          groups={groups}
           highlightedId={highlightedId}
           hasPosition={!!position}
           onSelect={handleHighlight}
@@ -656,6 +657,11 @@ export function App() {
           onDelete={handleDelete}
           onToggleLike={handleToggleLike}
           onToggleFavorite={handleToggleFavorite}
+          group={
+            selected.visibility === 'group' && selected.groupId
+              ? groups.find((g) => g.id === selected.groupId)
+              : undefined
+          }
         />
       )}
 
