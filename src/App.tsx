@@ -7,6 +7,7 @@ import { ProfileSheet } from './components/ProfileSheet'
 import { NearbyDeck } from './components/NearbyDeck'
 import { GeoBanner } from './components/GeoBanner'
 import { AuthSheet } from './components/AuthSheet'
+import { GoogleProfileSetup } from './components/GoogleProfileSetup'
 import { CheckIcon, PlusIcon } from './components/icons'
 import { useGeolocation } from './hooks/useGeolocation'
 import { useKotozute } from './hooks/useKotozute'
@@ -45,7 +46,7 @@ function isGroupVisible(item: Kotozute, groupLayerVisibility: GroupLayerVisibili
 
 export function App() {
   const geo = useGeolocation(true)
-  const { currentUser, logout, linkGoogleAccount } = useAuth()
+  const { currentUser, logout, linkGoogleAccount, unlinkGoogleAccount } = useAuth()
   const {
     items,
     openHistory,
@@ -86,6 +87,11 @@ export function App() {
   )
   const [groupLayerVisibility, setGroupLayerVisibility] = useState<GroupLayerVisibility>({})
   const [favoriteOnly, setFavoriteOnly] = useState(false)
+
+  const needsGoogleProfileSetup =
+    !!currentUser?.authUserId &&
+    currentUser.passwordHash === '' &&
+    !profile.name.trim()
 
   const mapRef = useRef<google.maps.Map | null>(null)
   const listScrollRef = useRef(0)
@@ -382,23 +388,6 @@ export function App() {
             console.warn('Failed to send group notifications:', e)
           })
       }
-
-      // 模擬開封通知（デモ用）
-      // 15秒後に「誰かがあなたのことづてを開封した」という通知を発生させる
-      if (!replyingTo) {
-        setTimeout(() => {
-          const place = created.placeLabel || 'あなたの残した場所'
-          const names = ['さくら', 'たかし', 'けんた', 'みく', 'たくみ']
-          const randomName = names[Math.floor(Math.random() * names.length)]
-
-          addNotification(
-            '言伝が受け取られました',
-            `${randomName}さんが、あなたが「${place}」に残した言伝を開封しました！`,
-            'received',
-            created.id,
-          )
-        }, 15000)
-      }
     },
     [create, currentUser, addNotification, replyTarget, profile.name, groups, getGroupMembers],
   )
@@ -453,12 +442,29 @@ export function App() {
     async (id: string) => {
       if (!currentUser) return
       try {
-        await markOpened(id)
+        // Supabaseへ開封記録を保存し、初めての開封なら true が返る
+        const isNew = await markOpened(id)
+
+        // 開封通知: 新規開封時のみ、ことづての作者本人へ届ける（自分で開封した場合は除く）
+        if (isNew) {
+          const target = items.find((item) => item.id === id)
+          if (target?.authorId && target.authorId !== currentUser.id) {
+            const openerName = currentUser.displayName ?? profile.name ?? 'だれか'
+            const place = target.placeLabel || 'あなたの残した場所'
+            addNotification(
+              'ことづてが受け取られました',
+              `${openerName}さんが、あなたが「${place}」に残したことづてを開封しました！`,
+              'received',
+              id,
+              target.authorId,
+            )
+          }
+        }
       } catch (e) {
         console.warn('Failed to record kotozute open:', e)
       }
     },
-    [currentUser, markOpened],
+    [currentUser, markOpened, items, addNotification, profile.name],
   )
 
   const handleToggleLike = useCallback(
@@ -500,7 +506,13 @@ export function App() {
   )
 
   const overlayOpen =
-    composing || showList || showProfile || !!selected || showAuth || showNotifications
+    composing ||
+    showList ||
+    showProfile ||
+    !!selected ||
+    showAuth ||
+    showNotifications ||
+    needsGoogleProfileSetup
 
   return (
     <div className="app">
@@ -587,8 +599,6 @@ export function App() {
           onSelect={(id) => {
             setShowList(false)
             handleHighlight(id)
-            setOpenedFromList(true)
-            setTimeout(() => handleSelect(id), 600)
           }}
           onDelete={handleDelete}
           onToggleFavorite={handleToggleFavorite}
@@ -604,6 +614,8 @@ export function App() {
           profile={profile}
           updateProfile={updateProfile}
           linkGoogleAccount={linkGoogleAccount}
+          unlinkGoogleAccount={unlinkGoogleAccount}
+          canUnlinkGoogle={!!currentUser?.passwordHash}
           groups={groups}
           createGroup={createGroup}
           joinGroup={joinGroup}
@@ -656,6 +668,11 @@ export function App() {
       {/* ログイン / 新規登録 */}
       {showAuth && (
         <AuthSheet onClose={() => setShowAuth(false)} />
+      )}
+
+      {/* Googleで新規登録した場合の初回プロフィール設定 */}
+      {needsGoogleProfileSetup && (
+        <GoogleProfileSetup updateProfile={updateProfile} />
       )}
 
       {/* 通知 */}
