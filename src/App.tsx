@@ -340,6 +340,31 @@ export function App() {
         )
       }
 
+      // グループ宛て通知: 投稿者以外のグループメンバー全員に通知を届ける
+      if (!replyingTo && created.visibility === 'group' && created.groupId) {
+        getGroupMembers(created.groupId)
+          .then((members) => {
+            const groupName = groups.find((g) => g.id === created.groupId)?.name ?? 'グループ'
+            const senderName = currentUser?.displayName ?? profile.name ?? 'だれか'
+            const place = created.placeLabel || 'どこか'
+
+            members.forEach((m) => {
+              if (m.id !== currentUser.id) {
+                addNotification(
+                  'グループにことづてが届きました',
+                  `「${groupName}」に${senderName}さんが新しいことづてを「${place}」に残しました。`,
+                  'received',
+                  created.id,
+                  m.id,
+                )
+              }
+            })
+          })
+          .catch((e) => {
+            console.warn('Failed to send group notifications:', e)
+          })
+      }
+
       // 模擬開封通知（デモ用）
       // 15秒後に「誰かがあなたのことづてを開封した」という通知を発生させる
       if (!replyingTo) {
@@ -357,7 +382,7 @@ export function App() {
         }, 15000)
       }
     },
-    [create, currentUser, addNotification, replyTarget, profile.name],
+    [create, currentUser, addNotification, replyTarget, profile.name, groups, getGroupMembers],
   )
 
 
