@@ -117,7 +117,7 @@
     box-shadow var(--dur-2) var(--ease-soft);
 }
 
-/* 下に伸びる尖り（マップピン先端） */
+/* 下に伸びる尖り（マップピン先端）。アイコンより背面に置いて被らせない */
 .pin__bulb::after {
   content: '';
   position: absolute;
@@ -129,6 +129,7 @@
   border-left: 9px solid transparent;
   border-right: 9px solid transparent;
   border-top: 14px solid currentColor;
+  z-index: -1;
 }
 
 .pin__pigeon {
