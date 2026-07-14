@@ -146,6 +146,7 @@ interface GroupRow {
   name: string | null
   avatar_emoji: string | null
   avatar_color: string | null
+  avatar_image_url: string | null
   owner_id: string | null
 }
 
@@ -160,12 +161,14 @@ function rowToGroup(g: GroupRow, userId: string, joinedAt: number): Group {
     name: g.name || g.id,
     avatarEmoji: g.avatar_emoji || GROUP_DEFAULT_EMOJI,
     avatarColor: g.avatar_color || GROUP_DEFAULT_COLOR,
+    avatarImageUrl: g.avatar_image_url ?? null,
     owner: g.owner_id === userId,
     joinedAt,
   }
 }
 
-const GROUP_COLS = 'id, name, avatar_emoji, avatar_color, owner_id'
+const GROUP_COLS =
+  'id, name, avatar_emoji, avatar_color, avatar_image_url, owner_id'
 
 async function fetchMemberGroups(userId: string): Promise<Group[]> {
   const { data, error } = await supabase!
@@ -252,8 +255,9 @@ export function useGroups(currentUser: User | null) {
   }, [useDb, currentUser])
 
   const createGroup = useCallback(
-    async (name: string): Promise<Group> => {
+    async (name: string, avatarImageUrl?: string | null): Promise<Group> => {
       const cleanName = name.trim() || '名もなきグループ'
+      const image = avatarImageUrl ?? null
       if (useDb && currentUser) {
         const id = generateGroupCode()
         const { error: gErr } = await supabase!.from('groups').insert({
@@ -261,6 +265,7 @@ export function useGroups(currentUser: User | null) {
           name: cleanName,
           avatar_emoji: GROUP_DEFAULT_EMOJI,
           avatar_color: GROUP_DEFAULT_COLOR,
+          avatar_image_url: image,
           owner_id: currentUser.id,
         })
         if (gErr) throw gErr
@@ -273,6 +278,7 @@ export function useGroups(currentUser: User | null) {
           name: cleanName,
           avatarEmoji: GROUP_DEFAULT_EMOJI,
           avatarColor: GROUP_DEFAULT_COLOR,
+          avatarImageUrl: image,
           owner: true,
           joinedAt: Date.now(),
         }
@@ -284,6 +290,7 @@ export function useGroups(currentUser: User | null) {
         name: cleanName,
         avatarEmoji: GROUP_DEFAULT_EMOJI,
         avatarColor: GROUP_DEFAULT_COLOR,
+        avatarImageUrl: image,
         owner: true,
         joinedAt: Date.now(),
       }
@@ -336,6 +343,7 @@ export function useGroups(currentUser: User | null) {
         name: id,
         avatarEmoji: GROUP_DEFAULT_EMOJI,
         avatarColor: GROUP_DEFAULT_COLOR,
+        avatarImageUrl: null,
         owner: false,
         joinedAt: Date.now(),
       }
@@ -370,12 +378,16 @@ export function useGroups(currentUser: User | null) {
   const updateGroup = useCallback(
     async (
       id: string,
-      updates: Partial<Pick<Group, 'name' | 'avatarEmoji' | 'avatarColor'>>,
+      updates: Partial<
+        Pick<Group, 'name' | 'avatarEmoji' | 'avatarColor' | 'avatarImageUrl'>
+      >,
     ): Promise<void> => {
-      const patch: Record<string, string> = {}
+      const patch: Record<string, string | null> = {}
       if (updates.name !== undefined) patch.name = updates.name.trim() || id
       if (updates.avatarEmoji !== undefined) patch.avatar_emoji = updates.avatarEmoji
       if (updates.avatarColor !== undefined) patch.avatar_color = updates.avatarColor
+      if (updates.avatarImageUrl !== undefined)
+        patch.avatar_image_url = updates.avatarImageUrl
 
       if (useDb && currentUser) {
         const { error } = await supabase!.from('groups').update(patch).eq('id', id)
@@ -388,6 +400,10 @@ export function useGroups(currentUser: User | null) {
               name: updates.name?.trim() || g.name,
               avatarEmoji: updates.avatarEmoji ?? g.avatarEmoji,
               avatarColor: updates.avatarColor ?? g.avatarColor,
+              avatarImageUrl:
+                updates.avatarImageUrl !== undefined
+                  ? updates.avatarImageUrl
+                  : g.avatarImageUrl,
             }
           : g
       if (!useDb) saveLocalGroups(loadLocalGroups().map(apply))

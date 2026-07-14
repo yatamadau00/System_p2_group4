@@ -150,29 +150,18 @@ export function ComposeFlow({
           </div>
         )}
 
-        {/* 場所（今いる場所のみ） */}
-        {!replyTarget &&
-          (position ? (
-            <div className="place-chosen" role="status">
-              <LocateIcon width={24} height={24} />
-              <div>
-                <b>いまいる場所に残します</b>
-                <small>
-                  {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
-                </small>
-              </div>
+        {/* 場所（今いる場所のみ）。位置が取得できていないときだけ知らせる */}
+        {!replyTarget && !position && (
+          <div className="place-missing" role="status">
+            <div>
+              <b>現在地がまだ取得できていません</b>
+              <small>ことづては「いまいる場所」にだけ残せます。</small>
             </div>
-          ) : (
-            <div className="place-missing" role="status">
-              <div>
-                <b>現在地がまだ取得できていません</b>
-                <small>ことづては「いまいる場所」にだけ残せます。</small>
-              </div>
-              <button className="btn btn--soft" onClick={onRetryLocation}>
-                現在地を取得
-              </button>
-            </div>
-          ))}
+            <button className="btn btn--soft" onClick={onRetryLocation}>
+              現在地を取得
+            </button>
+          </div>
+        )}
 
         {/* 本文 */}
         <div className="field">

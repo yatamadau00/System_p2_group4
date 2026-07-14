@@ -2,6 +2,7 @@
   display: grid;
   gap: var(--sp-5);
   padding-bottom: var(--sp-2);
+  text-align: left;
 }
 
 /* ステップ進捗 */
