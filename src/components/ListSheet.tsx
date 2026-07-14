@@ -51,7 +51,7 @@ export function ListSheet({
   onClose,
 }: ListSheetProps) {
   const [tab, setTab] = useState<'all' | 'favorite' | 'mine'>(savedTab)
-  const [subFilter, setSubFilter] = useState<'unlockable' | 'opened'>('unlockable')
+  const [subFilter, setSubFilter] = useState<'unopened' | 'opened'>('unopened')
   const listRef = useRef<HTMLUListElement>(null)
 
   // マウント時にスクロール位置を復元
@@ -73,8 +73,8 @@ export function ListSheet({
       filtered = items.filter((k) => !k.mine)
 
       // サブフィルター
-      if (subFilter === 'unlockable') {
-        filtered = filtered.filter((k) => k.proximity === 'unlockable' && !k.openedByCurrentUser)
+      if (subFilter === 'unopened') {
+        filtered = filtered.filter((k) => !k.openedByCurrentUser)
       } else if (subFilter === 'opened') {
         filtered = filtered.filter((k) => k.openedByCurrentUser)
       }
@@ -131,17 +131,17 @@ export function ListSheet({
         <div className="sub-segmented" role="tablist">
           <button
             role="tab"
-            aria-pressed={subFilter === 'unlockable'}
-            onClick={() => setSubFilter('unlockable')}
+            aria-pressed={subFilter === 'unopened'}
+            onClick={() => setSubFilter('unopened')}
           >
-            開封可能
+            未開封
           </button>
           <button
             role="tab"
             aria-pressed={subFilter === 'opened'}
             onClick={() => setSubFilter('opened')}
           >
-            開封済み
+            開封済
           </button>
         </div>
       )}
@@ -172,9 +172,7 @@ export function ListSheet({
             const Icon = KIND_ICON[primaryKind(k)]
             const statusText =
               k.openedByCurrentUser
-                ? '開封済み'
-                : k.proximity === 'unlockable'
-                ? '開封可能'
+                ? '開封済'
                 : k.distance != null
                   ? formatDistance(k.distance)
                   : '距離不明'
