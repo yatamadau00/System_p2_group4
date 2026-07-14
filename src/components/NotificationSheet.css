@@ -171,6 +171,15 @@
   padding-right: var(--sp-1);
 }
 
+.swipeable-wrapper {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  user-select: none;
+  border-radius: var(--r-md);
+  flex-shrink: 0;
+}
+
 .notif-item {
   position: relative;
   display: flex;
@@ -252,6 +261,48 @@
 .notif-item__content {
   flex-grow: 1;
   min-width: 0; /* text truncate のため */
+  padding-right: 28px; /* 右端の削除ボタン・未読ドットと重ならないように調整 */
+}
+
+/* 個別削除ボタン */
+.notif-item__delete-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  color: var(--c-ink-3);
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 5;
+  opacity: 0; /* デフォルトでは非表示（ホバー時に表示） */
+  transition: opacity var(--dur-1) var(--ease-soft), background-color var(--dur-1) var(--ease-soft), color var(--dur-1) var(--ease-soft);
+}
+
+.notif-item:hover .notif-item__delete-btn {
+  opacity: 1;
+}
+
+.notif-item__delete-btn:hover {
+  background-color: rgba(107, 99, 87, 0.12);
+  color: var(--c-danger);
+}
+
+.notif-item__delete-btn:active {
+  transform: translateY(-50%) scale(0.92);
+}
+
+/* ホバーが無いモバイル環境では、削除ボタンを常に半透明で表示する */
+@media (hover: none) {
+  .notif-item__delete-btn {
+    opacity: 0.5;
+  }
 }
 
 .notif-item__header {

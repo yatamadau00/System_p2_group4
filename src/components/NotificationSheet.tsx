@@ -1,8 +1,100 @@
-import { useState } from 'react'
+import { useState, ReactNode } from 'react'
 import { useNotifications } from '../hooks/useNotifications'
 import { Sheet } from './Sheet'
 import { BellIcon, LockIcon, PigeonIcon, TrashIcon, CheckIcon, EnvelopeIcon, CloseIcon } from './icons'
 import './NotificationSheet.css'
+
+function SwipeableNotification({
+  children,
+  onDismiss,
+  onClick,
+  isInteractive,
+}: {
+  children: ReactNode
+  onDismiss: () => void
+  onClick: () => void
+  isInteractive: boolean
+}) {
+  const [startX, setStartX] = useState<number | null>(null)
+  const [deltaX, setDeltaX] = useState(0)
+  const [swiping, setSwiping] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const target = e.target as HTMLElement
+    if (target.closest('.notif-item__delete-btn')) {
+      return
+    }
+    setStartX(e.clientX)
+    setSwiping(true)
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!swiping || startX === null) return
+    const diff = e.clientX - startX
+    setDeltaX(diff)
+  }
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!swiping) return
+    setSwiping(false)
+    e.currentTarget.releasePointerCapture(e.pointerId)
+
+    const threshold = 120
+    if (Math.abs(deltaX) > threshold) {
+      setDismissed(true)
+      setTimeout(() => {
+        onDismiss()
+      }, 250)
+    } else {
+      setDeltaX(0)
+    }
+    setStartX(null)
+  }
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (Math.abs(deltaX) > 5) {
+      e.preventDefault()
+      e.stopPropagation()
+      return
+    }
+    onClick()
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (isInteractive && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault()
+      onClick()
+    }
+  }
+
+  const style: React.CSSProperties = {
+    transform: dismissed
+      ? `translateX(${deltaX > 0 ? '100%' : '-100%'})`
+      : `translateX(${deltaX}px)`,
+    opacity: dismissed ? 0 : 1 - Math.min(Math.abs(deltaX) / 300, 0.8),
+    transition: swiping ? 'none' : 'transform 0.25s ease-out, opacity 0.25s ease-out',
+    touchAction: 'pan-y',
+  }
+
+  return (
+    <div
+      className="swipeable-wrapper"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      style={style}
+      role={isInteractive ? 'button' : 'document'}
+      tabIndex={isInteractive ? 0 : undefined}
+    >
+      {children}
+    </div>
+  )
+}
 
 interface NotificationSheetProps {
   onSelectKotozute: (id: string) => void
@@ -27,6 +119,7 @@ export function NotificationSheet({ onSelectKotozute, onClose }: NotificationShe
     requestPermission,
     markAsRead,
     markAllAsRead,
+    removeNotification,
     clearAll,
   } = useNotifications()
 
@@ -150,35 +243,39 @@ export function NotificationSheet({ onSelectKotozute, onClose }: NotificationShe
         ) : (
           <div className="notif-sheet__list">
             {notifications.map((n) => (
-              <div
+              <SwipeableNotification
                 key={n.id}
-                className={`notif-item ${n.read ? 'notif-item--read' : 'notif-item--unread'} ${
-                  n.relatedId ? 'notif-item--interactive' : ''
-                }`}
+                onDismiss={() => removeNotification(n.id)}
                 onClick={() => handleSelect(n)}
-                role={n.relatedId ? 'button' : 'document'}
-                tabIndex={n.relatedId ? 0 : undefined}
-                onKeyDown={
-                  n.relatedId
-                    ? (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          handleSelect(n)
-                        }
-                      }
-                    : undefined
-                }
+                isInteractive={!!n.relatedId}
               >
-                {!n.read && <span className="notif-item__unread-dot" aria-label="未読" />}
-                <div className="notif-item__icon-wrapper">{renderIcon(n.type)}</div>
-                <div className="notif-item__content">
-                  <div className="notif-item__header">
-                    <span className="notif-item__title">{n.title}</span>
-                    <span className="notif-item__time">{formatTime(n.createdAt)}</span>
+                <div
+                  className={`notif-item ${n.read ? 'notif-item--read' : 'notif-item--unread'} ${
+                    n.relatedId ? 'notif-item--interactive' : ''
+                  }`}
+                >
+                  <button
+                    className="notif-item__delete-btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeNotification(n.id)
+                    }}
+                    aria-label="この通知を削除"
+                  >
+                    <CloseIcon width={14} height={14} />
+                  </button>
+
+                  {!n.read && <span className="notif-item__unread-dot" aria-label="未読" />}
+                  <div className="notif-item__icon-wrapper">{renderIcon(n.type)}</div>
+                  <div className="notif-item__content">
+                    <div className="notif-item__header">
+                      <span className="notif-item__title">{n.title}</span>
+                      <span className="notif-item__time">{formatTime(n.createdAt)}</span>
+                    </div>
+                    <p className="notif-item__msg">{n.message}</p>
                   </div>
-                  <p className="notif-item__msg">{n.message}</p>
                 </div>
-              </div>
+              </SwipeableNotification>
             ))}
           </div>
         )}
