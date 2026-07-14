@@ -138,6 +138,21 @@
   color: rgba(255, 255, 255, 0.96);
 }
 
+/* グループのアイコンをピンに表示（色分けより分かりやすく） */
+.pin__group-img {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+.pin__group-emoji {
+  font-size: 24px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+}
+
 /* 種別チップ（中身の種類を示す小さな印） */
 .pin__kind {
   position: absolute;
