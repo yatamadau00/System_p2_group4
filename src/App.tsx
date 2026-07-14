@@ -472,7 +472,6 @@ export function App() {
         onMapLoad={handleMapLoad}
         currentUser={currentUser}
         onOpenAuth={() => setShowAuth(true)}
-        onLogout={logout}
         profile={profile}
         onOpenProfile={() => setShowProfile(true)}
         unreadCount={unreadCount}
@@ -571,6 +570,10 @@ export function App() {
             setSelectedId(id)
           }}
           onDeleteKotozute={handleDelete}
+          onLogout={() => {
+            logout()
+            setShowProfile(false)
+          }}
           onClose={() => setShowProfile(false)}
         />
       )}
