@@ -68,6 +68,8 @@ export interface Kotozute {
   visibility?: 'public' | 'group'
   /** group 限定のとき、対象グループのID（共有コード） */
   groupId?: string
+  /** シークレット：地図にピンを出さず、5m以内に入ると通知とともに出現する */
+  isSecret?: boolean
   /** 現在のログインユーザーが開封済みか */
   openedByCurrentUser?: boolean
   /** 開封可能期間の開始日時（epoch ms、任意） */
