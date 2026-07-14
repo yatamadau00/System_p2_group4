@@ -7,6 +7,7 @@ import { ProfileSheet } from './components/ProfileSheet'
 import { NearbyDeck } from './components/NearbyDeck'
 import { GeoBanner } from './components/GeoBanner'
 import { AuthSheet } from './components/AuthSheet'
+import { GoogleProfileSetup } from './components/GoogleProfileSetup'
 import { CheckIcon, PlusIcon } from './components/icons'
 import { useGeolocation } from './hooks/useGeolocation'
 import { useKotozute } from './hooks/useKotozute'
@@ -45,7 +46,7 @@ function isGroupVisible(item: Kotozute, groupLayerVisibility: GroupLayerVisibili
 
 export function App() {
   const geo = useGeolocation(true)
-  const { currentUser, logout, linkGoogleAccount } = useAuth()
+  const { currentUser, logout, linkGoogleAccount, unlinkGoogleAccount } = useAuth()
   const {
     items,
     openHistory,
@@ -86,6 +87,11 @@ export function App() {
   )
   const [groupLayerVisibility, setGroupLayerVisibility] = useState<GroupLayerVisibility>({})
   const [favoriteOnly, setFavoriteOnly] = useState(false)
+
+  const needsGoogleProfileSetup =
+    !!currentUser?.authUserId &&
+    currentUser.passwordHash === '' &&
+    !profile.name.trim()
 
   const mapRef = useRef<google.maps.Map | null>(null)
   const listScrollRef = useRef(0)
@@ -500,7 +506,13 @@ export function App() {
   )
 
   const overlayOpen =
-    composing || showList || showProfile || !!selected || showAuth || showNotifications
+    composing ||
+    showList ||
+    showProfile ||
+    !!selected ||
+    showAuth ||
+    showNotifications ||
+    needsGoogleProfileSetup
 
   return (
     <div className="app">
@@ -601,6 +613,8 @@ export function App() {
           profile={profile}
           updateProfile={updateProfile}
           linkGoogleAccount={linkGoogleAccount}
+          unlinkGoogleAccount={unlinkGoogleAccount}
+          canUnlinkGoogle={!!currentUser?.passwordHash}
           groups={groups}
           createGroup={createGroup}
           joinGroup={joinGroup}
@@ -648,6 +662,11 @@ export function App() {
       {/* ログイン / 新規登録 */}
       {showAuth && (
         <AuthSheet onClose={() => setShowAuth(false)} />
+      )}
+
+      {/* Googleで新規登録した場合の初回プロフィール設定 */}
+      {needsGoogleProfileSetup && (
+        <GoogleProfileSetup updateProfile={updateProfile} />
       )}
 
       {/* 通知 */}

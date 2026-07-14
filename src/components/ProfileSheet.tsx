@@ -20,6 +20,8 @@ interface ProfileSheetProps {
     updates: Partial<Omit<UserProfile, 'id' | 'friendCode'>>,
   ) => Promise<void>
   linkGoogleAccount: () => Promise<void>
+  unlinkGoogleAccount: () => Promise<void>
+  canUnlinkGoogle: boolean
   groups: Group[]
   createGroup: (name: string, avatarImageUrl?: string | null) => Promise<Group>
   joinGroup: (code: string) => Promise<Group>
@@ -90,6 +92,8 @@ export function ProfileSheet({
   profile,
   updateProfile,
   linkGoogleAccount,
+  unlinkGoogleAccount,
+  canUnlinkGoogle,
   groups,
   createGroup,
   joinGroup,
@@ -114,6 +118,7 @@ export function ProfileSheet({
   const [avatarOffsetY, setAvatarOffsetY] = useState(0)
   const [savingProfile, setSavingProfile] = useState(false)
   const [linkingGoogle, setLinkingGoogle] = useState(false)
+  const [unlinkingGoogle, setUnlinkingGoogle] = useState(false)
   const [googleLinkError, setGoogleLinkError] = useState<string | null>(null)
 
   // グループ関連
@@ -525,7 +530,31 @@ export function ProfileSheet({
                       <p>{profile.googleLinked ? '連携済みです' : '連携すると次回からGoogleでログインできます'}</p>
                     </div>
                     {profile.googleLinked ? (
-                      <span className="google-link-card__status">連携済み</span>
+                      canUnlinkGoogle ? (
+                        <button
+                          type="button"
+                          className="btn btn--soft google-link-card__unlink"
+                          disabled={unlinkingGoogle}
+                          onClick={async () => {
+                            if (!confirm('Googleアカウントとの連携を解除しますか？\n次回からユーザー名とパスワードでログインしてください。')) return
+                            setGoogleLinkError(null)
+                            setUnlinkingGoogle(true)
+                            try {
+                              await unlinkGoogleAccount()
+                            } catch (err: unknown) {
+                              setGoogleLinkError(
+                                err instanceof Error ? err.message : 'Googleアカウント連携を解除できませんでした',
+                              )
+                            } finally {
+                              setUnlinkingGoogle(false)
+                            }
+                          }}
+                        >
+                          {unlinkingGoogle ? '解除中…' : '連携解除'}
+                        </button>
+                      ) : (
+                        <span className="google-link-card__status">Googleログイン</span>
+                      )
                     ) : (
                       <button
                         type="button"
@@ -548,6 +577,11 @@ export function ProfileSheet({
                       </button>
                     )}
                   </div>
+                  {profile.googleLinked && (
+                    <p className="google-link-card__note">
+                      Google側でアクセス権を取り消した場合も、ことづて側の登録は残ります。完全に解除するにはこの画面の「連携解除」を使用してください。
+                    </p>
+                  )}
                   {googleLinkError && <p className="profile-card__link-error">{googleLinkError}</p>}
 
                   <div className="profile-card__actions">

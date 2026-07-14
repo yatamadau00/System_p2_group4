@@ -23,6 +23,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>
   loginWithGoogle: () => Promise<void>
   linkGoogleAccount: () => Promise<void>
+  unlinkGoogleAccount: () => Promise<void>
   signUp: (
     username: string,
     displayName: string,
@@ -171,6 +172,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const unlinkGoogleAccount = async () => {
+    setError(null)
+    if (!currentUser?.authUserId) {
+      throw new Error('Googleアカウントは連携されていません')
+    }
+    if (!currentUser.passwordHash) {
+      throw new Error('Googleで作成したアカウントは連携解除できません')
+    }
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error('Googleアカウント連携にはSupabaseの設定が必要です')
+    }
+
+    setLoading(true)
+    try {
+      const { error: unlinkError } = await supabase.rpc('disconnect_google_account')
+      if (unlinkError) throw unlinkError
+
+      // DB関数でAuthユーザーを削除した後、ブラウザ内のセッションも破棄する。
+      await supabase.auth.signOut({ scope: 'local' })
+      setCurrentUser({
+        ...currentUser,
+        authUserId: null,
+        email: undefined,
+      })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Googleアカウント連携を解除できませんでした'
+      setError(message)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const login = async (username: string, password: string) => {
     setError(null)
     setLoading(true)
@@ -229,6 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         loginWithGoogle,
         linkGoogleAccount,
+        unlinkGoogleAccount,
         signUp,
         logout,
         clearError,
