@@ -139,6 +139,7 @@
   padding-bottom: calc(var(--safe-bottom) + var(--sp-4));
   animation: sheet-up var(--dur-3) var(--ease-out);
   overflow: hidden;
+  transition: transform var(--dur-2) var(--ease-out);
 }
 
 @keyframes sheet-up {
@@ -150,14 +151,30 @@
   }
 }
 
+/* 見た目は細いバーのまま、ドラッグの当たり判定だけ広げる（::before が視覚上のバー） */
 .sheet__grip {
+  position: relative;
+  width: 44px;
+  height: var(--sp-6);
+  margin: 0 auto;
+  flex: none;
+  cursor: grab;
+  touch-action: none;
+  display: grid;
+  place-items: center;
+}
+
+.sheet__grip::before {
+  content: '';
   width: 44px;
   height: 5px;
   border-radius: var(--r-pill);
   background: var(--c-ink-3);
   opacity: 0.4;
-  margin: var(--sp-3) auto var(--sp-1);
-  flex: none;
+}
+
+.sheet__grip:active {
+  cursor: grabbing;
 }
 
 .sheet__head {
