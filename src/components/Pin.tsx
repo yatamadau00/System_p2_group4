@@ -51,9 +51,14 @@ export function Pin({ kotozute, group, highlighted = false, onClick }: PinProps)
   // グループのアイコンをピンに表示する（色分けより分かりやすい）
   const showGroupIcon = isGroupOnly && !!group
   const groupIdx = isGroupOnly && groupId ? groupColorIndex(groupId) : null
-  // アイコンを出すときは色分けは使わず、近接状態の色をそのまま活かす
-  const bulbStyle =
-    !showGroupIcon && groupIdx !== null ? groupBulbStyle(groupIdx, proximity) : undefined
+  // 写真はバルブいっぱいに敷く。絵文字は周囲をグループ色で塗る（オレンジを見せない）。
+  const bulbStyle = showGroupIcon
+    ? group!.avatarImageUrl
+      ? undefined
+      : { background: group!.avatarColor, color: group!.avatarColor }
+    : groupIdx !== null
+      ? groupBulbStyle(groupIdx, proximity)
+      : undefined
 
   const label = unlockable
     ? `${KIND_NAME[kind]}のことづてを開ける`
