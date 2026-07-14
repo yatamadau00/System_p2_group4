@@ -597,6 +597,35 @@ export function App() {
           onSaveTab={(t) => { listTabRef.current = t }}
           onSelect={(id) => {
             setShowList(false)
+            
+            const selectedItem = listItems.find((item) => item.id === id)
+            if (selectedItem) {
+              const layerKey = getMapLayerKey(selectedItem)
+              
+              setMapLayerVisibility((current) => {
+                if (current[layerKey]) return current
+                return {
+                  ...current,
+                  ...(layerKey === 'created' || layerKey === 'opened'
+                    ? {
+                        created: layerKey === 'created' ? true : false,
+                        opened: layerKey === 'opened' ? true : false,
+                      }
+                    : { [layerKey]: true }),
+                }
+              })
+
+              if (layerKey === 'group' && selectedItem.groupId) {
+                setGroupLayerVisibility((current) => {
+                  if (current[selectedItem.groupId!]) return current
+                  return {
+                    ...current,
+                    [selectedItem.groupId!]: true,
+                  }
+                })
+              }
+            }
+
             handleHighlight(id)
           }}
           onDelete={handleDelete}

@@ -250,20 +250,20 @@ export function MapScreen(props: MapScreenProps) {
             )}
         </div>
         <button
-          className={`map-layer map-layer--child map-layer--created${mapLayerVisibility.created ? ' map-layer--active' : ''}`}
-          type="button"
-          aria-pressed={mapLayerVisibility.created}
-          onClick={() => onToggleMapLayer('created')}
-        >
-          自作
-        </button>
-        <button
           className={`map-layer map-layer--child map-layer--opened${mapLayerVisibility.opened ? ' map-layer--active' : ''}`}
           type="button"
           aria-pressed={mapLayerVisibility.opened}
           onClick={() => onToggleMapLayer('opened')}
         >
-          取得済み
+          開封済
+        </button>
+        <button
+          className={`map-layer map-layer--child map-layer--created${mapLayerVisibility.created ? ' map-layer--active' : ''}`}
+          type="button"
+          aria-pressed={mapLayerVisibility.created}
+          onClick={() => onToggleMapLayer('created')}
+        >
+          {currentUser?.displayName || profile.name || '自作'}
         </button>
       </div>
     </div>
