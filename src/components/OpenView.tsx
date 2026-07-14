@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { EnrichedKotozute } from '../lib/enrich'
 import type { AttachmentKind, MediaItem } from '../types'
 import { formatDistance } from '../lib/geo'
@@ -536,8 +537,8 @@ function Letter({
     }
   }
 
-  if (editing) {
-    return (
+  const editSheet = editing && createPortal(
+    <div style={{ position: 'fixed', inset: 0, zIndex: 'calc(var(--z-modal) + 10)' }}>
       <Sheet
         title="ことづてを編集"
         onClose={() => {
@@ -787,11 +788,14 @@ function Letter({
           </div>
         </div>
       </Sheet>
-    )
-  }
+    </div>,
+    document.body,
+  )
 
   return (
-    <div className="letter">
+    <>
+      {editSheet}
+      <div className="letter">
       <div className="letter__place">
         {kotozute.placeLabel ?? 'この場所のことづて'}
       </div>
@@ -952,6 +956,7 @@ function Letter({
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }
