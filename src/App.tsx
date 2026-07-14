@@ -382,23 +382,6 @@ export function App() {
             console.warn('Failed to send group notifications:', e)
           })
       }
-
-      // 模擬開封通知（デモ用）
-      // 15秒後に「誰かがあなたのことづてを開封した」という通知を発生させる
-      if (!replyingTo) {
-        setTimeout(() => {
-          const place = created.placeLabel || 'あなたの残した場所'
-          const names = ['さくら', 'たかし', 'けんた', 'みく', 'たくみ']
-          const randomName = names[Math.floor(Math.random() * names.length)]
-
-          addNotification(
-            '言伝が受け取られました',
-            `${randomName}さんが、あなたが「${place}」に残した言伝を開封しました！`,
-            'received',
-            created.id,
-          )
-        }, 15000)
-      }
     },
     [create, currentUser, addNotification, replyTarget, profile.name, groups, getGroupMembers],
   )
@@ -453,12 +436,29 @@ export function App() {
     async (id: string) => {
       if (!currentUser) return
       try {
-        await markOpened(id)
+        // Supabaseへ開封記録を保存し、初めての開封なら true が返る
+        const isNew = await markOpened(id)
+
+        // 開封通知: 新規開封時のみ、ことづての作者本人へ届ける（自分で開封した場合は除く）
+        if (isNew) {
+          const target = items.find((item) => item.id === id)
+          if (target?.authorId && target.authorId !== currentUser.id) {
+            const openerName = currentUser.displayName ?? profile.name ?? 'だれか'
+            const place = target.placeLabel || 'あなたの残した場所'
+            addNotification(
+              'ことづてが受け取られました',
+              `${openerName}さんが、あなたが「${place}」に残したことづてを開封しました！`,
+              'received',
+              id,
+              target.authorId,
+            )
+          }
+        }
       } catch (e) {
         console.warn('Failed to record kotozute open:', e)
       }
     },
-    [currentUser, markOpened],
+    [currentUser, markOpened, items, addNotification, profile.name],
   )
 
   const handleToggleLike = useCallback(
