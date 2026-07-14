@@ -108,7 +108,9 @@ export function AuthSheet({ onClose }: AuthSheetProps) {
           <input
             className="auth-form__input"
             id="username"
+            name="username"
             type="text"
+            autoComplete="username"
             value={username}
             onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_-]/g, ''))}
             placeholder="例: kotozute_user"
@@ -126,7 +128,9 @@ export function AuthSheet({ onClose }: AuthSheetProps) {
             <input
               className="auth-form__input"
               id="displayName"
+              name="name"
               type="text"
+              autoComplete="name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="例: コトズテ太郎"
@@ -143,7 +147,9 @@ export function AuthSheet({ onClose }: AuthSheetProps) {
           <input
             className="auth-form__input"
             id="password"
+            name="password"
             type="password"
+            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="4文字以上"
