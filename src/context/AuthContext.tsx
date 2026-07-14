@@ -53,6 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (sessionError) throw sessionError
           if (data.session?.user) {
             const pendingUserId = localStorage.getItem(PENDING_GOOGLE_LINK_KEY)
+            if (data.session.user.is_anonymous) {
+              const savedId = pendingUserId ?? localStorage.getItem(STORAGE_KEY)
+              if (savedId) {
+                const existingUser = await getUserById(savedId)
+                if (existingUser && active) setCurrentUser(existingUser)
+              }
+              return
+            }
             const user = pendingUserId
               ? await completeGoogleAccountLink(pendingUserId, data.session.user)
               : await syncGoogleUser(data.session.user)
@@ -83,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const authSubscription = supabase?.auth.onAuthStateChange((event, session) => {
       if (event !== 'SIGNED_IN' || !session?.user) return
+      if (session.user.is_anonymous) return
       const pendingUserId = localStorage.getItem(PENDING_GOOGLE_LINK_KEY)
       const userPromise = pendingUserId
         ? completeGoogleAccountLink(pendingUserId, session.user)
@@ -146,7 +155,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     localStorage.setItem(PENDING_GOOGLE_LINK_KEY, currentUser.id)
     try {
-      const { error: linkError } = await supabase.auth.signInWithOAuth({
+      const { error: anonymousError } = await supabase.auth.signInAnonymously()
+      if (anonymousError) throw anonymousError
+      const { error: linkError } = await supabase.auth.linkIdentity({
         provider: 'google',
         options: { redirectTo: window.location.origin },
       })
