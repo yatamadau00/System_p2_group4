@@ -2,6 +2,9 @@ import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from '
 import { BackIcon, CloseIcon } from './icons'
 import './ui.css'
 
+/** .sheet の transform transition 時間（ui.css の --dur-2 と合わせる） */
+const CLOSE_ANIM_MS = 320
+
 interface SheetProps {
   title?: ReactNode
   onClose: () => void
@@ -30,21 +33,42 @@ export function Sheet({
 }: SheetProps) {
   const sheetRef = useRef<HTMLElement>(null)
   const dragState = useRef<{ startY: number; startTime: number } | null>(null)
+  const closeTimer = useRef<number | null>(null)
   /** ドラッグを離した位置に確定した分（累積） */
   const [offsetY, setOffsetY] = useState(0)
   /** ドラッグ中、指の移動に追従する分（離すと offsetY へ確定） */
   const [dragDelta, setDragDelta] = useState(0)
   const [dragging, setDragging] = useState(false)
+  const [closing, setClosing] = useState(false)
 
   const dragY = Math.max(0, offsetY + dragDelta)
 
+  /** 実際に閉じる前に、下へスライドして消える動きを見せてから onClose を呼ぶ */
+  const requestClose = () => {
+    if (closing) return
+    setClosing(true)
+    setDragging(false)
+    setDragDelta(0)
+    const sheetHeight = sheetRef.current?.offsetHeight ?? 400
+    setOffsetY(sheetHeight + 60)
+    closeTimer.current = window.setTimeout(onClose, CLOSE_ANIM_MS)
+  }
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') requestClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(
+    () => () => {
+      if (closeTimer.current != null) window.clearTimeout(closeTimer.current)
+    },
+    [],
+  )
 
   const handleGripPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     dragState.current = { startY: e.clientY, startTime: Date.now() }
@@ -72,7 +96,7 @@ export function Sheet({
     const isBigDrag = settledY > sheetHeight * 0.7
     const isFastFlick = delta > 80 && velocity > 0.8
     if (isBigDrag || isFastFlick) {
-      onClose()
+      requestClose()
     } else {
       // 離した位置でそのまま止める（スナップバックしない）
       setOffsetY(settledY)
@@ -82,8 +106,8 @@ export function Sheet({
   return (
     <>
       <div
-        className="scrim"
-        onClick={dismissOnScrim ? onClose : undefined}
+        className={`scrim${closing ? ' scrim--closing' : ''}`}
+        onClick={dismissOnScrim ? requestClose : undefined}
         aria-hidden
       />
       <section
@@ -117,7 +141,7 @@ export function Sheet({
           {title != null && <h2 className="sheet__title">{title}</h2>}
           {/* 右：閉じる（×）を常に同じ位置に統一 */}
           {headerRight ?? (
-            <button className="icon-btn" onClick={onClose} aria-label="閉じる">
+            <button className="icon-btn" onClick={requestClose} aria-label="閉じる">
               <CloseIcon />
             </button>
           )}
