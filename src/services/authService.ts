@@ -253,6 +253,22 @@ export async function completeGoogleAccountLink(
   if (displayName) updates.display_name = displayName
   if (avatarImageUrl) updates.avatar_image_url = avatarImageUrl
 
+  // このGoogle Identityで先に直接ログインして作られたアプリ内プロフィールが
+  // ある場合は、Authとの紐づけだけを外して既存プロフィールへ付け替える。
+  const { data: alreadyLinked, error: linkedLookupError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('auth_user_id', authUser.id)
+    .maybeSingle()
+  if (linkedLookupError) throw linkedLookupError
+  if (alreadyLinked && alreadyLinked.id !== existingUserId) {
+    const { error: detachError } = await supabase
+      .from('users')
+      .update({ auth_user_id: null })
+      .eq('id', alreadyLinked.id)
+    if (detachError) throw detachError
+  }
+
   const { data, error } = await supabase
     .from('users')
     .update(updates)
