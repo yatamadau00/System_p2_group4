@@ -578,6 +578,7 @@ export function App() {
         <ListSheet
           items={listItems}
           hasPosition={!!position}
+          groups={groups}
           savedScroll={listScrollRef.current}
           savedTab={listTabRef.current}
           onSaveScroll={(v) => { listScrollRef.current = v }}
@@ -585,8 +586,6 @@ export function App() {
           onSelect={(id) => {
             setShowList(false)
             handleHighlight(id)
-            setOpenedFromList(true)
-            setTimeout(() => handleSelect(id), 600)
           }}
           onDelete={handleDelete}
           onToggleFavorite={handleToggleFavorite}
