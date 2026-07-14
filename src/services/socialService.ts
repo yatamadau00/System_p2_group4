@@ -14,6 +14,8 @@ function userToProfile(user: User): UserProfile {
   return {
     id: user.id,
     name: user.displayName,
+    email: user.email,
+    googleLinked: !!user.authUserId,
     bio: user.bio ?? DEFAULT_BIO,
     avatarEmoji: user.avatarEmoji ?? DEFAULT_AVATAR_EMOJI,
     avatarColor: user.avatarColor ?? DEFAULT_AVATAR_COLOR,

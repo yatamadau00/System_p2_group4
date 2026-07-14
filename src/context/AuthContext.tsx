@@ -8,16 +8,21 @@ import {
 import type { User } from '../types'
 import {
   authenticateUser,
+  completeGoogleAccountLink,
   getUserById,
   hashPassword,
   registerUser,
+  syncGoogleUser,
 } from '../services/authService'
+import { isSupabaseConfigured, supabase } from '../services/supabaseClient'
 
 interface AuthContextType {
   currentUser: User | null
   loading: boolean
   error: string | null
   login: (username: string, password: string) => Promise<void>
+  loginWithGoogle: () => Promise<void>
+  linkGoogleAccount: () => Promise<void>
   signUp: (
     username: string,
     displayName: string,
@@ -30,16 +35,42 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 const STORAGE_KEY = 'kotozute_user_id'
+const PENDING_GOOGLE_LINK_KEY = 'kotozute_pending_google_link_user_id'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // 起動時の自動ログイン処理
+  // 独自ログインとSupabase Authの両方から起動時のセッションを復元する
   useEffect(() => {
+    let active = true
+
     async function restoreSession() {
       try {
+        if (isSupabaseConfigured && supabase) {
+          const { data, error: sessionError } = await supabase.auth.getSession()
+          if (sessionError) throw sessionError
+          if (data.session?.user) {
+            const pendingUserId = localStorage.getItem(PENDING_GOOGLE_LINK_KEY)
+            if (data.session.user.is_anonymous) {
+              const savedId = pendingUserId ?? localStorage.getItem(STORAGE_KEY)
+              if (savedId) {
+                const existingUser = await getUserById(savedId)
+                if (existingUser && active) setCurrentUser(existingUser)
+              }
+              return
+            }
+            const user = pendingUserId
+              ? await completeGoogleAccountLink(pendingUserId, data.session.user)
+              : await syncGoogleUser(data.session.user)
+            if (pendingUserId) localStorage.removeItem(PENDING_GOOGLE_LINK_KEY)
+            if (active) setCurrentUser(user)
+            localStorage.setItem(STORAGE_KEY, user.id)
+            return
+          }
+        }
+
         const savedId = localStorage.getItem(STORAGE_KEY)
         if (savedId) {
           const user = await getUserById(savedId)
@@ -57,7 +88,88 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     restoreSession()
+
+    const authSubscription = supabase?.auth.onAuthStateChange((event, session) => {
+      if (event !== 'SIGNED_IN' || !session?.user) return
+      if (session.user.is_anonymous) return
+      const pendingUserId = localStorage.getItem(PENDING_GOOGLE_LINK_KEY)
+      const userPromise = pendingUserId
+        ? completeGoogleAccountLink(pendingUserId, session.user)
+        : syncGoogleUser(session.user)
+      void userPromise
+        .then((user) => {
+          if (!active) return
+          setCurrentUser(user)
+          localStorage.setItem(STORAGE_KEY, user.id)
+          localStorage.removeItem(PENDING_GOOGLE_LINK_KEY)
+          setError(null)
+        })
+        .catch((err: unknown) => {
+          console.error('Google profile sync failed:', err)
+          if (active) {
+            setError(err instanceof Error ? err.message : 'Googleログインに失敗しました')
+          }
+        })
+        .finally(() => {
+          if (active) setLoading(false)
+        })
+    })
+
+    return () => {
+      active = false
+      authSubscription?.data.subscription.unsubscribe()
+    }
   }, [])
+
+  const loginWithGoogle = async () => {
+    setError(null)
+    if (!isSupabaseConfigured || !supabase) {
+      const configurationError = new Error('GoogleログインにはSupabaseの設定が必要です')
+      setError(configurationError.message)
+      throw configurationError
+    }
+
+    setLoading(true)
+    try {
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      })
+      if (oauthError) throw oauthError
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Googleログインに失敗しました'
+      setError(message)
+      setLoading(false)
+      throw err
+    }
+  }
+
+  const linkGoogleAccount = async () => {
+    setError(null)
+    if (!currentUser) throw new Error('先に既存アカウントへログインしてください')
+    if (currentUser.authUserId) throw new Error('Googleアカウントはすでに連携済みです')
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error('Googleアカウント連携にはSupabaseの設定が必要です')
+    }
+
+    setLoading(true)
+    localStorage.setItem(PENDING_GOOGLE_LINK_KEY, currentUser.id)
+    try {
+      const { error: anonymousError } = await supabase.auth.signInAnonymously()
+      if (anonymousError) throw anonymousError
+      const { error: linkError } = await supabase.auth.linkIdentity({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      })
+      if (linkError) throw linkError
+    } catch (err: unknown) {
+      localStorage.removeItem(PENDING_GOOGLE_LINK_KEY)
+      const message = err instanceof Error ? err.message : 'Googleアカウント連携に失敗しました'
+      setError(message)
+      setLoading(false)
+      throw err
+    }
+  }
 
   const login = async (username: string, password: string) => {
     setError(null)
@@ -96,6 +208,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
+    if (supabase) {
+      const { error: signOutError } = await supabase.auth.signOut()
+      if (signOutError) console.error('Supabase sign out failed:', signOutError)
+    }
     setCurrentUser(null)
     localStorage.removeItem(STORAGE_KEY)
   }
@@ -111,6 +227,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         error,
         login,
+        loginWithGoogle,
+        linkGoogleAccount,
         signUp,
         logout,
         clearError,

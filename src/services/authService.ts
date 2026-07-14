@@ -2,12 +2,14 @@ import { getDb } from './indexedDbRepository'
 import { generateId } from './repository'
 import { isSupabaseConfigured, supabase } from './supabaseClient'
 import type { User } from '../types'
+import type { User as SupabaseAuthUser } from '@supabase/supabase-js'
 
 const DEFAULT_AVATAR_EMOJI = '🦉'
 const DEFAULT_AVATAR_COLOR = '#f1e8d6'
 
 interface UserRow {
   id: string
+  auth_user_id: string | null
   username: string
   display_name: string
   password_hash: string
@@ -28,9 +30,16 @@ function createFriendCode() {
   return `KOTO-${suffix}`
 }
 
+function oauthUsername(authUser: SupabaseAuthUser) {
+  const emailName = authUser.email?.split('@')[0] ?? 'google-user'
+  const safeName = emailName.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20) || 'google-user'
+  return `${safeName}-${authUser.id.slice(0, 8)}`
+}
+
 function rowToUser(row: UserRow): User {
   return {
     id: row.id,
+    authUserId: row.auth_user_id ?? null,
     username: row.username,
     displayName: row.display_name,
     passwordHash: row.password_hash,
@@ -159,6 +168,99 @@ export async function getUserById(id: string): Promise<User | undefined> {
 
   const db = await getDb()
   return db.get('users', id)
+}
+
+/** Supabase AuthのGoogleユーザーを既存のアプリ内プロフィールへ同期する。 */
+export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('GoogleログインにはSupabaseの設定が必要です')
+  }
+
+  const metadata = authUser.user_metadata ?? {}
+  const displayName =
+    (typeof metadata.full_name === 'string' && metadata.full_name.trim()) ||
+    (typeof metadata.name === 'string' && metadata.name.trim()) ||
+    authUser.email?.split('@')[0] ||
+    'Googleユーザー'
+  const avatarImageUrl =
+    (typeof metadata.avatar_url === 'string' && metadata.avatar_url) ||
+    (typeof metadata.picture === 'string' && metadata.picture) ||
+    null
+
+  const { data: linkedData, error: linkedError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('auth_user_id', authUser.id)
+    .maybeSingle()
+  if (linkedError) throw linkedError
+
+  const existing = linkedData
+    ? rowToUser(linkedData as UserRow)
+    : await getUserById(authUser.id)
+  if (existing) {
+    const { data, error } = await supabase
+      .from('users')
+      .update({
+        auth_user_id: authUser.id,
+        display_name: displayName,
+        avatar_image_url: avatarImageUrl,
+      })
+      .eq('id', existing.id)
+      .select()
+      .single()
+    if (error) throw error
+    return { ...rowToUser(data as UserRow), email: authUser.email }
+  }
+
+  const { data, error } = await supabase
+    .from('users')
+    .insert({
+      id: authUser.id,
+      auth_user_id: authUser.id,
+      username: oauthUsername(authUser),
+      display_name: displayName,
+      password_hash: '',
+      bio: '場所に想いを残すのが好きです。',
+      avatar_emoji: DEFAULT_AVATAR_EMOJI,
+      avatar_color: DEFAULT_AVATAR_COLOR,
+      avatar_image_url: avatarImageUrl,
+      friend_code: createFriendCode(),
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return { ...rowToUser(data as UserRow), email: authUser.email }
+}
+
+/** Google Identityのリンク完了後、既存プロフィールをAuthユーザーへ紐づける。 */
+export async function completeGoogleAccountLink(
+  existingUserId: string,
+  authUser: SupabaseAuthUser,
+): Promise<User> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('Googleアカウント連携にはSupabaseの設定が必要です')
+  }
+
+  const metadata = authUser.user_metadata ?? {}
+  const displayName =
+    (typeof metadata.full_name === 'string' && metadata.full_name.trim()) ||
+    (typeof metadata.name === 'string' && metadata.name.trim())
+  const avatarImageUrl =
+    (typeof metadata.avatar_url === 'string' && metadata.avatar_url) ||
+    (typeof metadata.picture === 'string' && metadata.picture)
+
+  const updates: Record<string, string> = { auth_user_id: authUser.id }
+  if (displayName) updates.display_name = displayName
+  if (avatarImageUrl) updates.avatar_image_url = avatarImageUrl
+
+  const { data, error } = await supabase
+    .from('users')
+    .update(updates)
+    .eq('id', existingUserId)
+    .select()
+    .single()
+  if (error) throw error
+  return { ...rowToUser(data as UserRow), email: authUser.email }
 }
 
 /** プロフィール情報を更新する */
