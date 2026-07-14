@@ -365,6 +365,17 @@
   transform: scale(0.97);
 }
 
+.map-layer:disabled,
+.map-layer--disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+  transform: none;
+}
+
+.map-layer:disabled:active {
+  transform: none;
+}
+
 .map-layer--active {
   background: var(--c-surface-veil);
   color: var(--c-ink);
