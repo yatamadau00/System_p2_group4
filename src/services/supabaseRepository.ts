@@ -40,6 +40,7 @@ interface Row {
   visibility: string | null
   group_id: string | null
   is_anonymous: boolean | null
+  is_secret: boolean | null
   is_sample: boolean | null
   created_at: string
   valid_from: string | null
@@ -108,6 +109,7 @@ function rowToKotozute(
     placeLabel: row.place_label ?? undefined,
     createdAt: new Date(row.created_at).getTime(),
     mine: mineIds.has(row.id),
+    isSecret: row.is_secret ?? false,
     isSample: row.is_sample ?? false,
     visibility:
       row.visibility === 'group' || row.visibility === 'public'
@@ -274,6 +276,7 @@ export const supabaseRepository: KotozuteRepository = {
         media,
         visibility: input.visibility ?? 'public',
         group_id: input.groupId ?? null,
+        is_secret: input.isSecret ?? false,
         is_sample: false,
         valid_from: input.validFrom ? new Date(input.validFrom).toISOString() : null,
         valid_to: input.validTo ? new Date(input.validTo).toISOString() : null,
