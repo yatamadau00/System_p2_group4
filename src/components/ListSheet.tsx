@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { EnrichedKotozute } from '../lib/enrich'
 import { formatDistance } from '../lib/geo'
 import { primaryKind } from '../lib/media'
+import type { Group } from '../types'
 import { Sheet } from './Sheet'
 import {
   AudioIcon,
@@ -25,6 +26,7 @@ const KIND_ICON = {
 interface ListSheetProps {
   items: EnrichedKotozute[]
   hasPosition: boolean
+  groups: Group[]
   savedScroll?: number
   savedTab?: 'all' | 'favorite' | 'mine'
   onSaveScroll?: (scrollTop: number) => void
@@ -38,6 +40,7 @@ interface ListSheetProps {
 export function ListSheet({
   items,
   hasPosition,
+  groups,
   savedScroll = 0,
   savedTab = 'all',
   onSaveScroll,
@@ -48,6 +51,7 @@ export function ListSheet({
   onClose,
 }: ListSheetProps) {
   const [tab, setTab] = useState<'all' | 'favorite' | 'mine'>(savedTab)
+  const [subFilter, setSubFilter] = useState<'unlockable' | 'opened'>('unlockable')
   const listRef = useRef<HTMLUListElement>(null)
 
   // マウント時にスクロール位置を復元
@@ -59,22 +63,43 @@ export function ListSheet({
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const list = useMemo(() => {
-    const filtered =
-      tab === 'mine'
-        ? items.filter((k) => k.mine)
-        : tab === 'favorite'
-          ? items.filter((k) => k.favoritedByCurrentUser)
-          : items
+    let filtered = items
+    if (tab === 'mine') {
+      filtered = items.filter((k) => k.mine)
+    } else if (tab === 'favorite') {
+      filtered = items.filter((k) => k.favoritedByCurrentUser)
+    } else {
+      // tab === 'all': 自分が書いたことづてを除外
+      filtered = items.filter((k) => !k.mine)
+
+      // サブフィルター
+      if (subFilter === 'unlockable') {
+        filtered = filtered.filter((k) => k.proximity === 'unlockable' && !k.openedByCurrentUser)
+      } else if (subFilter === 'opened') {
+        filtered = filtered.filter((k) => k.openedByCurrentUser)
+      }
+    }
+
     return [...filtered].sort((a, b) => {
       if (tab === 'favorite') {
         if (!!a.openedByCurrentUser !== !!b.openedByCurrentUser) {
           return a.openedByCurrentUser ? 1 : -1
         }
       }
-      if (a.distance != null && b.distance != null) return a.distance - b.distance
+      const distA = a.distance ?? Infinity
+      const distB = b.distance ?? Infinity
+      if (distA !== distB) {
+        return distA - distB
+      }
       return b.createdAt - a.createdAt
     })
-  }, [items, tab])
+  }, [items, tab, subFilter])
+
+  const getGroupName = (groupId?: string) => {
+    if (!groupId) return 'グループ限定'
+    const group = groups.find((g) => g.id === groupId)
+    return group ? group.name : 'グループ限定'
+  }
 
   return (
     <Sheet title="ことづて一覧" onClose={onClose}>
@@ -101,6 +126,25 @@ export function ListSheet({
           お気に入り
         </button>
       </div>
+
+      {tab === 'all' && (
+        <div className="sub-segmented" role="tablist">
+          <button
+            role="tab"
+            aria-pressed={subFilter === 'unlockable'}
+            onClick={() => setSubFilter('unlockable')}
+          >
+            開封可能
+          </button>
+          <button
+            role="tab"
+            aria-pressed={subFilter === 'opened'}
+            onClick={() => setSubFilter('opened')}
+          >
+            開封済み
+          </button>
+        </div>
+      )}
 
       {list.length === 0 ? (
         <div className="empty">
@@ -130,7 +174,7 @@ export function ListSheet({
               k.openedByCurrentUser
                 ? '開封済み'
                 : k.proximity === 'unlockable'
-                ? '開封できます'
+                ? '開封可能'
                 : k.distance != null
                   ? formatDistance(k.distance)
                   : '距離不明'
@@ -158,7 +202,7 @@ export function ListSheet({
                       {k.visibility === 'group' && (
                         <span className="friend-only-badge" style={{ flexShrink: 0 }}>
                           <LockIcon width={10} height={10} style={{ marginRight: 2, display: 'inline-block', verticalAlign: 'middle' }} />
-                          グループ限定
+                          {getGroupName(k.groupId)}
                         </span>
                       )}
                     </span>
