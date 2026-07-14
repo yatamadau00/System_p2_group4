@@ -94,6 +94,7 @@ create table public.groups (
   name text not null default '',
   avatar_emoji text not null default '👥',
   avatar_color text not null default '#dceffd',
+  avatar_image_url text,
   owner_id text references public.users(id) on delete set null,
   created_at timestamptz not null default now()
 );

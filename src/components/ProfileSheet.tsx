@@ -9,6 +9,7 @@ import type {
 import { Sheet } from './Sheet'
 import { GroupSheet } from './GroupSheet'
 import { TrashIcon, PigeonIcon, LockIcon } from './icons'
+import { imageFileToSquareDataUrl } from '../lib/image'
 import './ProfileSheet.css'
 
 interface ProfileSheetProps {
@@ -19,12 +20,14 @@ interface ProfileSheetProps {
     updates: Partial<Omit<UserProfile, 'id' | 'friendCode'>>,
   ) => Promise<void>
   groups: Group[]
-  createGroup: (name: string) => Promise<Group>
+  createGroup: (name: string, avatarImageUrl?: string | null) => Promise<Group>
   joinGroup: (code: string) => Promise<Group>
   leaveGroup: (id: string) => Promise<void>
   updateGroup: (
     id: string,
-    updates: Partial<Pick<Group, 'name' | 'avatarEmoji' | 'avatarColor'>>,
+    updates: Partial<
+      Pick<Group, 'name' | 'avatarEmoji' | 'avatarColor' | 'avatarImageUrl'>
+    >,
   ) => Promise<void>
   getGroupMembers: (id: string) => Promise<GroupMember[]>
   onSelectKotozute: (id: string) => void
@@ -109,6 +112,7 @@ export function ProfileSheet({
 
   // グループ関連
   const [newGroupName, setNewGroupName] = useState('')
+  const [newGroupImage, setNewGroupImage] = useState<string | null>(null)
   const [createdCode, setCreatedCode] = useState<string | null>(null)
   const [joinInput, setJoinInput] = useState('')
   const [groupError, setGroupError] = useState<string | null>(null)
@@ -237,11 +241,23 @@ export function ProfileSheet({
     setGroupError(null)
     setGroupSuccess(null)
     try {
-      const g = await createGroup(newGroupName)
+      const g = await createGroup(newGroupName, newGroupImage)
       setCreatedCode(g.id)
       setNewGroupName('')
+      setNewGroupImage(null)
     } catch (err: any) {
       setGroupError(err.message || 'グループを作成できませんでした。')
+    }
+  }
+
+  const handleNewGroupImage = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      setNewGroupImage(await imageFileToSquareDataUrl(file))
+    } catch (err: any) {
+      alert(err.message || '画像の読み込みに失敗しました')
     }
   }
 
@@ -610,6 +626,39 @@ export function ProfileSheet({
             {/* グループを作成 */}
             <div className="friend-add-box">
               <h4 className="section-title">グループを作成</h4>
+              <div className="group-create-photo">
+                <div
+                  className="friend-item-card__avatar group-create-photo__preview"
+                  style={{ backgroundColor: '#dceffd' }}
+                >
+                  {newGroupImage ? (
+                    <img src={newGroupImage} alt="" className="group-avatar-image" />
+                  ) : (
+                    '👥'
+                  )}
+                </div>
+                <div className="group-create-photo__actions">
+                  <label className="btn btn--soft avatar-image-button" htmlFor="new-group-image">
+                    写真を選ぶ
+                  </label>
+                  <input
+                    id="new-group-image"
+                    className="avatar-image-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleNewGroupImage}
+                  />
+                  {newGroupImage && (
+                    <button
+                      type="button"
+                      className="btn btn--soft avatar-image-button"
+                      onClick={() => setNewGroupImage(null)}
+                    >
+                      写真を外す
+                    </button>
+                  )}
+                </div>
+              </div>
               <form onSubmit={handleCreateGroup} className="friend-form">
                 <input
                   type="text"
@@ -670,7 +719,15 @@ export function ProfileSheet({
                           className="friend-item-card__avatar"
                           style={{ backgroundColor: g.avatarColor }}
                         >
-                          {g.avatarEmoji}
+                          {g.avatarImageUrl ? (
+                            <img
+                              src={g.avatarImageUrl}
+                              alt=""
+                              className="group-avatar-image"
+                            />
+                          ) : (
+                            g.avatarEmoji
+                          )}
                         </div>
                         <div className="friend-item-card__info">
                           <h5>

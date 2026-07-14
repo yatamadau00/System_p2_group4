@@ -235,7 +235,15 @@ export function MapScreen(props: MapScreenProps) {
                         style={{ backgroundColor: group.avatarColor }}
                         aria-hidden
                       >
-                        {group.avatarEmoji}
+                        {group.avatarImageUrl ? (
+                          <img
+                            src={group.avatarImageUrl}
+                            alt=""
+                            className="map-group-option__avatar-image"
+                          />
+                        ) : (
+                          group.avatarEmoji
+                        )}
                       </span>
                       <span className="map-group-option__name">{group.name || group.id}</span>
                     </button>
