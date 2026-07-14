@@ -19,18 +19,20 @@ import { DEFAULT_ZOOM } from './config'
 import type { Kotozute, NewKotozute, Proximity } from './types'
 import './App.css'
 
-type MapLayerKey = 'public' | 'group' | 'owned'
+type MapLayerKey = 'public' | 'group' | 'created' | 'opened'
 type MapLayerVisibility = Record<MapLayerKey, boolean>
 type GroupLayerVisibility = Record<string, boolean>
 
 const initialMapLayerVisibility: MapLayerVisibility = {
   public: true,
   group: true,
-  owned: true,
+  created: false,
+  opened: false,
 }
 
 function getMapLayerKey(item: Kotozute): MapLayerKey {
-  if (item.mine || item.openedByCurrentUser) return 'owned'
+  if (item.mine) return 'created'
+  if (item.openedByCurrentUser) return 'opened'
   if (item.visibility === 'group') return 'group'
   return 'public'
 }
@@ -109,6 +111,12 @@ export function App() {
   // 地図に表示するピン（期間内、表示レイヤー、お気に入り条件に合致するもののみ）
   const mapItems = useMemo(() => {
     const now = Date.now()
+    const personalLayer = mapLayerVisibility.created
+      ? 'created'
+      : mapLayerVisibility.opened
+        ? 'opened'
+        : null
+
     return enriched.filter((item) => {
       // 1. 開封有効期間のチェック
       if (item.validFrom && now < item.validFrom) return false
@@ -116,6 +124,8 @@ export function App() {
 
       // 2. 地図レイヤー切り替えのチェック
       const layerKey = getMapLayerKey(item)
+      if (personalLayer) return layerKey === personalLayer
+
       if (!mapLayerVisibility[layerKey]) return false
       if (layerKey === 'group' && !isGroupVisible(item, groupLayerVisibility)) {
         return false
@@ -236,7 +246,12 @@ export function App() {
   const handleToggleMapLayer = useCallback((key: MapLayerKey) => {
     setMapLayerVisibility((current) => ({
       ...current,
-      [key]: !current[key],
+      ...(key === 'created' || key === 'opened'
+        ? {
+            created: key === 'created' ? !current.created : false,
+            opened: key === 'opened' ? !current.opened : false,
+          }
+        : { [key]: !current[key] }),
     }))
   }, [])
 

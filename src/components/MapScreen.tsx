@@ -17,7 +17,7 @@ import { Pin } from './Pin'
 import { BellIcon, ListIcon, LocateIcon } from './icons'
 import './MapScreen.css'
 
-type MapLayerKey = 'public' | 'group' | 'owned'
+type MapLayerKey = 'public' | 'group' | 'created' | 'opened'
 type MapLayerVisibility = Record<MapLayerKey, boolean>
 type GroupLayerVisibility = Record<string, boolean>
 
@@ -171,37 +171,46 @@ export function MapScreen(props: MapScreenProps) {
 
   const visibleGroupCount = groups.filter((group) => groupLayerVisibility[group.id] ?? true)
     .length
+  const personalLayer = mapLayerVisibility.created
+    ? 'created'
+    : mapLayerVisibility.opened
+      ? 'opened'
+      : null
+  const standardFiltersDisabled = personalLayer !== null
 
   const layerControls = (
     <div className="map-layers" role="group" aria-label="地図に表示することづて">
       <button
-        className={`map-layer map-layer--favorite map-layer--parent${favoriteOnly ? ' map-layer--active' : ''}`}
+        className={`map-layer map-layer--favorite map-layer--parent${favoriteOnly ? ' map-layer--active' : ''}${standardFiltersDisabled ? ' map-layer--disabled' : ''}`}
         type="button"
         aria-pressed={favoriteOnly}
+        disabled={standardFiltersDisabled}
         onClick={onToggleFavoriteOnly}
       >
         お気に入り
       </button>
       <div className="map-layer-children">
         <button
-          className={`map-layer map-layer--child${mapLayerVisibility.public ? ' map-layer--active' : ''}`}
+          className={`map-layer map-layer--child${mapLayerVisibility.public ? ' map-layer--active' : ''}${standardFiltersDisabled ? ' map-layer--disabled' : ''}`}
           type="button"
           aria-pressed={mapLayerVisibility.public}
+          disabled={standardFiltersDisabled}
           onClick={() => onToggleMapLayer('public')}
         >
           公開
         </button>
         <div className="map-layer-group">
           <button
-            className={`map-layer map-layer--child map-layer--group${visibleGroupCount > 0 ? ' map-layer--active' : ''}`}
+            className={`map-layer map-layer--child map-layer--group${visibleGroupCount > 0 ? ' map-layer--active' : ''}${standardFiltersDisabled ? ' map-layer--disabled' : ''}`}
             type="button"
             aria-expanded={groupSelectorOpen}
             aria-controls="map-group-selector"
+            disabled={standardFiltersDisabled}
             onClick={() => setGroupSelectorOpen((open) => !open)}
           >
             グループ
           </button>
-          {groupSelectorOpen && (
+          {groupSelectorOpen && !standardFiltersDisabled && (
             <div
               id="map-group-selector"
               className="map-group-selector"
@@ -237,12 +246,20 @@ export function MapScreen(props: MapScreenProps) {
             )}
         </div>
         <button
-          className={`map-layer map-layer--child map-layer--owned${mapLayerVisibility.owned ? ' map-layer--active' : ''}`}
+          className={`map-layer map-layer--child map-layer--created${mapLayerVisibility.created ? ' map-layer--active' : ''}`}
           type="button"
-          aria-pressed={mapLayerVisibility.owned}
-          onClick={() => onToggleMapLayer('owned')}
+          aria-pressed={mapLayerVisibility.created}
+          onClick={() => onToggleMapLayer('created')}
         >
-          自作/取得済み
+          自作
+        </button>
+        <button
+          className={`map-layer map-layer--child map-layer--opened${mapLayerVisibility.opened ? ' map-layer--active' : ''}`}
+          type="button"
+          aria-pressed={mapLayerVisibility.opened}
+          onClick={() => onToggleMapLayer('opened')}
+        >
+          取得済み
         </button>
       </div>
     </div>
