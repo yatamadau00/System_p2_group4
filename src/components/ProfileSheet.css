@@ -530,6 +530,17 @@
   font: 700 0.8rem var(--font-sans);
 }
 
+.google-link-card__unlink {
+  flex-shrink: 0;
+  color: var(--c-danger);
+}
+
+.google-link-card__note {
+  margin: var(--sp-2) var(--sp-1) 0;
+  color: var(--c-ink-3);
+  font: 0.72rem/1.6 var(--font-sans);
+}
+
 .profile-card__link-error {
   margin: var(--sp-2) 0 0;
   color: var(--c-danger);
