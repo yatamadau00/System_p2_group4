@@ -103,12 +103,13 @@
   border-color: transparent;
 }
 
-/* まるいピン本体（正円 + 下の三角ポインタ） */
+/* まるいピン本体（正円）。矢印より前面に置き、アイコンを完全に見せる */
 .pin__bulb {
   width: 44px;
   height: 44px;
   border-radius: 50%;
   position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
   filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.4));
@@ -117,19 +118,23 @@
     box-shadow var(--dur-2) var(--ease-soft);
 }
 
-/* 下に伸びる尖り（マップピン先端）。アイコンより背面に置いて被らせない */
-.pin__bulb::after {
+/* 下に伸びる尖り（マップピン先端）。丸の“後ろ”に敷いて、丸から下に覗くだけにする */
+.pin::after {
   content: '';
   position: absolute;
-  bottom: -10px;
+  bottom: -12px;
   left: 50%;
   transform: translateX(-50%);
   width: 0;
   height: 0;
   border-left: 9px solid transparent;
   border-right: 9px solid transparent;
-  border-top: 14px solid currentColor;
-  z-index: -1;
+  border-top: 14px solid #14171c;
+  z-index: 0;
+}
+
+.pin--unlockable::after {
+  border-top-color: var(--c-amber-deep);
 }
 
 .pin__pigeon {

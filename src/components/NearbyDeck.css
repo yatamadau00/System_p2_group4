@@ -74,6 +74,22 @@
   height: 20px;
 }
 
+/* グループことづてのバッジ（グループのアイコン） */
+.nearby-card__badge-emoji {
+  transform: rotate(-45deg);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.nearby-card__badge-img {
+  transform: rotate(-45deg);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
+}
+
 .nearby-card__body {
   min-width: 0;
   display: grid;
