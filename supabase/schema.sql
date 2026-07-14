@@ -13,6 +13,7 @@ drop table if exists public.users cascade;
 
 create table public.users (
   id text primary key,
+  auth_user_id uuid unique references auth.users(id) on delete set null,
   username text not null unique,
   display_name text not null,
   password_hash text not null,

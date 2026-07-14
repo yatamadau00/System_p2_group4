@@ -45,7 +45,7 @@ function isGroupVisible(item: Kotozute, groupLayerVisibility: GroupLayerVisibili
 
 export function App() {
   const geo = useGeolocation(true)
-  const { currentUser, logout } = useAuth()
+  const { currentUser, logout, linkGoogleAccount } = useAuth()
   const {
     items,
     openHistory,
@@ -558,6 +558,7 @@ export function App() {
           openHistory={openHistory}
           profile={profile}
           updateProfile={updateProfile}
+          linkGoogleAccount={linkGoogleAccount}
           groups={groups}
           createGroup={createGroup}
           joinGroup={joinGroup}

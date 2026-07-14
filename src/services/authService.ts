@@ -9,6 +9,7 @@ const DEFAULT_AVATAR_COLOR = '#f1e8d6'
 
 interface UserRow {
   id: string
+  auth_user_id: string | null
   username: string
   display_name: string
   password_hash: string
@@ -38,6 +39,7 @@ function oauthUsername(authUser: SupabaseAuthUser) {
 function rowToUser(row: UserRow): User {
   return {
     id: row.id,
+    authUserId: row.auth_user_id ?? null,
     username: row.username,
     displayName: row.display_name,
     passwordHash: row.password_hash,
@@ -185,15 +187,25 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
     (typeof metadata.picture === 'string' && metadata.picture) ||
     null
 
-  const existing = await getUserById(authUser.id)
+  const { data: linkedData, error: linkedError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('auth_user_id', authUser.id)
+    .maybeSingle()
+  if (linkedError) throw linkedError
+
+  const existing = linkedData
+    ? rowToUser(linkedData as UserRow)
+    : await getUserById(authUser.id)
   if (existing) {
     const { data, error } = await supabase
       .from('users')
       .update({
+        auth_user_id: authUser.id,
         display_name: displayName,
         avatar_image_url: avatarImageUrl,
       })
-      .eq('id', authUser.id)
+      .eq('id', existing.id)
       .select()
       .single()
     if (error) throw error
@@ -204,6 +216,7 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
     .from('users')
     .insert({
       id: authUser.id,
+      auth_user_id: authUser.id,
       username: oauthUsername(authUser),
       display_name: displayName,
       password_hash: '',
@@ -213,6 +226,37 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
       avatar_image_url: avatarImageUrl,
       friend_code: createFriendCode(),
     })
+    .select()
+    .single()
+  if (error) throw error
+  return { ...rowToUser(data as UserRow), email: authUser.email }
+}
+
+/** Google Identityのリンク完了後、既存プロフィールをAuthユーザーへ紐づける。 */
+export async function completeGoogleAccountLink(
+  existingUserId: string,
+  authUser: SupabaseAuthUser,
+): Promise<User> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('Googleアカウント連携にはSupabaseの設定が必要です')
+  }
+
+  const metadata = authUser.user_metadata ?? {}
+  const displayName =
+    (typeof metadata.full_name === 'string' && metadata.full_name.trim()) ||
+    (typeof metadata.name === 'string' && metadata.name.trim())
+  const avatarImageUrl =
+    (typeof metadata.avatar_url === 'string' && metadata.avatar_url) ||
+    (typeof metadata.picture === 'string' && metadata.picture)
+
+  const updates: Record<string, string> = { auth_user_id: authUser.id }
+  if (displayName) updates.display_name = displayName
+  if (avatarImageUrl) updates.avatar_image_url = avatarImageUrl
+
+  const { data, error } = await supabase
+    .from('users')
+    .update(updates)
+    .eq('id', existingUserId)
     .select()
     .single()
   if (error) throw error

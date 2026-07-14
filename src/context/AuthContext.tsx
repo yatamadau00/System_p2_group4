@@ -8,6 +8,7 @@ import {
 import type { User } from '../types'
 import {
   authenticateUser,
+  completeGoogleAccountLink,
   getUserById,
   hashPassword,
   registerUser,
@@ -21,6 +22,7 @@ interface AuthContextType {
   error: string | null
   login: (username: string, password: string) => Promise<void>
   loginWithGoogle: () => Promise<void>
+  linkGoogleAccount: () => Promise<void>
   signUp: (
     username: string,
     displayName: string,
@@ -33,6 +35,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 const STORAGE_KEY = 'kotozute_user_id'
+const PENDING_GOOGLE_LINK_KEY = 'kotozute_pending_google_link_user_id'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
@@ -49,7 +52,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const { data, error: sessionError } = await supabase.auth.getSession()
           if (sessionError) throw sessionError
           if (data.session?.user) {
-            const user = await syncGoogleUser(data.session.user)
+            const pendingUserId = localStorage.getItem(PENDING_GOOGLE_LINK_KEY)
+            if (data.session.user.is_anonymous) {
+              const savedId = pendingUserId ?? localStorage.getItem(STORAGE_KEY)
+              if (savedId) {
+                const existingUser = await getUserById(savedId)
+                if (existingUser && active) setCurrentUser(existingUser)
+              }
+              return
+            }
+            const user = pendingUserId
+              ? await completeGoogleAccountLink(pendingUserId, data.session.user)
+              : await syncGoogleUser(data.session.user)
+            if (pendingUserId) localStorage.removeItem(PENDING_GOOGLE_LINK_KEY)
             if (active) setCurrentUser(user)
             localStorage.setItem(STORAGE_KEY, user.id)
             return
@@ -76,11 +91,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const authSubscription = supabase?.auth.onAuthStateChange((event, session) => {
       if (event !== 'SIGNED_IN' || !session?.user) return
-      void syncGoogleUser(session.user)
+      if (session.user.is_anonymous) return
+      const pendingUserId = localStorage.getItem(PENDING_GOOGLE_LINK_KEY)
+      const userPromise = pendingUserId
+        ? completeGoogleAccountLink(pendingUserId, session.user)
+        : syncGoogleUser(session.user)
+      void userPromise
         .then((user) => {
           if (!active) return
           setCurrentUser(user)
           localStorage.setItem(STORAGE_KEY, user.id)
+          localStorage.removeItem(PENDING_GOOGLE_LINK_KEY)
           setError(null)
         })
         .catch((err: unknown) => {
@@ -117,6 +138,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (oauthError) throw oauthError
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Googleログインに失敗しました'
+      setError(message)
+      setLoading(false)
+      throw err
+    }
+  }
+
+  const linkGoogleAccount = async () => {
+    setError(null)
+    if (!currentUser) throw new Error('先に既存アカウントへログインしてください')
+    if (currentUser.authUserId) throw new Error('Googleアカウントはすでに連携済みです')
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error('Googleアカウント連携にはSupabaseの設定が必要です')
+    }
+
+    setLoading(true)
+    localStorage.setItem(PENDING_GOOGLE_LINK_KEY, currentUser.id)
+    try {
+      const { error: anonymousError } = await supabase.auth.signInAnonymously()
+      if (anonymousError) throw anonymousError
+      const { error: linkError } = await supabase.auth.linkIdentity({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      })
+      if (linkError) throw linkError
+    } catch (err: unknown) {
+      localStorage.removeItem(PENDING_GOOGLE_LINK_KEY)
+      const message = err instanceof Error ? err.message : 'Googleアカウント連携に失敗しました'
       setError(message)
       setLoading(false)
       throw err
@@ -180,6 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error,
         login,
         loginWithGoogle,
+        linkGoogleAccount,
         signUp,
         logout,
         clearError,
