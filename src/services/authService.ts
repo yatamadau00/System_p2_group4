@@ -2,6 +2,7 @@ import { getDb } from './indexedDbRepository'
 import { generateId } from './repository'
 import { isSupabaseConfigured, supabase } from './supabaseClient'
 import type { User } from '../types'
+import type { User as SupabaseAuthUser } from '@supabase/supabase-js'
 
 const DEFAULT_AVATAR_EMOJI = '🦉'
 const DEFAULT_AVATAR_COLOR = '#f1e8d6'
@@ -26,6 +27,12 @@ function createFriendCode() {
     suffix += alphabet[Math.floor(Math.random() * alphabet.length)]
   }
   return `KOTO-${suffix}`
+}
+
+function oauthUsername(authUser: SupabaseAuthUser) {
+  const emailName = authUser.email?.split('@')[0] ?? 'google-user'
+  const safeName = emailName.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20) || 'google-user'
+  return `${safeName}-${authUser.id.slice(0, 8)}`
 }
 
 function rowToUser(row: UserRow): User {
@@ -159,6 +166,57 @@ export async function getUserById(id: string): Promise<User | undefined> {
 
   const db = await getDb()
   return db.get('users', id)
+}
+
+/** Supabase AuthのGoogleユーザーを既存のアプリ内プロフィールへ同期する。 */
+export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('GoogleログインにはSupabaseの設定が必要です')
+  }
+
+  const metadata = authUser.user_metadata ?? {}
+  const displayName =
+    (typeof metadata.full_name === 'string' && metadata.full_name.trim()) ||
+    (typeof metadata.name === 'string' && metadata.name.trim()) ||
+    authUser.email?.split('@')[0] ||
+    'Googleユーザー'
+  const avatarImageUrl =
+    (typeof metadata.avatar_url === 'string' && metadata.avatar_url) ||
+    (typeof metadata.picture === 'string' && metadata.picture) ||
+    null
+
+  const existing = await getUserById(authUser.id)
+  if (existing) {
+    const { data, error } = await supabase
+      .from('users')
+      .update({
+        display_name: displayName,
+        avatar_image_url: avatarImageUrl,
+      })
+      .eq('id', authUser.id)
+      .select()
+      .single()
+    if (error) throw error
+    return { ...rowToUser(data as UserRow), email: authUser.email }
+  }
+
+  const { data, error } = await supabase
+    .from('users')
+    .insert({
+      id: authUser.id,
+      username: oauthUsername(authUser),
+      display_name: displayName,
+      password_hash: '',
+      bio: '場所に想いを残すのが好きです。',
+      avatar_emoji: DEFAULT_AVATAR_EMOJI,
+      avatar_color: DEFAULT_AVATAR_COLOR,
+      avatar_image_url: avatarImageUrl,
+      friend_code: createFriendCode(),
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return { ...rowToUser(data as UserRow), email: authUser.email }
 }
 
 /** プロフィール情報を更新する */

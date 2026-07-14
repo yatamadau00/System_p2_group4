@@ -509,6 +509,7 @@ export function ProfileSheet({
                     </div>
                     <div className="profile-card__title">
                       <h3>{profile.name}</h3>
+                      {profile.email && <p className="profile-card__email">{profile.email}</p>}
                     </div>
                   </div>
 

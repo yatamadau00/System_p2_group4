@@ -10,7 +10,7 @@ interface AuthSheetProps {
 type AuthMode = 'login' | 'signup'
 
 export function AuthSheet({ onClose }: AuthSheetProps) {
-  const { login, signUp, error, clearError } = useAuth()
+  const { login, loginWithGoogle, signUp, error, clearError } = useAuth()
   const [mode, setMode] = useState<AuthMode>('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -69,6 +69,18 @@ export function AuthSheet({ onClose }: AuthSheetProps) {
     }
   }
 
+  const handleGoogleLogin = async () => {
+    setLocalError(null)
+    clearError()
+    setSubmitting(true)
+    try {
+      await loginWithGoogle()
+    } catch (err) {
+      console.error(err)
+      setSubmitting(false)
+    }
+  }
+
   const title = mode === 'login' ? 'ログイン' : 'アカウント作成'
   const displayError = localError || error
 
@@ -76,6 +88,18 @@ export function AuthSheet({ onClose }: AuthSheetProps) {
     <Sheet title={title} onClose={onClose}>
       <form className="auth-form" onSubmit={handleSubmit}>
         {displayError && <div className="auth-form__error">{displayError}</div>}
+
+        <button
+          className="auth-form__google-btn"
+          type="button"
+          onClick={handleGoogleLogin}
+          disabled={submitting}
+        >
+          <span className="auth-form__google-mark" aria-hidden="true">G</span>
+          Googleでログイン
+        </button>
+
+        <div className="auth-form__divider"><span>または</span></div>
 
         <div className="auth-form__group">
           <label className="auth-form__label" htmlFor="username">

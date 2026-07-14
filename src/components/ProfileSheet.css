@@ -446,7 +446,6 @@
   font-size: 0.8rem;
   flex-shrink: 0;
 }
-
 /* グループのアバター写真 */
 .group-avatar-image {
   width: 100%;
@@ -492,4 +491,12 @@
 
 .account-logout:active {
   background: rgba(181, 82, 74, 0.16);
+}
+
+.profile-card__email {
+  margin: 3px 0 0;
+  color: var(--c-ink-3);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
 }
