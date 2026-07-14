@@ -596,6 +596,7 @@ export function App() {
           currentUserId={currentUser?.id ?? null}
           onOpened={handleOpened}
           onEdit={update}
+          onDelete={handleDelete}
           onToggleLike={handleToggleLike}
           onToggleFavorite={handleToggleFavorite}
         />

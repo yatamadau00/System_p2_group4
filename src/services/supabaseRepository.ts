@@ -291,6 +291,12 @@ export const supabaseRepository: KotozuteRepository = {
     if (patch.message !== undefined) row.message = patch.message
     if (patch.placeLabel !== undefined) row.place_label = patch.placeLabel || null
     if (patch.link !== undefined) row.link = patch.link || null
+    if (patch.validFrom !== undefined) {
+      row.valid_from = patch.validFrom ? new Date(patch.validFrom).toISOString() : null
+    }
+    if (patch.validTo !== undefined) {
+      row.valid_to = patch.validTo ? new Date(patch.validTo).toISOString() : null
+    }
 
     // メディアの更新：新規（blob）はアップロード、既存（url）はそのまま残す
     if (patch.media !== undefined) {

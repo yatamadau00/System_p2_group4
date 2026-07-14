@@ -7,6 +7,7 @@ import { kindLabel, uid } from '../lib/media'
 import { NEAR_RADIUS_M, UNLOCK_RADIUS_M } from '../config'
 import { MediaView } from './MediaView'
 import { AudioRecorder } from './AudioRecorder'
+import { Sheet } from './Sheet'
 import {
   AudioIcon,
   CloseIcon,
@@ -34,6 +35,14 @@ const prefersReducedMotion = () =>
 const RING = 92 // 半径
 const CIRC = 2 * Math.PI * RING
 
+/** タイムスタンプを <input type="datetime-local"> 用のローカル時刻文字列に変換 */
+function toDatetimeLocal(ms?: number): string {
+  if (!ms) return ''
+  const d = new Date(ms)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 interface OpenViewProps {
   kotozute: EnrichedKotozute
   replies: EnrichedKotozute[]
@@ -44,11 +53,18 @@ interface OpenViewProps {
   onOpened?: (id: string) => void
   onToggleLike: (id: string) => Promise<void>
   onToggleFavorite: (id: string) => Promise<void>
-  /** 自分のことづての本文・場所名・リンクを編集する */
+  /** 自分のことづての本文・場所名・リンク・開封期間を編集する */
   onEdit?: (
     id: string,
-    patch: Partial<Pick<EnrichedKotozute, 'message' | 'placeLabel' | 'link' | 'media'>>,
+    patch: Partial<
+      Pick<
+        EnrichedKotozute,
+        'message' | 'placeLabel' | 'link' | 'media' | 'validFrom' | 'validTo'
+      >
+    >,
   ) => Promise<unknown>
+  /** 自分のことづてをこの画面から削除する */
+  onDelete?: (id: string) => void
 }
 
 /**
@@ -67,6 +83,7 @@ export function OpenView({
   onToggleLike,
   onToggleFavorite,
   onEdit,
+  onDelete,
 }: OpenViewProps) {
   const { currentUser } = useAuth()
   // 自分のことづては、どこにいても閲覧・編集できる（距離ロックを無視）
@@ -253,6 +270,9 @@ export function OpenView({
             onToggleFavorite={onToggleFavorite}
             canEdit={isOwn && !!onEdit}
             onEdit={onEdit}
+            canDelete={isOwn && !!onDelete}
+            onDelete={onDelete}
+            onClose={onClose}
           />
         )}
       </div>
@@ -433,6 +453,9 @@ function Letter({
   onToggleFavorite,
   canEdit,
   onEdit,
+  canDelete,
+  onDelete,
+  onClose,
 }: {
   kotozute: EnrichedKotozute
   onReply: () => void
@@ -445,8 +468,16 @@ function Letter({
   canEdit?: boolean
   onEdit?: (
     id: string,
-    patch: Partial<Pick<EnrichedKotozute, 'message' | 'placeLabel' | 'link' | 'media'>>,
+    patch: Partial<
+      Pick<
+        EnrichedKotozute,
+        'message' | 'placeLabel' | 'link' | 'media' | 'validFrom' | 'validTo'
+      >
+    >,
   ) => Promise<unknown>
+  canDelete?: boolean
+  onDelete?: (id: string) => void
+  onClose: () => void
 }) {
   const [likeBusy, setLikeBusy] = useState(false)
   const date = new Date(kotozute.createdAt)
@@ -458,6 +489,8 @@ function Letter({
   const [editPlace, setEditPlace] = useState(kotozute.placeLabel ?? '')
   const [editLink, setEditLink] = useState(kotozute.link ?? '')
   const [editMedia, setEditMedia] = useState<MediaItem[]>(kotozute.media ?? [])
+  const [editValidFromStr, setEditValidFromStr] = useState(toDatetimeLocal(kotozute.validFrom))
+  const [editValidToStr, setEditValidToStr] = useState(toDatetimeLocal(kotozute.validTo))
   const [recording, setRecording] = useState(false)
   const [savingEdit, setSavingEdit] = useState(false)
 
@@ -478,6 +511,8 @@ function Letter({
     setEditPlace(kotozute.placeLabel ?? '')
     setEditLink(kotozute.link ?? '')
     setEditMedia(kotozute.media ?? [])
+    setEditValidFromStr(toDatetimeLocal(kotozute.validFrom))
+    setEditValidToStr(toDatetimeLocal(kotozute.validTo))
     setRecording(false)
   }
 
@@ -490,6 +525,8 @@ function Letter({
         placeLabel: editPlace.trim() || undefined,
         link: editLink.trim() || undefined,
         media: editMedia,
+        validFrom: editValidFromStr ? new Date(editValidFromStr).getTime() : undefined,
+        validTo: editValidToStr ? new Date(editValidToStr).getTime() : undefined,
       })
       setEditing(false)
     } catch (err: any) {
@@ -501,167 +538,255 @@ function Letter({
 
   if (editing) {
     return (
-      <div className="letter">
-        <div className="letter__place">ことづてを編集</div>
-        <div className="letter__card">
-          <div className="letter__message" style={{ display: 'grid', gap: 'var(--sp-3)' }}>
-            <label className="field">
-              <span className="field__label">ことば</span>
-              <textarea
-                className="textarea"
-                value={editMessage}
-                onChange={(e) => setEditMessage(e.target.value)}
-                rows={5}
-              />
+      <Sheet
+        title="ことづてを編集"
+        onClose={() => {
+          resetEdit()
+          setEditing(false)
+        }}
+      >
+        <div className="compose">
+          {/* 本文 */}
+          <div className="field">
+            <label className="field__label" htmlFor="edit-message">
+              ことば
             </label>
-            <label className="field">
-              <span className="field__label">場所の呼び名（任意）</span>
-              <input
-                className="input"
-                value={editPlace}
-                onChange={(e) => setEditPlace(e.target.value)}
-                placeholder="卒業した教室、いつもの帰り道…"
-              />
-            </label>
-            <label className="field">
-              <span className="field__label">リンク（任意）</span>
-              <input
-                className="input"
-                type="url"
-                inputMode="url"
-                value={editLink}
-                onChange={(e) => setEditLink(e.target.value)}
-                placeholder="https://"
-              />
-            </label>
+            <textarea
+              id="edit-message"
+              className="textarea"
+              value={editMessage}
+              onChange={(e) => setEditMessage(e.target.value)}
+              rows={5}
+            />
+          </div>
 
-            {/* メディア編集：追加・削除 */}
-            <div className="field">
-              <span className="field__label">
-                メディア <small>（追加・削除できます）</small>
-              </span>
-              <div className="attach-buttons">
+          {/* 添付（写真・映像・声を自由に重ねられる） */}
+          <div className="field">
+            <span className="field__label">
+              想いを添える <small>（追加・削除できます）</small>
+            </span>
+            <div className="attach-buttons">
+              <button
+                type="button"
+                className="attach-btn"
+                onClick={() => editImageInput.current?.click()}
+              >
+                <ImageIcon width={20} height={20} />
+                写真
+              </button>
+              <button
+                type="button"
+                className="attach-btn"
+                onClick={() => editVideoInput.current?.click()}
+              >
+                <VideoIcon width={20} height={20} />
+                映像
+              </button>
+              <button
+                type="button"
+                className="attach-btn"
+                onClick={() => setRecording((v) => !v)}
+                aria-pressed={recording}
+              >
+                <AudioIcon width={20} height={20} />
+                声
+              </button>
+            </div>
+
+            <input
+              ref={editImageInput}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                addEditFile('image', e.target.files?.[0] ?? null)
+                e.target.value = ''
+              }}
+            />
+            <input
+              ref={editVideoInput}
+              type="file"
+              accept="video/*"
+              hidden
+              onChange={(e) => {
+                addEditFile('video', e.target.files?.[0] ?? null)
+                e.target.value = ''
+              }}
+            />
+            <input
+              ref={editAudioInput}
+              type="file"
+              accept="audio/*"
+              hidden
+              onChange={(e) => {
+                addEditFile('audio', e.target.files?.[0] ?? null)
+                e.target.value = ''
+              }}
+            />
+
+            {recording && (
+              <div className="recorder-wrap">
+                <AudioRecorder
+                  onConfirm={(blob, mimeType) => {
+                    setEditMedia((m) => [
+                      ...m,
+                      { id: uid(), kind: 'audio', blob, mimeType, fileName: '録音した声' },
+                    ])
+                    setRecording(false)
+                  }}
+                  onCancel={() => setRecording(false)}
+                />
                 <button
                   type="button"
-                  className="attach-btn"
-                  onClick={() => editImageInput.current?.click()}
+                  className="recorder__file"
+                  onClick={() => {
+                    setRecording(false)
+                    editAudioInput.current?.click()
+                  }}
                 >
-                  <ImageIcon width={20} height={20} />
-                  写真
-                </button>
-                <button
-                  type="button"
-                  className="attach-btn"
-                  onClick={() => editVideoInput.current?.click()}
-                >
-                  <VideoIcon width={20} height={20} />
-                  映像
-                </button>
-                <button
-                  type="button"
-                  className="attach-btn"
-                  onClick={() => setRecording((v) => !v)}
-                  aria-pressed={recording}
-                >
-                  <AudioIcon width={20} height={20} />
-                  声
+                  ファイルから選ぶ
                 </button>
               </div>
+            )}
 
-              <input
-                ref={editImageInput}
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) => {
-                  addEditFile('image', e.target.files?.[0] ?? null)
-                  e.target.value = ''
-                }}
-              />
-              <input
-                ref={editVideoInput}
-                type="file"
-                accept="video/*"
-                hidden
-                onChange={(e) => {
-                  addEditFile('video', e.target.files?.[0] ?? null)
-                  e.target.value = ''
-                }}
-              />
-              <input
-                ref={editAudioInput}
-                type="file"
-                accept="audio/*"
-                hidden
-                onChange={(e) => {
-                  addEditFile('audio', e.target.files?.[0] ?? null)
-                  e.target.value = ''
-                }}
-              />
+            {editMedia.length > 0 && (
+              <ul className="attach-list">
+                {editMedia.map((m) => (
+                  <li key={m.id} className="attach-item">
+                    <button
+                      type="button"
+                      className="attach-item__remove"
+                      onClick={() =>
+                        setEditMedia((list) => list.filter((x) => x.id !== m.id))
+                      }
+                      aria-label="このメディアを外す"
+                    >
+                      <CloseIcon width={16} height={16} />
+                    </button>
+                    <MediaView media={m} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
-              {recording && (
-                <div className="recorder-wrap">
-                  <AudioRecorder
-                    onConfirm={(blob, mimeType) => {
-                      setEditMedia((m) => [
-                        ...m,
-                        { id: uid(), kind: 'audio', blob, mimeType, fileName: '録音した声' },
-                      ])
-                      setRecording(false)
-                    }}
-                    onCancel={() => setRecording(false)}
-                  />
-                  <button
-                    type="button"
-                    className="recorder__file"
-                    onClick={() => {
-                      setRecording(false)
-                      editAudioInput.current?.click()
-                    }}
-                  >
-                    ファイルから選ぶ
-                  </button>
-                </div>
-              )}
+          {/* リンク */}
+          <div className="field">
+            <label className="field__label" htmlFor="edit-link">
+              リンク <small>（任意）</small>
+            </label>
+            <input
+              id="edit-link"
+              className="input"
+              type="url"
+              inputMode="url"
+              value={editLink}
+              onChange={(e) => setEditLink(e.target.value)}
+              placeholder="https://"
+            />
+          </div>
 
-              {editMedia.length > 0 && (
-                <ul className="attach-list">
-                  {editMedia.map((m) => (
-                    <li key={m.id} className="attach-item">
-                      <button
-                        type="button"
-                        className="attach-item__remove"
-                        onClick={() =>
-                          setEditMedia((list) => list.filter((x) => x.id !== m.id))
-                        }
-                        aria-label="このメディアを外す"
-                      >
-                        <CloseIcon width={16} height={16} />
-                      </button>
-                      <MediaView media={m} />
-                    </li>
-                  ))}
-                </ul>
-              )}
+          {/* 場所の呼び名 */}
+          <div className="field">
+            <label className="field__label" htmlFor="edit-place">
+              場所の呼び名 <small>（任意）</small>
+            </label>
+            <input
+              id="edit-place"
+              className="input"
+              value={editPlace}
+              onChange={(e) => setEditPlace(e.target.value)}
+              placeholder="卒業した教室、いつもの帰り道…"
+            />
+          </div>
+
+          {/* 開封期間設定 */}
+          <div className="field">
+            <span className="field__label">
+              開封できる期間 <small>（任意）</small>
+            </span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '6px' }}>
+              <div>
+                <label
+                  className="field__label"
+                  htmlFor="edit-valid-from"
+                  style={{ fontSize: '0.8rem', color: 'var(--c-ink-2)' }}
+                >
+                  開始日時
+                </label>
+                <input
+                  id="edit-valid-from"
+                  className="input"
+                  type="datetime-local"
+                  value={editValidFromStr}
+                  onChange={(e) => setEditValidFromStr(e.target.value)}
+                />
+              </div>
+              <div>
+                <label
+                  className="field__label"
+                  htmlFor="edit-valid-to"
+                  style={{ fontSize: '0.8rem', color: 'var(--c-ink-2)' }}
+                >
+                  終了日時
+                </label>
+                <input
+                  id="edit-valid-to"
+                  className="input"
+                  type="datetime-local"
+                  value={editValidToStr}
+                  onChange={(e) => setEditValidToStr(e.target.value)}
+                />
+              </div>
+            </div>
+            <p className="visibility-note">
+              期間を設定すると、その期間外はこの場所の地図上に表示されなくなります。
+            </p>
+          </div>
+
+          <div
+            className="letter__actions"
+            style={{
+              display: 'flex',
+              justifyContent: canDelete ? 'space-between' : 'flex-end',
+              gap: 'var(--sp-3)',
+            }}
+          >
+            {canDelete && (
+              <button
+                type="button"
+                className="btn btn--soft"
+                style={{ color: 'var(--c-danger)' }}
+                disabled={savingEdit}
+                onClick={() => {
+                  if (confirm('このことづてを取り消しますか？')) {
+                    onDelete?.(kotozute.id)
+                    onClose()
+                  }
+                }}
+              >
+                <TrashIcon width={14} height={14} style={{ marginRight: 4, verticalAlign: -2 }} />
+                削除
+              </button>
+            )}
+            <div style={{ display: 'flex', gap: 'var(--sp-3)' }}>
+              <button
+                className="btn btn--soft"
+                onClick={() => {
+                  resetEdit()
+                  setEditing(false)
+                }}
+                disabled={savingEdit}
+              >
+                キャンセル
+              </button>
+              <button className="btn btn--primary" onClick={saveEdit} disabled={savingEdit}>
+                {savingEdit ? '保存中…' : '保存する'}
+              </button>
             </div>
           </div>
         </div>
-        <div className="letter__actions" style={{ display: 'flex', gap: 'var(--sp-3)' }}>
-          <button
-            className="btn btn--soft"
-            onClick={() => {
-              resetEdit()
-              setEditing(false)
-            }}
-            disabled={savingEdit}
-          >
-            キャンセル
-          </button>
-          <button className="btn btn--primary" onClick={saveEdit} disabled={savingEdit}>
-            {savingEdit ? '保存中…' : '保存する'}
-          </button>
-        </div>
-      </div>
+      </Sheet>
     )
   }
 
