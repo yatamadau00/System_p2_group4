@@ -570,7 +570,10 @@ export function App() {
             setSelectedId(id)
           }}
           onDeleteKotozute={handleDelete}
-          onLogout={logout}
+          onLogout={() => {
+            logout()
+            setShowProfile(false)
+          }}
           onClose={() => setShowProfile(false)}
         />
       )}
