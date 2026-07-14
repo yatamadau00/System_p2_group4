@@ -66,28 +66,31 @@
   color: var(--c-on-amber);
   background: linear-gradient(160deg, #f0a85f, var(--c-amber-deep));
   box-shadow: 0 0 12px var(--c-amber-glow);
+  overflow: hidden;
 }
 
 .nearby-card__badge svg {
   transform: rotate(-45deg);
-  width: 20px;
-  height: 20px;
+  width: 30px;
+  height: 30px;
 }
 
-/* グループことづてのバッジ（グループのアイコン） */
+/* グループことづてのバッジ（グループのアイコンで円を埋める） */
 .nearby-card__badge-emoji {
   transform: rotate(-45deg);
-  font-size: 20px;
+  font-size: 30px;
   line-height: 1;
 }
 
+/* 写真はバッジいっぱいに敷き詰める（上向きに戻してから拡大でカバー） */
 .nearby-card__badge-img {
-  transform: rotate(-45deg);
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 150%;
+  height: 150%;
+  transform: translate(-50%, -50%) rotate(-45deg);
   object-fit: cover;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85);
 }
 
 .nearby-card__body {
