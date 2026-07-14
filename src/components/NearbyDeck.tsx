@@ -1,22 +1,10 @@
 import { useEffect, useRef } from 'react'
 import type { EnrichedKotozute } from '../lib/enrich'
+import type { Group } from '../types'
 import { formatDistance } from '../lib/geo'
 import { primaryKind } from '../lib/media'
-import {
-  AudioIcon,
-  ImageIcon,
-  PigeonIcon,
-  TextIcon,
-  VideoIcon,
-} from './icons'
+import { PigeonIcon } from './icons'
 import './NearbyDeck.css'
-
-const KIND_ICON = {
-  text: TextIcon,
-  image: ImageIcon,
-  video: VideoIcon,
-  audio: AudioIcon,
-}
 
 const KIND_SHORT = {
   text: 'メッセージ',
@@ -28,6 +16,8 @@ const KIND_SHORT = {
 interface NearbyDeckProps {
   /** 現在地の半径内（開封可能）にあることづて。距離順で渡される想定 */
   items: EnrichedKotozute[]
+  /** 参加中グループ（グループことづてのアイコン表示用） */
+  groups: Group[]
   highlightedId: string | null
   /** 現在地が取れているか（空状態の文言を分けるため） */
   hasPosition: boolean
@@ -42,6 +32,7 @@ interface NearbyDeckProps {
  */
 export function NearbyDeck({
   items,
+  groups,
   highlightedId,
   hasPosition,
   onSelect,
@@ -77,9 +68,12 @@ export function NearbyDeck({
         <div className="nearby-scroll">
           {items.map((k) => {
             const kind = primaryKind(k)
-            const Icon = KIND_ICON[kind]
             const date = new Date(k.createdAt)
             const active = highlightedId === k.id
+            const group =
+              k.visibility === 'group' && k.groupId
+                ? groups.find((g) => g.id === k.groupId)
+                : undefined
             return (
               <button
                 key={k.id}
@@ -90,8 +84,25 @@ export function NearbyDeck({
                 onClick={() => active ? onOpen(k.id) : onSelect(k.id)}
                 aria-label={active ? `${KIND_SHORT[kind]}のことづてを開く` : `${KIND_SHORT[kind]}のことづて。地図のピンを表示`}
               >
-                <span className={`nearby-card__badge nearby-card__badge--${kind}`}>
-                  <Icon />
+                <span
+                  className={`nearby-card__badge nearby-card__badge--${kind}`}
+                  style={group ? { backgroundColor: group.avatarColor } : undefined}
+                >
+                  {group ? (
+                    group.avatarImageUrl ? (
+                      <img
+                        src={group.avatarImageUrl}
+                        alt=""
+                        className="nearby-card__badge-img"
+                      />
+                    ) : (
+                      <span className="nearby-card__badge-emoji">
+                        {group.avatarEmoji}
+                      </span>
+                    )
+                  ) : (
+                    <PigeonIcon width={22} height={22} />
+                  )}
                 </span>
                 <span className="nearby-card__body">
                   <span className="nearby-card__place">

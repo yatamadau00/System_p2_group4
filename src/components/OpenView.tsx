@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { EnrichedKotozute } from '../lib/enrich'
-import type { AttachmentKind, MediaItem } from '../types'
+import type { AttachmentKind, Group, MediaItem } from '../types'
 import { formatDistance } from '../lib/geo'
 import { groupColorIndex, groupSealStyle } from '../lib/groupColor'
 import { kindLabel, uid } from '../lib/media'
@@ -66,6 +66,8 @@ interface OpenViewProps {
   ) => Promise<unknown>
   /** 自分のことづてをこの画面から削除する */
   onDelete?: (id: string) => void
+  /** グループ限定ことづての場合、その所属グループ（封のアイコン表示用） */
+  group?: Pick<Group, 'avatarEmoji' | 'avatarColor' | 'avatarImageUrl'>
 }
 
 /**
@@ -85,6 +87,7 @@ export function OpenView({
   onToggleFavorite,
   onEdit,
   onDelete,
+  group,
 }: OpenViewProps) {
   const { currentUser } = useAuth()
   // 自分のことづては、どこにいても閲覧・編集できる（距離ロックを無視）
@@ -236,15 +239,34 @@ export function OpenView({
             </div>
             <button
               className="seal"
-              style={kotozute.visibility === 'group' && kotozute.groupId
-                ? groupSealStyle(groupColorIndex(kotozute.groupId))
-                : undefined}
+              style={
+                group
+                  ? { background: group.avatarColor }
+                  : kotozute.visibility === 'group' && kotozute.groupId
+                    ? groupSealStyle(groupColorIndex(kotozute.groupId))
+                    : undefined
+              }
               onClick={openSeal}
               disabled={phase === 'opening'}
               aria-label="封を開ける"
             >
               <span className="seal__halo" aria-hidden />
-              <img src={pigeonPng} alt="" aria-hidden className="seal__glyph" />
+              {group ? (
+                group.avatarImageUrl ? (
+                  <img
+                    src={group.avatarImageUrl}
+                    alt=""
+                    aria-hidden
+                    className="seal__group-img"
+                  />
+                ) : (
+                  <span className="seal__group-emoji" aria-hidden>
+                    {group.avatarEmoji}
+                  </span>
+                )
+              ) : (
+                <img src={pigeonPng} alt="" aria-hidden className="seal__glyph" />
+              )}
             </button>
             <p className="locked__hint">
               ここまで来てくれて、ありがとう。
