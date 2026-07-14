@@ -19,6 +19,7 @@ interface ProfileSheetProps {
   updateProfile: (
     updates: Partial<Omit<UserProfile, 'id' | 'friendCode'>>,
   ) => Promise<void>
+  linkGoogleAccount: () => Promise<void>
   groups: Group[]
   createGroup: (name: string, avatarImageUrl?: string | null) => Promise<Group>
   joinGroup: (code: string) => Promise<Group>
@@ -88,6 +89,7 @@ export function ProfileSheet({
   openHistory,
   profile,
   updateProfile,
+  linkGoogleAccount,
   groups,
   createGroup,
   joinGroup,
@@ -111,6 +113,8 @@ export function ProfileSheet({
   const [avatarOffsetX, setAvatarOffsetX] = useState(0)
   const [avatarOffsetY, setAvatarOffsetY] = useState(0)
   const [savingProfile, setSavingProfile] = useState(false)
+  const [linkingGoogle, setLinkingGoogle] = useState(false)
+  const [googleLinkError, setGoogleLinkError] = useState<string | null>(null)
 
   // グループ関連
   const [newGroupName, setNewGroupName] = useState('')
@@ -509,10 +513,42 @@ export function ProfileSheet({
                     </div>
                     <div className="profile-card__title">
                       <h3>{profile.name}</h3>
+                      {profile.email && <p className="profile-card__email">{profile.email}</p>}
                     </div>
                   </div>
 
                   {profile.bio && <p className="profile-card__bio">{profile.bio}</p>}
+
+                  <div className="google-link-card">
+                    <div>
+                      <strong>Googleアカウント</strong>
+                      <p>{profile.googleLinked ? '連携済みです' : '連携すると次回からGoogleでログインできます'}</p>
+                    </div>
+                    {profile.googleLinked ? (
+                      <span className="google-link-card__status">連携済み</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn--soft"
+                        disabled={linkingGoogle}
+                        onClick={async () => {
+                          setGoogleLinkError(null)
+                          setLinkingGoogle(true)
+                          try {
+                            await linkGoogleAccount()
+                          } catch (err: unknown) {
+                            setGoogleLinkError(
+                              err instanceof Error ? err.message : 'Googleアカウント連携に失敗しました',
+                            )
+                            setLinkingGoogle(false)
+                          }
+                        }}
+                      >
+                        {linkingGoogle ? '接続中…' : 'Googleと連携'}
+                      </button>
+                    )}
+                  </div>
+                  {googleLinkError && <p className="profile-card__link-error">{googleLinkError}</p>}
 
                   <div className="profile-card__actions">
                     <button
