@@ -37,6 +37,7 @@ create table if not exists public.groups (
   name text not null default '',
   avatar_emoji text not null default '👥',
   avatar_color text not null default '#dceffd',
+  avatar_image_url text,
   owner_id text references public.users(id) on delete set null,
   created_at timestamptz not null default now()
 );
@@ -44,6 +45,7 @@ create table if not exists public.groups (
 -- 既に groups がある場合に不足列を足す（再実行しても安全）
 alter table public.groups add column if not exists avatar_emoji text not null default '👥';
 alter table public.groups add column if not exists avatar_color text not null default '#dceffd';
+alter table public.groups add column if not exists avatar_image_url text;
 
 create table if not exists public.group_members (
   group_id text not null references public.groups(id) on delete cascade,

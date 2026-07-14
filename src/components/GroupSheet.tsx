@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
 import type { Group, GroupMember } from '../types'
 import { Sheet } from './Sheet'
+import { imageFileToSquareDataUrl } from '../lib/image'
 import './ProfileSheet.css'
 
 interface GroupSheetProps {
@@ -8,7 +9,9 @@ interface GroupSheetProps {
   getMembers: (id: string) => Promise<GroupMember[]>
   updateGroup: (
     id: string,
-    updates: Partial<Pick<Group, 'name' | 'avatarEmoji' | 'avatarColor'>>,
+    updates: Partial<
+      Pick<Group, 'name' | 'avatarEmoji' | 'avatarColor' | 'avatarImageUrl'>
+    >,
   ) => Promise<void>
   onLeave: (id: string) => Promise<void>
   onClose: () => void
@@ -32,7 +35,21 @@ export function GroupSheet({
   const [editName, setEditName] = useState(group.name)
   const [editEmoji, setEditEmoji] = useState(group.avatarEmoji)
   const [editColor, setEditColor] = useState(group.avatarColor)
+  const [editImageUrl, setEditImageUrl] = useState<string | null>(
+    group.avatarImageUrl ?? null,
+  )
   const [saving, setSaving] = useState(false)
+
+  const handleGroupImage = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      setEditImageUrl(await imageFileToSquareDataUrl(file))
+    } catch (err: any) {
+      alert(err.message || '画像の読み込みに失敗しました')
+    }
+  }
 
   // 表示用（保存すると即時反映したいのでローカルにも持つ）
   const [view, setView] = useState(group)
@@ -70,12 +87,14 @@ export function GroupSheet({
         name: editName.trim(),
         avatarEmoji: editEmoji,
         avatarColor: editColor,
+        avatarImageUrl: editImageUrl,
       })
       setView((v) => ({
         ...v,
         name: editName.trim(),
         avatarEmoji: editEmoji,
         avatarColor: editColor,
+        avatarImageUrl: editImageUrl,
       }))
       setEditing(false)
     } catch (err: any) {
@@ -96,11 +115,39 @@ export function GroupSheet({
                   className="profile-card__avatar"
                   style={{ backgroundColor: editColor }}
                 >
-                  {editEmoji}
+                  {editImageUrl ? (
+                    <img src={editImageUrl} alt="" className="profile-card__avatar-image" />
+                  ) : (
+                    editEmoji
+                  )}
                 </div>
                 <div className="avatar-pickers">
                   <div className="avatar-picker-group">
-                    <label>アイコン</label>
+                    <label htmlFor="group-image">写真</label>
+                    <div className="avatar-image-actions">
+                      <label className="btn btn--soft avatar-image-button" htmlFor="group-image">
+                        写真を選ぶ
+                      </label>
+                      <input
+                        id="group-image"
+                        className="avatar-image-input"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleGroupImage}
+                      />
+                      {editImageUrl && (
+                        <button
+                          type="button"
+                          className="btn btn--soft avatar-image-button"
+                          onClick={() => setEditImageUrl(null)}
+                        >
+                          写真を外す
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="avatar-picker-group">
+                    <label>アイコン（写真なしのとき）</label>
                     <div className="picker-options">
                       {GROUP_EMOJIS.map((e) => (
                         <button
@@ -151,6 +198,7 @@ export function GroupSheet({
                     setEditName(view.name)
                     setEditEmoji(view.avatarEmoji)
                     setEditColor(view.avatarColor)
+                    setEditImageUrl(view.avatarImageUrl ?? null)
                     setEditing(false)
                   }}
                   disabled={saving}
@@ -169,7 +217,11 @@ export function GroupSheet({
                   className="profile-card__avatar"
                   style={{ backgroundColor: view.avatarColor }}
                 >
-                  {view.avatarEmoji}
+                  {view.avatarImageUrl ? (
+                    <img src={view.avatarImageUrl} alt="" className="profile-card__avatar-image" />
+                  ) : (
+                    view.avatarEmoji
+                  )}
                 </div>
                 <div className="profile-card__title">
                   <h3>{view.name}</h3>
