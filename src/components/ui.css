@@ -121,6 +121,12 @@
   background: var(--c-night-veil);
   backdrop-filter: blur(3px);
   animation: fade-in var(--dur-2) var(--ease-out);
+  opacity: 1;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+.scrim--closing {
+  opacity: 0;
 }
 
 /* ====== ボトムシート ====== */
