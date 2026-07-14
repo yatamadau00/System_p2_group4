@@ -3,21 +3,7 @@ import type { Group } from '../types'
 import { formatDistance } from '../lib/geo'
 import { groupBulbStyle, groupColorIndex } from '../lib/groupColor'
 import { primaryKind } from '../lib/media'
-import {
-  AudioIcon,
-  ImageIcon,
-  PigeonIcon,
-  TextIcon,
-  VideoIcon,
-  LockIcon,
-} from './icons'
-
-const KIND_ICON = {
-  text: TextIcon,
-  image: ImageIcon,
-  video: VideoIcon,
-  audio: AudioIcon,
-}
+import { PigeonIcon } from './icons'
 
 const KIND_NAME = {
   text: 'ことば',
@@ -44,9 +30,7 @@ interface PinProps {
 export function Pin({ kotozute, group, highlighted = false, onClick }: PinProps) {
   const { proximity, distance, mine, visibility, groupId } = kotozute
   const kind = primaryKind(kotozute)
-  const KindIcon = KIND_ICON[kind]
   const unlockable = proximity === 'unlockable'
-  const multi = (kotozute.media ?? []).length > 1
   const isGroupOnly = visibility === 'group'
   // グループのアイコンをピンに表示する（色分けより分かりやすい）
   const showGroupIcon = isGroupOnly && !!group
@@ -96,15 +80,6 @@ export function Pin({ kotozute, group, highlighted = false, onClick }: PinProps)
         ) : (
           <PigeonIcon className="pin__pigeon" />
         )}
-        <span className="pin__kind" aria-hidden>
-          {isGroupOnly ? (
-            <LockIcon width={12} height={12} style={{ strokeWidth: 2.2 }} />
-          ) : multi ? (
-            <span className="pin__kind-multi">＋</span>
-          ) : (
-            <KindIcon />
-          )}
-        </span>
       </span>
     </button>
   )

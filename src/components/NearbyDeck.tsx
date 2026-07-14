@@ -2,21 +2,8 @@ import { useEffect, useRef } from 'react'
 import type { EnrichedKotozute } from '../lib/enrich'
 import { formatDistance } from '../lib/geo'
 import { primaryKind } from '../lib/media'
-import {
-  AudioIcon,
-  ImageIcon,
-  PigeonIcon,
-  TextIcon,
-  VideoIcon,
-} from './icons'
+import { PigeonIcon } from './icons'
 import './NearbyDeck.css'
-
-const KIND_ICON = {
-  text: TextIcon,
-  image: ImageIcon,
-  video: VideoIcon,
-  audio: AudioIcon,
-}
 
 const KIND_SHORT = {
   text: 'メッセージ',
@@ -77,7 +64,6 @@ export function NearbyDeck({
         <div className="nearby-scroll">
           {items.map((k) => {
             const kind = primaryKind(k)
-            const Icon = KIND_ICON[kind]
             const date = new Date(k.createdAt)
             const active = highlightedId === k.id
             return (
@@ -91,7 +77,7 @@ export function NearbyDeck({
                 aria-label={active ? `${KIND_SHORT[kind]}のことづてを開く` : `${KIND_SHORT[kind]}のことづて。地図のピンを表示`}
               >
                 <span className={`nearby-card__badge nearby-card__badge--${kind}`}>
-                  <Icon />
+                  <PigeonIcon width={22} height={22} />
                 </span>
                 <span className="nearby-card__body">
                   <span className="nearby-card__place">
