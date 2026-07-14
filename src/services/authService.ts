@@ -176,17 +176,6 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
     throw new Error('GoogleログインにはSupabaseの設定が必要です')
   }
 
-  const metadata = authUser.user_metadata ?? {}
-  const displayName =
-    (typeof metadata.full_name === 'string' && metadata.full_name.trim()) ||
-    (typeof metadata.name === 'string' && metadata.name.trim()) ||
-    authUser.email?.split('@')[0] ||
-    'Googleユーザー'
-  const avatarImageUrl =
-    (typeof metadata.avatar_url === 'string' && metadata.avatar_url) ||
-    (typeof metadata.picture === 'string' && metadata.picture) ||
-    null
-
   const { data: linkedData, error: linkedError } = await supabase
     .from('users')
     .select('*')
@@ -197,13 +186,17 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
   const existing = linkedData
     ? rowToUser(linkedData as UserRow)
     : await getUserById(authUser.id)
+  // auth_user_id で既存プロフィールに到達した場合、Googleは認証手段としてのみ使う。
+  // ユーザーが設定した表示名・自己紹介・アバターは上書きしない。
+  if (linkedData) {
+    return { ...existing!, email: authUser.email }
+  }
+
   if (existing) {
     const { data, error } = await supabase
       .from('users')
       .update({
         auth_user_id: authUser.id,
-        display_name: displayName,
-        avatar_image_url: avatarImageUrl,
       })
       .eq('id', existing.id)
       .select()
@@ -218,12 +211,13 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
       id: authUser.id,
       auth_user_id: authUser.id,
       username: oauthUsername(authUser),
-      display_name: displayName,
+      // Googleプロフィールは読み込まず、初回ログイン後にアプリ内で決めてもらう。
+      display_name: '',
       password_hash: '',
       bio: '場所に想いを残すのが好きです。',
       avatar_emoji: DEFAULT_AVATAR_EMOJI,
       avatar_color: DEFAULT_AVATAR_COLOR,
-      avatar_image_url: avatarImageUrl,
+      avatar_image_url: null,
       friend_code: createFriendCode(),
     })
     .select()
@@ -241,21 +235,9 @@ export async function completeGoogleAccountLink(
     throw new Error('Googleアカウント連携にはSupabaseの設定が必要です')
   }
 
-  const metadata = authUser.user_metadata ?? {}
-  const displayName =
-    (typeof metadata.full_name === 'string' && metadata.full_name.trim()) ||
-    (typeof metadata.name === 'string' && metadata.name.trim())
-  const avatarImageUrl =
-    (typeof metadata.avatar_url === 'string' && metadata.avatar_url) ||
-    (typeof metadata.picture === 'string' && metadata.picture)
-
-  const updates: Record<string, string> = { auth_user_id: authUser.id }
-  if (displayName) updates.display_name = displayName
-  if (avatarImageUrl) updates.avatar_image_url = avatarImageUrl
-
   const { data, error } = await supabase
     .from('users')
-    .update(updates)
+    .update({ auth_user_id: authUser.id })
     .eq('id', existingUserId)
     .select()
     .single()
