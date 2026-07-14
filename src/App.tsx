@@ -578,6 +578,7 @@ export function App() {
       {showList && (
         <ListSheet
           items={listItems}
+          groups={groups}
           hasPosition={!!position}
           savedScroll={listScrollRef.current}
           savedTab={listTabRef.current}

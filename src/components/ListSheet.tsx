@@ -1,29 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { EnrichedKotozute } from '../lib/enrich'
+import type { Group } from '../types'
 import { formatDistance } from '../lib/geo'
-import { primaryKind } from '../lib/media'
 import { Sheet } from './Sheet'
 import {
-  AudioIcon,
   EnvelopeIcon,
-  ImageIcon,
-  TextIcon,
+  PigeonIcon,
   TrashIcon,
-  VideoIcon,
   LockIcon,
   StarIcon,
 } from './icons'
 import './ListSheet.css'
 
-const KIND_ICON = {
-  text: TextIcon,
-  image: ImageIcon,
-  video: VideoIcon,
-  audio: AudioIcon,
-}
-
 interface ListSheetProps {
   items: EnrichedKotozute[]
+  /** 参加中グループ（グループことづてのアイコン表示用） */
+  groups: Group[]
   hasPosition: boolean
   savedScroll?: number
   savedTab?: 'all' | 'favorite' | 'mine'
@@ -37,6 +29,7 @@ interface ListSheetProps {
 
 export function ListSheet({
   items,
+  groups,
   hasPosition,
   savedScroll = 0,
   savedTab = 'all',
@@ -125,7 +118,10 @@ export function ListSheet({
       ) : (
         <ul className="cz-list" ref={listRef}>
           {list.map((k) => {
-            const Icon = KIND_ICON[primaryKind(k)]
+            const group =
+              k.visibility === 'group' && k.groupId
+                ? groups.find((g) => g.id === k.groupId)
+                : undefined
             const statusText =
               k.openedByCurrentUser
                 ? '開封済み'
@@ -147,8 +143,23 @@ export function ListSheet({
                   onSaveTab?.(tab)
                   onSelect(k.id)
                 }}>
-                  <span className={`cz-row__badge cz-row__badge--${k.proximity}`}>
-                    <Icon />
+                  <span
+                    className={`cz-row__badge cz-row__badge--${k.proximity}`}
+                    style={group ? { backgroundColor: group.avatarColor } : undefined}
+                  >
+                    {group ? (
+                      group.avatarImageUrl ? (
+                        <img
+                          src={group.avatarImageUrl}
+                          alt=""
+                          className="cz-row__badge-img"
+                        />
+                      ) : (
+                        <span className="cz-row__badge-emoji">{group.avatarEmoji}</span>
+                      )
+                    ) : (
+                      <PigeonIcon width={22} height={22} />
+                    )}
                   </span>
                   <span className="cz-row__main">
                     <span className="cz-row__place" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
