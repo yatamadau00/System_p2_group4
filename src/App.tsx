@@ -118,6 +118,9 @@ export function App() {
         : null
 
     return enriched.filter((item) => {
+      // 0. シークレット：5m以内(開封可能)に入るまで地図に出さない
+      if (item.isSecret && item.proximity !== 'unlockable') return false
+
       // 1. 開封有効期間のチェック
       if (item.validFrom && now < item.validFrom) return false
       if (item.validTo && now > item.validTo) return false
@@ -148,6 +151,12 @@ export function App() {
         .filter((k) => k.proximity === 'unlockable')
         .sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0)),
     [mapItems],
+  )
+  // シークレットで、まだ5m以内に入っていないものは一覧からも隠す
+  const listItems = useMemo(
+    () =>
+      enriched.filter((k) => !(k.isSecret && k.proximity !== 'unlockable')),
+    [enriched],
   )
   const selected = useMemo(
     () => {
@@ -217,12 +226,21 @@ export function App() {
 
       if (enteredUnlockRadius && !item.mine && !item.openedByCurrentUser) {
         const label = item.placeLabel || item.authorName || '近くのことづて'
-        addNotification(
-          'ことづての射程圏内に入りました',
-          `『${label}』が開封できます。封を開けてみましょう。`,
-          'unlockable',
-          item.id,
-        )
+        if (item.isSecret) {
+          addNotification(
+            '🤫 シークレットのことづてが現れました',
+            `隠されていた『${label}』が、この場所で開けられるようになりました。`,
+            'unlockable',
+            item.id,
+          )
+        } else {
+          addNotification(
+            'ことづての射程圏内に入りました',
+            `『${label}』が開封できます。封を開けてみましょう。`,
+            'unlockable',
+            item.id,
+          )
+        }
       }
 
       previous.set(item.id, item.proximity)
@@ -533,7 +551,7 @@ export function App() {
       {/* 一覧 */}
       {showList && (
         <ListSheet
-          items={enriched}
+          items={listItems}
           hasPosition={!!position}
           savedScroll={listScrollRef.current}
           savedTab={listTabRef.current}

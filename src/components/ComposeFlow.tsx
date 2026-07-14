@@ -49,6 +49,7 @@ export function ComposeFlow({
   const [visibility, setVisibility] = useState<'public' | 'group'>('public')
   const [groupId, setGroupId] = useState<string>(replyTarget?.groupId ?? groups[0]?.id ?? '')
   const [isAnonymous, setIsAnonymous] = useState(false)
+  const [isSecret, setIsSecret] = useState(false)
 
   const [placeLabel, setPlaceLabel] = useState('')
   const [media, setMedia] = useState<MediaItem[]>([])
@@ -113,6 +114,8 @@ export function ComposeFlow({
           currentVisibility === 'group'
             ? replyTarget?.groupId ?? groupId
             : undefined,
+        // 返信はシークレットにしない
+        isSecret: !replyTarget && isSecret,
         authorId: profile.id,
         replyToId: replyTarget?.id,
         rootId: replyTarget?.rootId ?? replyTarget?.id,
@@ -439,6 +442,28 @@ export function ComposeFlow({
             </div>
           )}
         </div>
+
+        {/* シークレット設定（返信では出さない） */}
+        {!replyTarget && (
+          <div className="field">
+            <span className="field__label">シークレット</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label className="anonymous-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={isSecret}
+                  onChange={(e) => setIsSecret(e.target.checked)}
+                />
+                シークレットにする
+              </label>
+              <p className="visibility-note">
+                {isSecret
+                  ? '地図にはピンを出しません。半径5m以内に入った人にだけ、通知とともに現れます。'
+                  : 'オンにすると、地図に出さず、近づいた人にだけ現れる隠しことづてになります。'}
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="compose__footer">
           <button

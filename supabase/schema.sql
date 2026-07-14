@@ -39,6 +39,7 @@ create table public.kotozute (
   media jsonb not null default '[]'::jsonb,
   visibility text not null default 'public' check (visibility in ('public', 'group')),
   group_id text,
+  is_secret boolean not null default false,
   is_sample boolean not null default false,
   created_at timestamptz not null default now(),
   valid_from timestamptz,
