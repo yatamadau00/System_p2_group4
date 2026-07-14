@@ -365,6 +365,17 @@
   transform: scale(0.97);
 }
 
+.map-layer:disabled,
+.map-layer--disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+  transform: none;
+}
+
+.map-layer:disabled:active {
+  transform: none;
+}
+
 .map-layer--active {
   background: var(--c-surface-veil);
   color: var(--c-ink);
@@ -379,8 +390,12 @@
   color: var(--c-moss-deep);
 }
 
-.map-layer--owned.map-layer--active::before {
+.map-layer--created.map-layer--active::before {
   color: var(--c-amber-deep);
+}
+
+.map-layer--opened.map-layer--active::before {
+  color: #4f8ecf;
 }
 
 .map-layer--favorite::before {
