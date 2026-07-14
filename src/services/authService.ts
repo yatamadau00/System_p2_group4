@@ -211,7 +211,8 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
       id: authUser.id,
       auth_user_id: authUser.id,
       username: oauthUsername(authUser),
-      display_name: 'ことづてびと',
+      // Googleプロフィールは読み込まず、初回ログイン後にアプリ内で決めてもらう。
+      display_name: '',
       password_hash: '',
       bio: '場所に想いを残すのが好きです。',
       avatar_emoji: DEFAULT_AVATAR_EMOJI,

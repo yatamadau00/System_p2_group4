@@ -11,6 +11,14 @@
   gap: var(--sp-1);
 }
 
+.auth-form__intro {
+  margin: 0;
+  color: var(--c-ink-2);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
 .auth-form__google-btn {
   display: flex;
   align-items: center;
