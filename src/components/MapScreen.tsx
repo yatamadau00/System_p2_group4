@@ -14,7 +14,7 @@ import {
 } from '../config'
 import { KOTOZUTE_MAP_STYLE } from '../lib/mapStyle'
 import { Pin } from './Pin'
-import { BellIcon, ListIcon, LocateIcon } from './icons'
+import { BellIcon, ListIcon, LocateIcon, UserIcon } from './icons'
 import './MapScreen.css'
 
 type MapLayerKey = 'public' | 'group' | 'created' | 'opened'
@@ -32,7 +32,6 @@ interface MapScreenProps {
   onMapLoad: (map: google.maps.Map | null) => void
   currentUser: User | null
   onOpenAuth: () => void
-  onLogout: () => void
   profile: UserProfile
   onOpenProfile: () => void
   unreadCount: number
@@ -65,7 +64,6 @@ export function MapScreen(props: MapScreenProps) {
     onMapLoad,
     currentUser,
     onOpenAuth,
-    onLogout,
     profile,
     onOpenProfile,
     unreadCount,
@@ -115,58 +113,56 @@ export function MapScreen(props: MapScreenProps) {
     }
   }, [position])
 
-  const brandBar = (
-    <div className="topbar" role="banner">
-      <span className="topbar__mark" aria-hidden />
-      <div>
-        <div className="topbar__title">ことづて</div>
-        <div className="topbar__count">
-          {unlockableCount > 0
-            ? `いま ${unlockableCount} 通、開けられます`
-            : `この地に ${totalCount} 通`}
+  // ブランド情報とユーザー（アバター＋名前）を 1 本のトップバーに統合。
+  // ユーザーチップをタップするとプロフィールが開く（ログアウトはプロフィール内へ集約）。
+  const topBar = (
+    <header className="topbar" role="banner">
+      <div className="topbar__brand">
+        <span className="topbar__mark" aria-hidden />
+        <div className="topbar__brand-text">
+          <div className="topbar__title">ことづて</div>
+          <div className="topbar__count">
+            {unlockableCount > 0
+              ? `いま ${unlockableCount} 通、開けられます`
+              : `この地に ${totalCount} 通`}
+          </div>
         </div>
       </div>
-      <span className="topbar__divider" />
-      <div className="topbar__auth">
-        {currentUser ? (
-          <div className="topbar__user">
-            <span className="topbar__username" title={profile.name}>
-              {profile.name}
-            </span>
-            <button
-              className="topbar__btn"
-              onClick={onLogout}
-              aria-label="ログアウト"
-            >
-              ログアウト
-            </button>
-          </div>
-        ) : (
-          <button
-            className="topbar__btn"
-            onClick={onOpenAuth}
-            aria-label="ログイン"
-          >
-            ログイン
-          </button>
-        )}
-      </div>
-    </div>
-  )
 
-  const profileButton = (
-    <button
-      className="map-btn map-btn--profile"
-      onClick={onOpenProfile}
-      style={{ backgroundColor: profile.avatarColor }}
-      aria-label="プロフィールをひらく"
-    >
-      {profile.avatarImageUrl ? (
-        <img src={profile.avatarImageUrl} alt="" className="map-btn__avatar-image" />
+      {currentUser ? (
+        <button
+          className="topbar__user"
+          onClick={onOpenProfile}
+          aria-label="プロフィールをひらく"
+        >
+          <span className="topbar__username" title={profile.name}>
+            {profile.name}
+          </span>
+          <span
+            className="topbar__avatar"
+            style={{ backgroundColor: profile.avatarColor }}
+            aria-hidden
+          >
+            {profile.avatarImageUrl ? (
+              <img src={profile.avatarImageUrl} alt="" className="topbar__avatar-image" />
+            ) : (
+              profile.avatarEmoji
+            )}
+          </span>
+        </button>
       ) : (
-        profile.avatarEmoji
+        <button
+          className="topbar__user topbar__user--guest"
+          onClick={onOpenAuth}
+          aria-label="ログイン"
+        >
+          <span className="topbar__username">ログイン</span>
+          <span className="topbar__avatar topbar__avatar--guest" aria-hidden>
+            <UserIcon width={22} height={22} />
+          </span>
+        </button>
       )}
-    </button>
+    </header>
   )
 
   const visibleGroupCount = groups.filter((group) => groupLayerVisibility[group.id] ?? true)
@@ -270,8 +266,7 @@ export function MapScreen(props: MapScreenProps) {
     return (
       <div className="map-root">
         <FallbackMap items={items} onSelectPin={onSelectPin} />
-        {brandBar}
-        {profileButton}
+        {topBar}
         {layerControls}
         <div className="map-controls">
           <button
@@ -352,8 +347,7 @@ export function MapScreen(props: MapScreenProps) {
         ))}
       </GoogleMap>
 
-      {brandBar}
-      {profileButton}
+      {topBar}
       {layerControls}
       <div className="map-controls">
         <button
