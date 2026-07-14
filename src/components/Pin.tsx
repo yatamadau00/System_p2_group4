@@ -1,22 +1,9 @@
 import type { EnrichedKotozute } from '../lib/enrich'
+import type { Group } from '../types'
 import { formatDistance } from '../lib/geo'
 import { groupBulbStyle, groupColorIndex } from '../lib/groupColor'
 import { primaryKind } from '../lib/media'
-import {
-  AudioIcon,
-  ImageIcon,
-  PigeonIcon,
-  TextIcon,
-  VideoIcon,
-  LockIcon,
-} from './icons'
-
-const KIND_ICON = {
-  text: TextIcon,
-  image: ImageIcon,
-  video: VideoIcon,
-  audio: AudioIcon,
-}
+import { PigeonIcon } from './icons'
 
 const KIND_NAME = {
   text: 'ことば',
@@ -27,6 +14,8 @@ const KIND_NAME = {
 
 interface PinProps {
   kotozute: EnrichedKotozute
+  /** グループ限定ことづての場合、その所属グループ（アイコン表示用） */
+  group?: Pick<Group, 'avatarEmoji' | 'avatarColor' | 'avatarImageUrl'>
   /** 下部リストと連動した選択ハイライト中か */
   highlighted?: boolean
   onClick: () => void
@@ -38,15 +27,22 @@ interface PinProps {
  * - 中身の種類は色アクセントと小さな種別チップで示す（伝書鳩はそのまま）。
  * - 距離ラベルは本体の上に余白をとって配置し、ピンと重ならない。
  */
-export function Pin({ kotozute, highlighted = false, onClick }: PinProps) {
+export function Pin({ kotozute, group, highlighted = false, onClick }: PinProps) {
   const { proximity, distance, mine, visibility, groupId } = kotozute
   const kind = primaryKind(kotozute)
-  const KindIcon = KIND_ICON[kind]
   const unlockable = proximity === 'unlockable'
-  const multi = (kotozute.media ?? []).length > 1
   const isGroupOnly = visibility === 'group'
+  // グループのアイコンをピンに表示する（色分けより分かりやすい）
+  const showGroupIcon = isGroupOnly && !!group
   const groupIdx = isGroupOnly && groupId ? groupColorIndex(groupId) : null
-  const bulbStyle = groupIdx !== null ? groupBulbStyle(groupIdx, proximity) : undefined
+  // 写真はバルブいっぱいに敷く。絵文字は周囲をグループ色で塗る（オレンジを見せない）。
+  const bulbStyle = showGroupIcon
+    ? group!.avatarImageUrl
+      ? undefined
+      : { background: group!.avatarColor, color: group!.avatarColor }
+    : groupIdx !== null
+      ? groupBulbStyle(groupIdx, proximity)
+      : undefined
 
   const label = unlockable
     ? `${KIND_NAME[kind]}のことづてを開ける`
@@ -68,16 +64,22 @@ export function Pin({ kotozute, highlighted = false, onClick }: PinProps) {
       )}
       <span className="pin__bulb" style={bulbStyle}>
         {unlockable && <span className="pin__halo" aria-hidden />}
-        <PigeonIcon className="pin__pigeon" />
-        <span className="pin__kind" aria-hidden>
-          {isGroupOnly ? (
-            <LockIcon width={12} height={12} style={{ strokeWidth: 2.2 }} />
-          ) : multi ? (
-            <span className="pin__kind-multi">＋</span>
+        {showGroupIcon ? (
+          group!.avatarImageUrl ? (
+            <img
+              className="pin__group-img"
+              src={group!.avatarImageUrl}
+              alt=""
+              aria-hidden
+            />
           ) : (
-            <KindIcon />
-          )}
-        </span>
+            <span className="pin__group-emoji" aria-hidden>
+              {group!.avatarEmoji}
+            </span>
+          )
+        ) : (
+          <PigeonIcon className="pin__pigeon" />
+        )}
       </span>
     </button>
   )

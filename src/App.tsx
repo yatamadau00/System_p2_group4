@@ -547,6 +547,7 @@ export function App() {
       {!overlayOpen && !loading && (
         <NearbyDeck
           items={nearbyItems}
+          groups={groups}
           highlightedId={highlightedId}
           hasPosition={!!position}
           onSelect={handleHighlight}
@@ -589,8 +590,8 @@ export function App() {
       {showList && (
         <ListSheet
           items={listItems}
-          hasPosition={!!position}
           groups={groups}
+          hasPosition={!!position}
           savedScroll={listScrollRef.current}
           savedTab={listTabRef.current}
           onSaveScroll={(v) => { listScrollRef.current = v }}
@@ -685,6 +686,11 @@ export function App() {
           onDelete={handleDelete}
           onToggleLike={handleToggleLike}
           onToggleFavorite={handleToggleFavorite}
+          group={
+            selected.visibility === 'group' && selected.groupId
+              ? groups.find((g) => g.id === selected.groupId)
+              : undefined
+          }
         />
       )}
 

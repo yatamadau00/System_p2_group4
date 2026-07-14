@@ -348,6 +348,11 @@ export function MapScreen(props: MapScreenProps) {
           >
             <Pin
               kotozute={k}
+              group={
+                k.visibility === 'group' && k.groupId
+                  ? groups.find((g) => g.id === k.groupId)
+                  : undefined
+              }
               highlighted={k.id === highlightedId}
               onClick={() => onSelectPin(k.id)}
             />

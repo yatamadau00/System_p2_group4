@@ -241,6 +241,21 @@
   object-fit: contain;
 }
 
+/* グループことづての封：グループアイコン */
+.seal__group-img {
+  width: 98px;
+  height: 98px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85);
+}
+
+.seal__group-emoji {
+  font-size: 66px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
+}
+
 .seal__halo {
   position: absolute;
   inset: -16px;
