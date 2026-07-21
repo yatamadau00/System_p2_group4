@@ -20,7 +20,7 @@
   user-select: none;
   touch-action: pan-x;
   /* .nearby-deck の pointer-events:none を継承すると、カードの隙間や余白で
-     ホイール/ドラッグが地図側へ抜けてしまうため、ここで明示的に受け止める */
+     ホイール/ドラッグ/タッチスワイプが地図側へ抜けてしまうため、ここで明示的に受け止める */
   pointer-events: auto;
 }
 
@@ -94,6 +94,12 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.nearby-card__badge-pigeon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
 }
 
 .nearby-card__body {

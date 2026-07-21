@@ -609,7 +609,7 @@ export function ProfileSheet({
                     <li key={`${k.id}:${openedAt}`}>
                       <button className="cz-row" onClick={() => onSelectKotozute(k.id)}>
                         <span className="cz-row__badge cz-row__badge--near">
-                          <PigeonIcon />
+                          <PigeonIcon className="cz-row__badge-pigeon" />
                         </span>
                         <span className="cz-row__main">
                           <span className="cz-row__place">
@@ -652,7 +652,7 @@ export function ProfileSheet({
                     <li key={k.id}>
                       <button className="cz-row" onClick={() => onSelectKotozute(k.id)}>
                         <span className="cz-row__badge cz-row__badge--unlockable">
-                          <PigeonIcon />
+                          <PigeonIcon className="cz-row__badge-pigeon" />
                         </span>
                         <span className="cz-row__main">
                           <span className="cz-row__place">
