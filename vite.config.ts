@@ -47,6 +47,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // 生成される sw.js に Web Push ハンドラ（public/push-sw.js）を読み込ませる。
+        importScripts: ['/push-sw.js'],
         // ビルド生成物（アプリシェル）をプリキャッシュする。
         globPatterns: ['**/*.{js,css,html,png,svg,woff,woff2}'],
         // デプロイ更新時に古いプリキャッシュを掃除する。
