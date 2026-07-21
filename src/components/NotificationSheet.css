@@ -239,6 +239,7 @@
 .notif-item__icon {
   width: 20px;
   height: 20px;
+  object-fit: contain;
 }
 
 .notif-item__icon--near {
