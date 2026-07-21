@@ -8,6 +8,7 @@ import { NearbyDeck } from './components/NearbyDeck'
 import { GeoBanner } from './components/GeoBanner'
 import { AuthSheet } from './components/AuthSheet'
 import { GoogleProfileSetup } from './components/GoogleProfileSetup'
+import { PasswordRecoverySheet } from './components/PasswordRecoverySheet'
 import { CheckIcon, PlusIcon } from './components/icons'
 import { useGeolocation } from './hooks/useGeolocation'
 import { useKotozute } from './hooks/useKotozute'
@@ -53,6 +54,7 @@ export function App() {
     unlinkGoogleAccount,
     changePassword,
     registerRecoveryEmail,
+    passwordRecovery,
   } = useAuth()
   const {
     items,
@@ -518,6 +520,7 @@ export function App() {
     showProfile ||
     !!selected ||
     showAuth ||
+    passwordRecovery ||
     showNotifications ||
     needsGoogleProfileSetup
 
@@ -711,6 +714,8 @@ export function App() {
       {showAuth && (
         <AuthSheet onClose={() => setShowAuth(false)} />
       )}
+
+      {passwordRecovery && <PasswordRecoverySheet />}
 
       {/* Googleで新規登録した場合の初回プロフィール設定 */}
       {needsGoogleProfileSetup && (

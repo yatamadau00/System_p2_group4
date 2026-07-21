@@ -15,6 +15,7 @@ import {
   getUserById,
   hashPassword,
   registerUser,
+  resetLinkedUserPassword,
   syncGoogleUser,
 } from '../services/authService'
 import { isSupabaseConfigured, supabase } from '../services/supabaseClient'
@@ -23,12 +24,16 @@ interface AuthContextType {
   currentUser: User | null
   loading: boolean
   error: string | null
+  passwordRecovery: boolean
   login: (username: string, password: string) => Promise<void>
   loginWithGoogle: () => Promise<void>
   linkGoogleAccount: () => Promise<void>
   unlinkGoogleAccount: () => Promise<void>
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   registerRecoveryEmail: (email: string, currentPassword: string) => Promise<void>
+  requestPasswordReset: (email: string) => Promise<void>
+  completePasswordRecovery: (newPassword: string) => Promise<void>
+  dismissPasswordRecovery: () => void
   signUp: (
     username: string,
     displayName: string,
@@ -53,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [passwordRecovery, setPasswordRecovery] = useState(false)
 
   // 独自ログインとSupabase Authの両方から起動時のセッションを復元する
   useEffect(() => {
@@ -66,6 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (data.session?.user) {
             const pendingUserId = localStorage.getItem(PENDING_GOOGLE_LINK_KEY)
             const pendingEmailToken = localStorage.getItem(PENDING_EMAIL_LINK_TOKEN_KEY)
+            const isPasswordRecoveryRedirect =
+              new URLSearchParams(window.location.search).get('password-recovery') === '1'
             if (data.session.user.is_anonymous) {
               const savedId = pendingUserId ?? localStorage.getItem(STORAGE_KEY)
               if (savedId) {
@@ -84,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 : await syncGoogleUser(data.session.user)
             if (pendingEmailToken) localStorage.removeItem(PENDING_EMAIL_LINK_TOKEN_KEY)
             if (pendingUserId) localStorage.removeItem(PENDING_GOOGLE_LINK_KEY)
+            if (isPasswordRecoveryRedirect && active) setPasswordRecovery(true)
             if (active) setCurrentUser(user)
             localStorage.setItem(STORAGE_KEY, user.id)
             return
@@ -109,8 +118,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     restoreSession()
 
     const authSubscription = supabase?.auth.onAuthStateChange((event, session) => {
-      if (event !== 'SIGNED_IN' || !session?.user) return
+      if ((event !== 'SIGNED_IN' && event !== 'PASSWORD_RECOVERY') || !session?.user) return
       if (session.user.is_anonymous) return
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
       const pendingUserId = localStorage.getItem(PENDING_GOOGLE_LINK_KEY)
       const pendingEmailToken = localStorage.getItem(PENDING_EMAIL_LINK_TOKEN_KEY)
       const userPromise = pendingEmailToken
@@ -307,6 +317,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const requestPasswordReset = async (email: string) => {
+    setError(null)
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error('パスワード再設定にはSupabaseの設定が必要です')
+    }
+    const redirectUrl = new URL(window.location.origin)
+    redirectUrl.searchParams.set('password-recovery', '1')
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl.toString(),
+    })
+    if (resetError) {
+      setError(resetError.message)
+      throw resetError
+    }
+  }
+
+  const completePasswordRecovery = async (newPassword: string) => {
+    setError(null)
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error('パスワード再設定にはSupabaseの設定が必要です')
+    }
+    try {
+      const passwordHash = await hashPassword(newPassword)
+      await resetLinkedUserPassword(passwordHash)
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
+      if (updateError) throw updateError
+      setPasswordRecovery(false)
+      window.history.replaceState({}, '', window.location.pathname)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'パスワードを再設定できませんでした'
+      setError(message)
+      throw err
+    }
+  }
+
+  const dismissPasswordRecovery = () => {
+    setPasswordRecovery(false)
+    setError(null)
+    window.history.replaceState({}, '', window.location.pathname)
+  }
+
   const signUp = async (
     username: string,
     displayName: string,
@@ -346,12 +397,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         currentUser,
         loading,
         error,
+        passwordRecovery,
         login,
         loginWithGoogle,
         linkGoogleAccount,
         unlinkGoogleAccount,
         changePassword,
         registerRecoveryEmail,
+        requestPasswordReset,
+        completePasswordRecovery,
+        dismissPasswordRecovery,
         signUp,
         logout,
         clearError,

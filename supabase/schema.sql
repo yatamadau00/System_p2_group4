@@ -390,6 +390,39 @@ revoke all on function public.complete_email_account_link(text) from public;
 grant execute on function public.begin_email_account_link(text, text, text) to anon, authenticated;
 grant execute on function public.complete_email_account_link(text) to authenticated;
 
+create or replace function public.reset_linked_user_password(p_new_password_hash text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  if auth.uid() is null
+    or coalesce(p_new_password_hash, '') = ''
+    or not exists (
+      select 1
+      from jsonb_array_elements(coalesce(auth.jwt() -> 'amr', '[]'::jsonb)) as method
+      where method ->> 'method' = 'recovery'
+    )
+    or not exists (
+      select 1 from auth.users
+      where id = auth.uid() and email_confirmed_at is not null
+    ) then
+    return false;
+  end if;
+
+  update public.users
+  set password_hash = p_new_password_hash
+  where auth_user_id = auth.uid()
+    and coalesce(password_hash, '') <> '';
+
+  return found;
+end;
+$$;
+
+revoke all on function public.reset_linked_user_password(text) from public;
+grant execute on function public.reset_linked_user_password(text) to authenticated;
+
 insert into storage.buckets (id, name, public)
 values ('kotozute-media', 'kotozute-media', true)
 on conflict (id) do nothing;

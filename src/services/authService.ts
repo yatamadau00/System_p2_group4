@@ -254,6 +254,18 @@ export async function completeEmailAccountLink(
   return { ...user, email: authUser.email }
 }
 
+/** メールで本人確認済みのAuthセッションから、連携済みユーザーのパスワードを再設定する。 */
+export async function resetLinkedUserPassword(passwordHash: string): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('パスワード再設定にはSupabaseの設定が必要です')
+  }
+  const { data, error } = await supabase.rpc('reset_linked_user_password', {
+    p_new_password_hash: passwordHash,
+  })
+  if (error) throw error
+  if (!data) throw new Error('再設定リンクが無効か、対象のユーザーが見つかりません')
+}
+
 /** ユーザーを ID から取得する */
 export async function getUserById(id: string): Promise<User | undefined> {
   if (isSupabaseConfigured) {
