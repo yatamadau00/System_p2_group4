@@ -237,6 +237,9 @@ export function OpenView({
             <div className="locked__place" id={titleId}>
               {kotozute.placeLabel ?? 'この場所のことづて'}
             </div>
+            <div className="locked__author">
+              {kotozute.authorName ?? 'なまえのない誰か'} さんより
+            </div>
             <button
               className="seal"
               style={
@@ -376,6 +379,9 @@ function LockedView({
     <div className="locked">
       <div className="locked__place" id={titleId}>
         {kotozute.placeLabel ?? 'どこかの誰かのことづて'}
+      </div>
+      <div className="locked__author">
+        {kotozute.authorName ?? 'なまえのない誰か'} さんより
       </div>
 
       {kotozute.visibility === 'group' && (
@@ -820,6 +826,9 @@ function Letter({
       <div className="letter">
       <div className="letter__place">
         {kotozute.placeLabel ?? 'この場所のことづて'}
+      </div>
+      <div className="letter__author">
+        {kotozute.authorName ?? 'なまえのない誰か'} さんより
       </div>
       <div className="letter__meta" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
         <span>{kindLabel(kotozute)}</span>
