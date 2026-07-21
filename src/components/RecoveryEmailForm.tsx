@@ -47,8 +47,8 @@ export function RecoveryEmailForm({ registerRecoveryEmail }: RecoveryEmailFormPr
     <section className="recovery-email">
       <div className="recovery-email__heading">
         <div>
-          <strong>再設定用メールアドレス</strong>
-          <p>パスワードを忘れたときの本人確認に使用します</p>
+          <strong>メールアドレス</strong>
+          <p>本人確認とパスワード再設定に使用します</p>
         </div>
         <button
           type="button"

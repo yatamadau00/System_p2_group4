@@ -563,6 +563,10 @@ export function ProfileSheet({
                   )}
                   {googleLinkError && <p className="profile-card__link-error">{googleLinkError}</p>}
 
+                  {canRegisterRecoveryEmail && (
+                    <RecoveryEmailForm registerRecoveryEmail={registerRecoveryEmail} />
+                  )}
+
                   <div className="profile-card__actions">
                     <button
                       className="btn btn--soft btn--block"
@@ -575,12 +579,6 @@ export function ProfileSheet({
               )}
             </div>
 
-            {canChangePassword && (
-              <ChangePasswordForm changePassword={changePassword} />
-            )}
-            {canRegisterRecoveryEmail && (
-              <RecoveryEmailForm registerRecoveryEmail={registerRecoveryEmail} />
-            )}
         </div>
 
         <div className="friends-tab">
@@ -762,6 +760,10 @@ export function ProfileSheet({
               )}
             </div>
         </div>
+
+        {canChangePassword && (
+          <ChangePasswordForm changePassword={changePassword} />
+        )}
 
         {/* アカウント操作（ログアウト） */}
         <div className="account-section">
