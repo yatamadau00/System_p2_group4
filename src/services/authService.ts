@@ -29,6 +29,13 @@ interface UserRow {
   created_at: string
 }
 
+interface UserAuthDetails {
+  email?: string
+  email_verified?: boolean
+  google_linked?: boolean
+  google_email?: string
+}
+
 /** 端末内保存の StoredUser から、ハッシュを取り除いたアプリ用 User を作る。 */
 function toAppUser(stored: StoredUser): User {
   const { passwordHash: _passwordHash, ...user } = stored
@@ -191,7 +198,27 @@ export async function authenticateUser(
     if (!row) {
       throw new Error('ユーザー名またはパスワードが正しくありません')
     }
-    return rowToUser(row as UserRow)
+    const user = rowToUser(row as UserRow)
+    const { data: authDetails, error: authDetailsError } = await supabase!.rpc(
+      'get_user_auth_details',
+      {
+        p_user_id: user.id,
+        p_password_hash: passwordHash,
+      },
+    )
+    if (authDetailsError) {
+      // SQLの適用前でも従来のログイン機能は止めない。
+      console.warn('認証方式の表示情報を取得できませんでした:', authDetailsError.message)
+      return user
+    }
+    const details = authDetails as UserAuthDetails | null
+    return {
+      ...user,
+      email: details?.email,
+      emailVerified: !!details?.email_verified,
+      googleLinked: !!details?.google_linked,
+      googleEmail: details?.google_email,
+    }
   }
 
   const db = await getDb()
