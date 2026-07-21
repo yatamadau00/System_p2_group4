@@ -158,10 +158,6 @@ export function ListSheet({
       ) : (
         <ul className="cz-list" ref={listRef}>
           {list.map((k) => {
-            const group =
-              k.visibility === 'group' && k.groupId
-                ? groups.find((g) => g.id === k.groupId)
-                : undefined
             const statusText =
               k.openedByCurrentUser
                 ? '開封済'
