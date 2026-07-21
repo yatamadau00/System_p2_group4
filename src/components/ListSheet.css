@@ -82,6 +82,12 @@
   object-fit: cover;
 }
 
+.cz-row__badge-pigeon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
 .cz-row__badge--far {
   background: linear-gradient(160deg, #3a3f47, #14171c);
 }

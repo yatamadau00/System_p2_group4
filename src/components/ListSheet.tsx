@@ -197,7 +197,7 @@ export function ListSheet({
                         <span className="cz-row__badge-emoji">{group.avatarEmoji}</span>
                       )
                     ) : (
-                      <PigeonIcon width={22} height={22} />
+                      <PigeonIcon width={30} height={30} className="cz-row__badge-pigeon" />
                     )}
                   </span>
                   <span className="cz-row__main">

@@ -143,12 +143,12 @@ export const StarIcon = (p: IconProps & { filled?: boolean }) => {
   )
 }
 
-/** 封筒をくわえた伝書鳩。PNG画像を埋め込んで表示する。 */
-export const PigeonIcon = (props: ImgHTMLAttributes<HTMLImageElement>) => (
+export const PigeonIcon = ({ style, ...props }: ImgHTMLAttributes<HTMLImageElement>) => (
   <img
     src={pigeonPng}
     alt=""
     aria-hidden
+    style={{ objectFit: 'contain', ...style }}
     {...props}
   />
 )
