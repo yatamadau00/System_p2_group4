@@ -313,7 +313,7 @@ export function ComposeFlow({
         {!(replyTarget && mode === 'reply') && (
           <div className="field">
             <span className="field__label">開封できる期間 <small>（任意）</small></span>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '6px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '6px' }}>
               <div>
                 <label className="field__label" htmlFor="cz-valid-from" style={{ fontSize: '0.8rem', color: 'var(--c-ink-2)' }}>
                   開始日時

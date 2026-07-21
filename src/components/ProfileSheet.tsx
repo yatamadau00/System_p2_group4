@@ -1,22 +1,14 @@
-import { useMemo, useState, type ChangeEvent } from 'react'
-import type {
-  UserProfile,
-  Group,
-  GroupMember,
-  Kotozute,
-  KotozuteOpenHistory,
-} from '../types'
+import { useState, type ChangeEvent } from 'react'
+import type { UserProfile, Group, GroupMember } from '../types'
 import { Sheet } from './Sheet'
 import { GroupSheet } from './GroupSheet'
-import { TrashIcon, PigeonIcon, LockIcon } from './icons'
+import { PlusIcon, CloseIcon } from './icons'
 import { ChangePasswordForm } from './ChangePasswordForm'
 import { RecoveryEmailForm } from './RecoveryEmailForm'
 import { imageFileToSquareDataUrl } from '../lib/image'
 import './ProfileSheet.css'
 
 interface ProfileSheetProps {
-  items: Kotozute[]
-  openHistory: KotozuteOpenHistory[]
   profile: UserProfile
   updateProfile: (
     updates: Partial<Omit<UserProfile, 'id' | 'friendCode'>>,
@@ -39,8 +31,6 @@ interface ProfileSheetProps {
     >,
   ) => Promise<void>
   getGroupMembers: (id: string) => Promise<GroupMember[]>
-  onSelectKotozute: (id: string) => void
-  onDeleteKotozute: (id: string) => void
   onLogout: () => void
   onClose: () => void
 }
@@ -93,8 +83,6 @@ function createEditedAvatarDataUrl(
 }
 
 export function ProfileSheet({
-  items,
-  openHistory,
   profile,
   updateProfile,
   linkGoogleAccount,
@@ -110,12 +98,9 @@ export function ProfileSheet({
   leaveGroup,
   updateGroup,
   getGroupMembers,
-  onSelectKotozute,
-  onDeleteKotozute,
   onLogout,
   onClose,
 }: ProfileSheetProps) {
-  const [tab, setTab] = useState<'profile' | 'groups'>('profile')
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState(profile.name)
   const [editBio, setEditBio] = useState(profile.bio)
@@ -132,6 +117,7 @@ export function ProfileSheet({
   const [googleLinkError, setGoogleLinkError] = useState<string | null>(null)
 
   // グループ関連
+  const [groupAddStage, setGroupAddStage] = useState<'closed' | 'choose' | 'create' | 'join'>('closed')
   const [newGroupName, setNewGroupName] = useState('')
   const [newGroupImage, setNewGroupImage] = useState<string | null>(null)
   const [createdCode, setCreatedCode] = useState<string | null>(null)
@@ -141,17 +127,16 @@ export function ProfileSheet({
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
 
-  // 自分のことづて一覧
-  const myItems = useMemo(() => items.filter((item) => item.mine), [items])
-  const openedItems = useMemo(() => {
-    const itemById = new Map(items.map((item) => [item.id, item]))
-    return openHistory
-      .map((record) => {
-        const item = itemById.get(record.kotozuteId)
-        return item ? { item, openedAt: record.openedAt } : null
-      })
-      .filter((record): record is { item: Kotozute; openedAt: number } => !!record)
-  }, [items, openHistory])
+  const toggleGroupAddPanel = () => {
+    if (groupAddStage === 'closed') {
+      setGroupError(null)
+      setGroupSuccess(null)
+      setCreatedCode(null)
+      setGroupAddStage('choose')
+    } else {
+      setGroupAddStage('closed')
+    }
+  }
 
   const saveProfile = async (
     nextImageUrl = editImageUrl,
@@ -266,6 +251,7 @@ export function ProfileSheet({
       setCreatedCode(g.id)
       setNewGroupName('')
       setNewGroupImage(null)
+      setGroupAddStage('closed')
     } catch (err: any) {
       setGroupError(err.message || 'グループを作成できませんでした。')
     }
@@ -291,6 +277,7 @@ export function ProfileSheet({
       const g = await joinGroup(joinInput)
       setGroupSuccess(`「${g.name}」に参加しました！`)
       setJoinInput('')
+      setGroupAddStage('closed')
     } catch (err: any) {
       setGroupError(err.message || 'グループに参加できませんでした。')
     }
@@ -314,27 +301,9 @@ export function ProfileSheet({
 
   return (
     <>
-    <Sheet title="プロフィール & グループ" onClose={onClose}>
-      <div className="segmented" role="tablist">
-        <button
-          role="tab"
-          aria-pressed={tab === 'profile'}
-          onClick={() => setTab('profile')}
-        >
-          プロフィール
-        </button>
-        <button
-          role="tab"
-          aria-pressed={tab === 'groups'}
-          onClick={() => setTab('groups')}
-        >
-          グループ ({groups.length})
-        </button>
-      </div>
-
+    <Sheet title="プロフィール" onClose={onClose}>
       <div className="social-body">
-        {tab === 'profile' ? (
-          <div className="profile-tab">
+        <div className="profile-tab">
             {/* プロフィールカード */}
             <div className="profile-card">
               {isEditing ? (
@@ -606,210 +575,141 @@ export function ProfileSheet({
               )}
             </div>
 
-            {/* 取得履歴 */}
-            <div className="open-history-section">
-              <h4 className="section-title">取得したことづて ({openedItems.length})</h4>
-              {openedItems.length === 0 ? (
-                <div className="empty-sub">
-                  <p>まだ取得したことづてはありません。近くのことづてを開くと、ここに日時つきで残ります。</p>
-                </div>
-              ) : (
-                <ul className="cz-list">
-                  {openedItems.map(({ item: k, openedAt }) => (
-                    <li key={`${k.id}:${openedAt}`}>
-                      <button className="cz-row" onClick={() => onSelectKotozute(k.id)}>
-                        <span className="cz-row__badge cz-row__badge--near">
-                          <PigeonIcon className="cz-row__badge-pigeon" />
-                        </span>
-                        <span className="cz-row__main">
-                          <span className="cz-row__place">
-                            {k.placeLabel ?? 'この場所のことづて'}
-                          </span>
-                          <span className="cz-row__sub">
-                            {new Date(openedAt).toLocaleString('ja-JP', {
-                              year: 'numeric',
-                              month: 'numeric',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                            に取得
-                            {k.visibility === 'group' && (
-                              <span className="friend-only-badge">
-                                <LockIcon width={10} height={10} style={{ marginRight: 2, display: 'inline-block', verticalAlign: 'middle' }} />
-                                グループ限定
-                              </span>
-                            )}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            {/* 自分のことづて一覧 */}
-            <div className="my-kotozutes-section">
-              <h4 className="section-title">あなたのことづて ({myItems.length})</h4>
-              {myItems.length === 0 ? (
-                <div className="empty-sub">
-                  <p>まだことづてを残していません。思い出の場所に結んでみましょう。</p>
-                </div>
-              ) : (
-                <ul className="cz-list">
-                  {myItems.map((k) => (
-                    <li key={k.id}>
-                      <button className="cz-row" onClick={() => onSelectKotozute(k.id)}>
-                        <span className="cz-row__badge cz-row__badge--unlockable">
-                          <PigeonIcon className="cz-row__badge-pigeon" />
-                        </span>
-                        <span className="cz-row__main">
-                          <span className="cz-row__place">
-                            {k.placeLabel ?? 'この場所のことづて'}
-                          </span>
-                          <span className="cz-row__sub">
-                            {new Date(k.createdAt).toLocaleDateString('ja-JP')}
-                            {k.visibility === 'group' && (
-                              <span className="friend-only-badge">
-                                <LockIcon width={10} height={10} style={{ marginRight: 2, display: 'inline-block', verticalAlign: 'middle' }} />
-                                グループ限定
-                              </span>
-                            )}
-                          </span>
-                        </span>
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          className="cz-row__delete"
-                          aria-label="このことづてを削除"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            if (confirm('このことづてを取り消しますか？')) onDeleteKotozute(k.id)
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.stopPropagation()
-                              if (confirm('このことづてを取り消しますか？')) onDeleteKotozute(k.id)
-                            }
-                          }}
-                        >
-                          <TrashIcon width={18} height={18} />
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
             {canChangePassword && (
               <ChangePasswordForm changePassword={changePassword} />
             )}
             {canRegisterRecoveryEmail && (
               <RecoveryEmailForm registerRecoveryEmail={registerRecoveryEmail} />
             )}
+        </div>
 
-            {/* アカウント操作（ログアウト） */}
-            <div className="account-section">
+        <div className="friends-tab">
+            <div className="section-title-row">
+              <h4 className="section-title" style={{ marginTop: 0 }}>グループ ({groups.length})</h4>
               <button
-                className="btn btn--soft btn--block account-logout"
-                onClick={() => {
-                  if (confirm('ログアウトしますか？')) onLogout()
-                }}
+                type="button"
+                className="icon-btn"
+                onClick={toggleGroupAddPanel}
+                aria-label={groupAddStage === 'closed' ? 'グループを追加' : '閉じる'}
+                aria-expanded={groupAddStage !== 'closed'}
               >
-                ログアウト
+                {groupAddStage === 'closed' ? <PlusIcon /> : <CloseIcon />}
               </button>
             </div>
-          </div>
-        ) : (
-          <div className="friends-tab">
-            {/* グループを作成 */}
-            <div className="friend-add-box">
-              <h4 className="section-title">グループを作成</h4>
-              <div className="group-create-photo">
-                <div
-                  className="friend-item-card__avatar group-create-photo__preview"
-                  style={{ backgroundColor: '#dceffd' }}
-                >
-                  {newGroupImage ? (
-                    <img src={newGroupImage} alt="" className="group-avatar-image" />
-                  ) : (
-                    '👥'
-                  )}
-                </div>
-                <div className="group-create-photo__actions">
-                  <label className="btn btn--soft avatar-image-button" htmlFor="new-group-image">
-                    写真を選ぶ
-                  </label>
-                  <input
-                    id="new-group-image"
-                    className="avatar-image-input"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleNewGroupImage}
-                  />
-                  {newGroupImage && (
-                    <button
-                      type="button"
-                      className="btn btn--soft avatar-image-button"
-                      onClick={() => setNewGroupImage(null)}
-                    >
-                      写真を外す
-                    </button>
-                  )}
-                </div>
-              </div>
-              <form onSubmit={handleCreateGroup} className="friend-form">
-                <input
-                  type="text"
-                  className="input friend-form__input"
-                  placeholder="グループ名（任意）"
-                  value={newGroupName}
-                  onChange={(e) => setNewGroupName(e.target.value)}
-                  maxLength={30}
-                />
-                <button type="submit" className="btn btn--primary friend-form__btn">
-                  作成
-                </button>
-              </form>
-              {createdCode && (
-                <div className="friend-message success" style={{ display: 'grid', gap: 6 }}>
-                  <span>グループを作りました。このIDを仲間に共有してください：</span>
-                  <CodeBadge code={createdCode} />
-                </div>
-              )}
-            </div>
 
-            {/* グループに参加 */}
-            <div className="friend-add-box">
-              <h4 className="section-title">グループに参加</h4>
-              <form onSubmit={handleJoinGroup} className="friend-form">
-                <input
-                  type="text"
-                  className="input friend-form__input"
-                  placeholder="KOTO-XXXXXX（グループID）"
-                  value={joinInput}
-                  onChange={(e) => {
-                    setJoinInput(e.target.value)
-                    setGroupError(null)
-                    setGroupSuccess(null)
-                  }}
-                />
-                <button type="submit" className="btn btn--primary friend-form__btn">
-                  参加
+            {groupAddStage === 'closed' && (createdCode || groupSuccess || groupError) && (
+              <div style={{ display: 'grid', gap: 6 }}>
+                {createdCode && (
+                  <div className="friend-message success" style={{ display: 'grid', gap: 6 }}>
+                    <span>グループを作りました。このIDを仲間に共有してください：</span>
+                    <CodeBadge code={createdCode} />
+                  </div>
+                )}
+                {groupSuccess && <p className="friend-message success">{groupSuccess}</p>}
+                {groupError && <p className="friend-message error">{groupError}</p>}
+              </div>
+            )}
+
+            {groupAddStage === 'choose' && (
+              <div className="group-add-choice">
+                <button
+                  type="button"
+                  className="btn btn--soft"
+                  onClick={() => setGroupAddStage('create')}
+                >
+                  グループを作成
                 </button>
-              </form>
-              {groupError && <p className="friend-message error">{groupError}</p>}
-              {groupSuccess && <p className="friend-message success">{groupSuccess}</p>}
-            </div>
+                <button
+                  type="button"
+                  className="btn btn--soft"
+                  onClick={() => setGroupAddStage('join')}
+                >
+                  グループに参加
+                </button>
+              </div>
+            )}
+
+            {groupAddStage === 'create' && (
+              <div className="friend-add-box">
+                <h4 className="section-title">グループを作成</h4>
+                <div className="group-create-photo">
+                  <div
+                    className="friend-item-card__avatar group-create-photo__preview"
+                    style={{ backgroundColor: '#dceffd' }}
+                  >
+                    {newGroupImage ? (
+                      <img src={newGroupImage} alt="" className="group-avatar-image" />
+                    ) : (
+                      '👥'
+                    )}
+                  </div>
+                  <div className="group-create-photo__actions">
+                    <label className="btn btn--soft avatar-image-button" htmlFor="new-group-image">
+                      写真を選ぶ
+                    </label>
+                    <input
+                      id="new-group-image"
+                      className="avatar-image-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleNewGroupImage}
+                    />
+                    {newGroupImage && (
+                      <button
+                        type="button"
+                        className="btn btn--soft avatar-image-button"
+                        onClick={() => setNewGroupImage(null)}
+                      >
+                        写真を外す
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <form onSubmit={handleCreateGroup} className="friend-form">
+                  <input
+                    type="text"
+                    className="input friend-form__input"
+                    placeholder="グループ名（任意）"
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    maxLength={30}
+                  />
+                  <button type="submit" className="btn btn--primary friend-form__btn">
+                    作成
+                  </button>
+                </form>
+                {groupError && <p className="friend-message error">{groupError}</p>}
+              </div>
+            )}
+
+            {groupAddStage === 'join' && (
+              <div className="friend-add-box">
+                <h4 className="section-title">グループに参加</h4>
+                <form onSubmit={handleJoinGroup} className="friend-form">
+                  <input
+                    type="text"
+                    className="input friend-form__input"
+                    placeholder="KOTO-XXXXXX（グループID）"
+                    value={joinInput}
+                    onChange={(e) => {
+                      setJoinInput(e.target.value)
+                      setGroupError(null)
+                      setGroupSuccess(null)
+                    }}
+                  />
+                  <button type="submit" className="btn btn--primary friend-form__btn">
+                    参加
+                  </button>
+                </form>
+                {groupError && <p className="friend-message error">{groupError}</p>}
+              </div>
+            )}
 
             {/* 参加中のグループ一覧 */}
             <div className="friends-list-section">
-              <h4 className="section-title">参加中のグループ ({groups.length})</h4>
               {groups.length === 0 ? (
                 <div className="empty-sub">
-                  <p>まだグループに参加していません。グループを作成してIDを共有するか、もらったIDで参加してください。</p>
+                  <p>まだグループに参加していません。＋ボタンからグループを作成するか、もらったIDで参加してください。</p>
                 </div>
               ) : (
                 <ul className="friend-cards">
@@ -846,7 +746,6 @@ export function ProfileSheet({
                               </span>
                             )}
                           </h5>
-                          <CodeBadge code={g.id} />
                         </div>
                         <button
                           className="btn btn--soft"
@@ -862,8 +761,19 @@ export function ProfileSheet({
                 </ul>
               )}
             </div>
-          </div>
-        )}
+        </div>
+
+        {/* アカウント操作（ログアウト） */}
+        <div className="account-section">
+          <button
+            className="btn btn--soft btn--block account-logout"
+            onClick={() => {
+              if (confirm('ログアウトしますか？')) onLogout()
+            }}
+          >
+            ログアウト
+          </button>
+        </div>
       </div>
     </Sheet>
 

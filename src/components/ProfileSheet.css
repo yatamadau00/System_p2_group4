@@ -246,6 +246,29 @@
   margin: 0 0 var(--sp-3) 0;
 }
 
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+
+.section-title-row .section-title {
+  margin-bottom: 0;
+}
+
+/* グループ追加：作成/参加の選択 */
+.group-add-choice {
+  display: flex;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.group-add-choice .btn {
+  flex: 1;
+}
+
 .empty-sub {
   text-align: center;
   padding: var(--sp-5) var(--sp-4);
@@ -275,6 +298,7 @@
   padding: var(--sp-4);
   box-shadow: var(--shadow-sm);
   border: 1px solid rgba(80, 50, 20, 0.05);
+  margin-bottom: var(--sp-5);
 }
 
 .friend-form {

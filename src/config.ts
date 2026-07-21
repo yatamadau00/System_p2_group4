@@ -17,3 +17,9 @@ export const FALLBACK_CENTER = { lat: 35.681236, lng: 139.767125 }
 
 /** Google Maps APIキー（未設定可。未設定時はフォールバック地図を表示） */
 export const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ''
+
+/**
+ * Web Push の VAPID 公開鍵（未設定可。未設定時はプッシュ購読を行わない）。
+ * 秘密鍵は送信サーバー(/api)側の環境変数にのみ置く。
+ */
+export const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY ?? ''

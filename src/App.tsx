@@ -7,6 +7,7 @@ import { ProfileSheet } from './components/ProfileSheet'
 import { NearbyDeck } from './components/NearbyDeck'
 import { GeoBanner } from './components/GeoBanner'
 import { AuthSheet } from './components/AuthSheet'
+import { AuthGate } from './components/AuthGate'
 import { GoogleProfileSetup } from './components/GoogleProfileSetup'
 import { PasswordRecoverySheet } from './components/PasswordRecoverySheet'
 import { CheckIcon, PlusIcon } from './components/icons'
@@ -49,6 +50,7 @@ export function App() {
   const geo = useGeolocation(true)
   const {
     currentUser,
+    loading: authLoading,
     logout,
     linkGoogleAccount,
     unlinkGoogleAccount,
@@ -58,7 +60,6 @@ export function App() {
   } = useAuth()
   const {
     items,
-    openHistory,
     loading,
     create,
     update,
@@ -524,6 +525,20 @@ export function App() {
     showNotifications ||
     needsGoogleProfileSetup
 
+  // 認証状態の確定待ち（ちらつき防止）
+  if (authLoading) {
+    return (
+      <div className="app" style={{ display: 'grid', placeItems: 'center' }}>
+        <div className="spinner" />
+      </div>
+    )
+  }
+
+  // 未ログインは全画面ログインゲート（アプリ本体は見せない）
+  if (!currentUser) {
+    return <AuthGate />
+  }
+
   return (
     <div className="app">
       <MapScreen
@@ -648,8 +663,6 @@ export function App() {
       {/* プロフィール & グループ */}
       {showProfile && (
         <ProfileSheet
-          items={visibleItems}
-          openHistory={openHistory}
           profile={profile}
           updateProfile={updateProfile}
           linkGoogleAccount={linkGoogleAccount}
@@ -667,12 +680,6 @@ export function App() {
           leaveGroup={leaveGroup}
           updateGroup={updateGroup}
           getGroupMembers={getGroupMembers}
-          onSelectKotozute={(id) => {
-            setShowProfile(false)
-            setProfileUnlockedId(id)
-            setSelectedId(id)
-          }}
-          onDeleteKotozute={handleDelete}
           onLogout={() => {
             logout()
             setShowProfile(false)

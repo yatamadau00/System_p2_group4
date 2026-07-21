@@ -1,0 +1,59 @@
+.auth-gate {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--safe-top) + var(--sp-4)) var(--sp-4)
+    calc(var(--safe-bottom) + var(--sp-4));
+  overflow-y: auto;
+  background:
+    radial-gradient(120% 80% at 50% 0%, #2c3543 0%, var(--c-night) 70%);
+}
+
+.auth-gate__card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--c-washi);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  padding: var(--sp-6) var(--sp-5) var(--sp-5);
+  animation: float-in var(--dur-3) var(--ease-out);
+}
+
+.auth-gate__brand {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-2);
+  text-align: center;
+  margin-bottom: var(--sp-5);
+}
+
+.auth-gate__mark {
+  width: 60px;
+  height: 60px;
+  border-radius: 50% 50% 50% 8px;
+  transform: rotate(45deg);
+  display: grid;
+  place-items: center;
+  background: linear-gradient(160deg, #f0a85f, var(--c-amber-deep));
+  box-shadow: var(--shadow-amber);
+}
+
+.auth-gate__mark img {
+  transform: rotate(-45deg);
+}
+
+.auth-gate__title {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  letter-spacing: 0.14em;
+  color: var(--c-ink);
+}
+
+.auth-gate__lead {
+  font-size: 0.9rem;
+  color: var(--c-ink-2);
+  line-height: 1.6;
+}
