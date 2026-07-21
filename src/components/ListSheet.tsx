@@ -5,7 +5,6 @@ import { formatDistance } from '../lib/geo'
 import { Sheet } from './Sheet'
 import {
   EnvelopeIcon,
-  PigeonIcon,
   TrashIcon,
   LockIcon,
   StarIcon,
@@ -99,14 +98,14 @@ export function ListSheet({
           aria-pressed={tab === 'all'}
           onClick={() => setTab('all')}
         >
-          みんなのことづて
+          みんなの
         </button>
         <button
           role="tab"
           aria-pressed={tab === 'mine'}
           onClick={() => setTab('mine')}
         >
-          わたしのことづて
+          わたしの
         </button>
         <button
           role="tab"
@@ -159,10 +158,6 @@ export function ListSheet({
       ) : (
         <ul className="cz-list" ref={listRef}>
           {list.map((k) => {
-            const group =
-              k.visibility === 'group' && k.groupId
-                ? groups.find((g) => g.id === k.groupId)
-                : undefined
             const statusText =
               k.openedByCurrentUser
                 ? '開封済'
@@ -171,9 +166,7 @@ export function ListSheet({
                   : '距離不明'
             const subText = k.mine
               ? '— あなたのことづて'
-              : k.authorName
-                ? `— ${k.authorName}`
-                : 'なまえのない誰かから'
+              : k.authorName ? `— ${k.authorName}` : 'なまえのない誰かから'
             return (
               <li key={k.id}>
                 <button className="cz-row" onClick={() => {
@@ -182,24 +175,7 @@ export function ListSheet({
                   onSaveTab?.(tab)
                   onSelect(k.id)
                 }}>
-                  <span
-                    className={`cz-row__badge cz-row__badge--${k.proximity}`}
-                    style={group ? { backgroundColor: group.avatarColor } : undefined}
-                  >
-                    {group ? (
-                      group.avatarImageUrl ? (
-                        <img
-                          src={group.avatarImageUrl}
-                          alt=""
-                          className="cz-row__badge-img"
-                        />
-                      ) : (
-                        <span className="cz-row__badge-emoji">{group.avatarEmoji}</span>
-                      )
-                    ) : (
-                      <PigeonIcon width={30} height={30} className="cz-row__badge-pigeon" />
-                    )}
-                  </span>
+
                   <span className="cz-row__main">
                     <span className="cz-row__place" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
