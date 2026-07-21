@@ -33,7 +33,7 @@
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-4);
+  padding: var(--sp-2) var(--sp-4);
   border-radius: var(--r-lg);
   background: var(--c-surface);
   box-shadow: var(--shadow-lg);
@@ -60,8 +60,8 @@
 
 .nearby-card__badge {
   flex: none;
-  width: 46px;
-  height: 46px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   display: grid;
   place-items: center;

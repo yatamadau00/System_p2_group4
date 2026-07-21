@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { EnrichedKotozute } from '../lib/enrich'
 import type { Group } from '../types'
-import { formatDistance } from '../lib/geo'
 import { primaryKind } from '../lib/media'
 import { PigeonIcon } from './icons'
 import './NearbyDeck.css'
@@ -68,7 +67,6 @@ export function NearbyDeck({
         <div className="nearby-scroll">
           {items.map((k) => {
             const kind = primaryKind(k)
-            const date = new Date(k.createdAt)
             const active = highlightedId === k.id
             const group =
               k.visibility === 'group' && k.groupId
@@ -109,14 +107,7 @@ export function NearbyDeck({
                     {k.placeLabel ?? 'この場所のことづて'}
                   </span>
                   <span className="nearby-card__meta">
-                    {KIND_SHORT[kind]}・{k.authorName ?? 'なまえのない人'}
-                  </span>
-                  <span className="nearby-card__sub">
-                    {date.getMonth() + 1}月{date.getDate()}日
-                    <span className="nearby-card__open">
-                      {k.openedByCurrentUser ? '開封済み' : active ? 'タップで開く' : 'タップでピンを表示'}
-                      （{formatDistance(k.distance ?? 0)}）
-                    </span>
+                    {k.authorName ?? 'なまえのない人'}さんから
                   </span>
                 </span>
               </button>
