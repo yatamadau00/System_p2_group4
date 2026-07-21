@@ -91,6 +91,14 @@
   letter-spacing: 0.04em;
 }
 
+/* 選んだ時に出す作成者名（ロック/開封前・夜の背景の上） */
+.locked__author {
+  margin-top: -6px;
+  font-size: 0.92rem;
+  color: rgba(255, 255, 255, 0.75);
+  letter-spacing: 0.02em;
+}
+
 /* 距離リング */
 .ring {
   position: relative;
@@ -451,6 +459,14 @@
   font-size: 1.5rem;
   color: var(--c-ink);
   text-align: center;
+}
+
+/* 作成者名（開封後の手紙・和紙の背景の上） */
+.letter__author {
+  text-align: center;
+  font-size: 0.92rem;
+  color: var(--c-ink-2);
+  margin-top: -6px;
 }
 
 .letter__card {
