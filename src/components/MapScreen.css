@@ -314,14 +314,34 @@
   z-index: var(--z-overlay);
 }
 
-.map-layers {
+.map-layers-container {
   position: absolute;
   left: var(--sp-4);
   bottom: calc(var(--safe-bottom) + 204px);
   z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.map-layers {
   display: grid;
   gap: 10px;
   width: min(190px, calc(100vw - 112px));
+  animation: slideUpFade 0.26s var(--ease-soft) forwards;
+  transform-origin: bottom left;
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .map-layer-children {
@@ -536,6 +556,12 @@
   transform: scale(0.92);
 }
 
+.map-btn--active {
+  background: var(--c-amber);
+  color: var(--c-on-amber);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
 /* ====== 上部トップバー（ブランド＋ユーザーを統合） ====== */
 .topbar {
   position: absolute;
@@ -661,9 +687,12 @@
 }
 
 @media (max-width: 520px) {
-  .map-layers {
+  .map-layers-container {
     left: var(--sp-3);
     bottom: calc(var(--safe-bottom) + 178px);
+  }
+
+  .map-layers {
     width: min(154px, calc(100vw - 92px));
   }
 

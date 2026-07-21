@@ -14,7 +14,7 @@ import {
 } from '../config'
 import { KOTOZUTE_MAP_STYLE } from '../lib/mapStyle'
 import { Pin } from './Pin'
-import { BellIcon, ListIcon, LocateIcon, UserIcon } from './icons'
+import { BellIcon, ListIcon, LocateIcon, UserIcon, FilterIcon } from './icons'
 import './MapScreen.css'
 
 type MapLayerKey = 'public' | 'group' | 'created' | 'opened'
@@ -77,6 +77,7 @@ export function MapScreen(props: MapScreenProps) {
     onToggleGroupLayer,
   } = props
   const [groupSelectorOpen, setGroupSelectorOpen] = useState(false)
+  const [filterMenuOpen, setFilterMenuOpen] = useState(false)
 
   // ハイライト中のピンを最後に描画して、重なっても前面に出す
   const orderedItems = highlightedId
@@ -175,97 +176,110 @@ export function MapScreen(props: MapScreenProps) {
   const standardFiltersDisabled = personalLayer !== null
 
   const layerControls = (
-    <div className="map-layers" role="group" aria-label="地図に表示することづて">
-      <button
-        className={`map-layer map-layer--favorite map-layer--parent${favoriteOnly ? ' map-layer--active' : ''}${standardFiltersDisabled ? ' map-layer--disabled' : ''}`}
-        type="button"
-        aria-pressed={favoriteOnly}
-        disabled={standardFiltersDisabled}
-        onClick={onToggleFavoriteOnly}
-      >
-        お気に入り
-      </button>
-      <div className="map-layer-children">
-        <button
-          className={`map-layer map-layer--child${mapLayerVisibility.public ? ' map-layer--active' : ''}${standardFiltersDisabled ? ' map-layer--disabled' : ''}`}
-          type="button"
-          aria-pressed={mapLayerVisibility.public}
-          disabled={standardFiltersDisabled}
-          onClick={() => onToggleMapLayer('public')}
-        >
-          公開
-        </button>
-        <div className="map-layer-group">
+    <div className="map-layers-container">
+      {filterMenuOpen && (
+        <div className="map-layers" role="group" aria-label="地図に表示することづて">
           <button
-            className={`map-layer map-layer--child map-layer--group${visibleGroupCount > 0 ? ' map-layer--active' : ''}${standardFiltersDisabled ? ' map-layer--disabled' : ''}`}
+            className={`map-layer map-layer--favorite map-layer--parent${favoriteOnly ? ' map-layer--active' : ''}${standardFiltersDisabled ? ' map-layer--disabled' : ''}`}
             type="button"
-            aria-expanded={groupSelectorOpen}
-            aria-controls="map-group-selector"
+            aria-pressed={favoriteOnly}
             disabled={standardFiltersDisabled}
-            onClick={() => setGroupSelectorOpen((open) => !open)}
+            onClick={onToggleFavoriteOnly}
           >
-            グループ
+            お気に入り
           </button>
-          {groupSelectorOpen && !standardFiltersDisabled && (
-            <div
-              id="map-group-selector"
-              className="map-group-selector"
-              aria-label="表示するグループを選択"
+          <div className="map-layer-children">
+            <button
+              className={`map-layer map-layer--child${mapLayerVisibility.public ? ' map-layer--active' : ''}${standardFiltersDisabled ? ' map-layer--disabled' : ''}`}
+              type="button"
+              aria-pressed={mapLayerVisibility.public}
+              disabled={standardFiltersDisabled}
+              onClick={() => onToggleMapLayer('public')}
             >
-              <div className="map-group-selector__title">表示するグループ</div>
-              {groups.length === 0 ? (
-                <p className="map-group-selector__empty">参加中のグループなし</p>
-              ) : (
-                groups.map((group) => {
-                  const active = groupLayerVisibility[group.id] ?? true
-                  return (
-                    <button
-                      key={group.id}
-                      className={`map-group-option${active ? ' map-group-option--active' : ''}`}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => onToggleGroupLayer(group.id)}
-                    >
-                      <span
-                        className="map-group-option__avatar"
-                        style={{ backgroundColor: group.avatarColor }}
-                        aria-hidden
-                      >
-                        {group.avatarImageUrl ? (
-                          <img
-                            src={group.avatarImageUrl}
-                            alt=""
-                            className="map-group-option__avatar-image"
-                          />
-                        ) : (
-                          group.avatarEmoji
-                        )}
-                      </span>
-                      <span className="map-group-option__name">{group.name || group.id}</span>
-                    </button>
-                  )
-                })
+              公開
+            </button>
+            <div className="map-layer-group">
+              <button
+                className={`map-layer map-layer--child map-layer--group${visibleGroupCount > 0 ? ' map-layer--active' : ''}${standardFiltersDisabled ? ' map-layer--disabled' : ''}`}
+                type="button"
+                aria-expanded={groupSelectorOpen}
+                aria-controls="map-group-selector"
+                disabled={standardFiltersDisabled}
+                onClick={() => setGroupSelectorOpen((open) => !open)}
+              >
+                グループ
+              </button>
+              {groupSelectorOpen && !standardFiltersDisabled && (
+                <div
+                  id="map-group-selector"
+                  className="map-group-selector"
+                  aria-label="表示するグループを選択"
+                >
+                  <div className="map-group-selector__title">表示するグループ</div>
+                  {groups.length === 0 ? (
+                    <p className="map-group-selector__empty">参加中のグループなし</p>
+                  ) : (
+                    groups.map((group) => {
+                      const active = groupLayerVisibility[group.id] ?? true
+                      return (
+                        <button
+                          key={group.id}
+                          className={`map-group-option${active ? ' map-group-option--active' : ''}`}
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() => onToggleGroupLayer(group.id)}
+                        >
+                          <span
+                            className="map-group-option__avatar"
+                            style={{ backgroundColor: group.avatarColor }}
+                            aria-hidden
+                          >
+                            {group.avatarImageUrl ? (
+                              <img
+                                src={group.avatarImageUrl}
+                                alt=""
+                                className="map-group-option__avatar-image"
+                              />
+                            ) : (
+                              group.avatarEmoji
+                            )}
+                          </span>
+                          <span className="map-group-option__name">{group.name || group.id}</span>
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
               )}
             </div>
-            )}
+            <button
+              className={`map-layer map-layer--child map-layer--opened${mapLayerVisibility.opened ? ' map-layer--active' : ''}`}
+              type="button"
+              aria-pressed={mapLayerVisibility.opened}
+              onClick={() => onToggleMapLayer('opened')}
+            >
+              開封済
+            </button>
+            <button
+              className={`map-layer map-layer--child map-layer--created${mapLayerVisibility.created ? ' map-layer--active' : ''}`}
+              type="button"
+              aria-pressed={mapLayerVisibility.created}
+              onClick={() => onToggleMapLayer('created')}
+            >
+              {currentUser?.displayName || profile.name || '自作'}
+            </button>
+          </div>
         </div>
-        <button
-          className={`map-layer map-layer--child map-layer--opened${mapLayerVisibility.opened ? ' map-layer--active' : ''}`}
-          type="button"
-          aria-pressed={mapLayerVisibility.opened}
-          onClick={() => onToggleMapLayer('opened')}
-        >
-          開封済
-        </button>
-        <button
-          className={`map-layer map-layer--child map-layer--created${mapLayerVisibility.created ? ' map-layer--active' : ''}`}
-          type="button"
-          aria-pressed={mapLayerVisibility.created}
-          onClick={() => onToggleMapLayer('created')}
-        >
-          {currentUser?.displayName || profile.name || '自作'}
-        </button>
-      </div>
+      )}
+      <button
+        className={`map-btn map-btn--filter${filterMenuOpen ? ' map-btn--active' : ''}`}
+        type="button"
+        onClick={() => setFilterMenuOpen((open) => !open)}
+        aria-label="フィルターメニューを切り替える"
+        aria-expanded={filterMenuOpen}
+      >
+        <FilterIcon />
+      </button>
     </div>
   )
 

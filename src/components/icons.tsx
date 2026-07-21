@@ -181,3 +181,9 @@ export const UserIcon = (p: IconProps) => (
     <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
   </svg>
 )
+
+export const FilterIcon = (p: IconProps) => (
+  <svg {...base(p)}>
+    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+  </svg>
+)
