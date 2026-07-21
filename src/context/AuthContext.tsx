@@ -9,7 +9,6 @@ import type { User } from '../types'
 import {
   authenticateUser,
   beginEmailAccountLink,
-  changeUserPassword,
   completeEmailAccountLink,
   completeGoogleAccountLink,
   getUserById,
@@ -29,7 +28,6 @@ interface AuthContextType {
   loginWithGoogle: () => Promise<void>
   linkGoogleAccount: () => Promise<void>
   unlinkGoogleAccount: () => Promise<void>
-  changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   registerRecoveryEmail: (email: string, currentPassword: string) => Promise<void>
   requestPasswordReset: (email: string) => Promise<void>
   completePasswordRecovery: (newPassword: string) => Promise<void>
@@ -255,28 +253,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const changePassword = async (currentPassword: string, newPassword: string) => {
-    setError(null)
-    if (!currentUser?.hasPassword) {
-      throw new Error('このアカウントには変更できるパスワードがありません')
-    }
-
-    setLoading(true)
-    try {
-      const [currentPasswordHash, newPasswordHash] = await Promise.all([
-        hashPassword(currentPassword),
-        hashPassword(newPassword),
-      ])
-      await changeUserPassword(currentUser.id, currentPasswordHash, newPasswordHash)
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'パスワードを変更できませんでした'
-      setError(message)
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const registerRecoveryEmail = async (email: string, currentPassword: string) => {
     setError(null)
     if (!currentUser?.hasPassword) {
@@ -402,7 +378,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginWithGoogle,
         linkGoogleAccount,
         unlinkGoogleAccount,
-        changePassword,
         registerRecoveryEmail,
         requestPasswordReset,
         completePasswordRecovery,

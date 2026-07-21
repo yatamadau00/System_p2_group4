@@ -186,37 +186,6 @@ export async function authenticateUser(
   return toAppUser(stored)
 }
 
-/** 現在のパスワードを確認して、新しいパスワードへ変更する。 */
-export async function changeUserPassword(
-  userId: string,
-  currentPasswordHash: string,
-  newPasswordHash: string,
-): Promise<void> {
-  if (isSupabaseConfigured) {
-    const { data, error } = await supabase!.rpc('change_user_password', {
-      p_user_id: userId,
-      p_current_password_hash: currentPasswordHash,
-      p_new_password_hash: newPasswordHash,
-    })
-    if (error) throw error
-    if (!data) {
-      throw new Error('現在のパスワードが正しくありません')
-    }
-    return
-  }
-
-  const db = await getDb()
-  const stored = await db.get('users', userId)
-  if (!stored || stored.passwordHash !== currentPasswordHash) {
-    throw new Error('現在のパスワードが正しくありません')
-  }
-  await db.put('users', {
-    ...stored,
-    passwordHash: newPasswordHash,
-    hasPassword: true,
-  })
-}
-
 /** 現在のパスワードを確認し、メール連携用の一度限りのトークンを登録する。 */
 export async function beginEmailAccountLink(
   userId: string,

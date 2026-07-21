@@ -3,7 +3,6 @@ import type { UserProfile, Group, GroupMember } from '../types'
 import { Sheet } from './Sheet'
 import { GroupSheet } from './GroupSheet'
 import { PlusIcon, CloseIcon } from './icons'
-import { ChangePasswordForm } from './ChangePasswordForm'
 import { RecoveryEmailForm } from './RecoveryEmailForm'
 import { imageFileToSquareDataUrl } from '../lib/image'
 import './ProfileSheet.css'
@@ -15,10 +14,8 @@ interface ProfileSheetProps {
   ) => Promise<void>
   linkGoogleAccount: () => Promise<void>
   unlinkGoogleAccount: () => Promise<void>
-  changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   registerRecoveryEmail: (email: string, currentPassword: string) => Promise<void>
   canUnlinkGoogle: boolean
-  canChangePassword: boolean
   canRegisterRecoveryEmail: boolean
   groups: Group[]
   createGroup: (name: string, avatarImageUrl?: string | null) => Promise<Group>
@@ -87,10 +84,8 @@ export function ProfileSheet({
   updateProfile,
   linkGoogleAccount,
   unlinkGoogleAccount,
-  changePassword,
   registerRecoveryEmail,
   canUnlinkGoogle,
-  canChangePassword,
   canRegisterRecoveryEmail,
   groups,
   createGroup,
@@ -760,10 +755,6 @@ export function ProfileSheet({
               )}
             </div>
         </div>
-
-        {canChangePassword && (
-          <ChangePasswordForm changePassword={changePassword} />
-        )}
 
         {/* アカウント操作（ログアウト） */}
         <div className="account-section">

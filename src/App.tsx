@@ -54,7 +54,6 @@ export function App() {
     logout,
     linkGoogleAccount,
     unlinkGoogleAccount,
-    changePassword,
     registerRecoveryEmail,
     passwordRecovery,
   } = useAuth()
@@ -667,10 +666,8 @@ export function App() {
           updateProfile={updateProfile}
           linkGoogleAccount={linkGoogleAccount}
           unlinkGoogleAccount={unlinkGoogleAccount}
-          changePassword={changePassword}
           registerRecoveryEmail={registerRecoveryEmail}
           canUnlinkGoogle={!!currentUser?.hasPassword}
-          canChangePassword={!!currentUser?.hasPassword}
           canRegisterRecoveryEmail={
             !!currentUser?.hasPassword && !currentUser.authUserId && !currentUser.email
           }
