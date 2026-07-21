@@ -89,6 +89,12 @@
   object-fit: cover;
 }
 
+.nearby-card__badge-pigeon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
 .nearby-card__body {
   min-width: 0;
   display: grid;

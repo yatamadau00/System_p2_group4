@@ -101,7 +101,7 @@ export function NearbyDeck({
                       </span>
                     )
                   ) : (
-                    <PigeonIcon width={22} height={22} />
+                    <PigeonIcon width={30} height={30} className="nearby-card__badge-pigeon" />
                   )}
                 </span>
                 <span className="nearby-card__body">
