@@ -8,7 +8,7 @@ import type {
 } from '../types'
 import { Sheet } from './Sheet'
 import { GroupSheet } from './GroupSheet'
-import { TrashIcon, PigeonIcon, LockIcon } from './icons'
+import { TrashIcon, LockIcon } from './icons'
 import { imageFileToSquareDataUrl } from '../lib/image'
 import './ProfileSheet.css'
 
@@ -608,9 +608,6 @@ export function ProfileSheet({
                   {openedItems.map(({ item: k, openedAt }) => (
                     <li key={`${k.id}:${openedAt}`}>
                       <button className="cz-row" onClick={() => onSelectKotozute(k.id)}>
-                        <span className="cz-row__badge cz-row__badge--near">
-                          <PigeonIcon className="cz-row__badge-pigeon" />
-                        </span>
                         <span className="cz-row__main">
                           <span className="cz-row__place">
                             {k.placeLabel ?? 'この場所のことづて'}
@@ -651,9 +648,6 @@ export function ProfileSheet({
                   {myItems.map((k) => (
                     <li key={k.id}>
                       <button className="cz-row" onClick={() => onSelectKotozute(k.id)}>
-                        <span className="cz-row__badge cz-row__badge--unlockable">
-                          <PigeonIcon className="cz-row__badge-pigeon" />
-                        </span>
                         <span className="cz-row__main">
                           <span className="cz-row__place">
                             {k.placeLabel ?? 'この場所のことづて'}
