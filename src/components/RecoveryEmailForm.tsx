@@ -4,9 +4,10 @@ import './RecoveryEmailForm.css'
 
 interface RecoveryEmailFormProps {
   registerRecoveryEmail: (email: string, currentPassword: string) => Promise<void>
+  currentEmail?: string
 }
 
-export function RecoveryEmailForm({ registerRecoveryEmail }: RecoveryEmailFormProps) {
+export function RecoveryEmailForm({ registerRecoveryEmail, currentEmail }: RecoveryEmailFormProps) {
   const [expanded, setExpanded] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -23,6 +24,10 @@ export function RecoveryEmailForm({ registerRecoveryEmail }: RecoveryEmailFormPr
       setMessage({ type: 'error', text: 'メールアドレスと現在のパスワードを入力してください' })
       return
     }
+    if (currentEmail && cleanEmail === currentEmail.toLowerCase()) {
+      setMessage({ type: 'error', text: '現在とは異なるメールアドレスを入力してください' })
+      return
+    }
 
     setSubmitting(true)
     try {
@@ -31,7 +36,7 @@ export function RecoveryEmailForm({ registerRecoveryEmail }: RecoveryEmailFormPr
       setShowPassword(false)
       setMessage({
         type: 'success',
-        text: '確認メールを送信しました。メール内のリンクを開いて登録を完了してください。',
+        text: `確認メールを送信しました。メール内のリンクを開いて${currentEmail ? '変更' : '登録'}を完了してください。`,
       })
     } catch (error: unknown) {
       setMessage({
@@ -59,14 +64,16 @@ export function RecoveryEmailForm({ registerRecoveryEmail }: RecoveryEmailFormPr
           }}
           aria-expanded={expanded}
         >
-          {expanded ? '閉じる' : '登録する'}
+          {expanded ? '閉じる' : currentEmail ? '変更' : '登録する'}
         </button>
       </div>
 
       {expanded && (
         <form className="recovery-email__form" onSubmit={handleSubmit}>
           <div className="recovery-email__field">
-            <label htmlFor="recovery-email">メールアドレス</label>
+            <label htmlFor="recovery-email">
+              {currentEmail ? '新しいメールアドレス' : 'メールアドレス'}
+            </label>
             <input
               id="recovery-email"
               name="email"

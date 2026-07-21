@@ -16,7 +16,7 @@ interface ProfileSheetProps {
   unlinkGoogleAccount: () => Promise<void>
   registerRecoveryEmail: (email: string, currentPassword: string) => Promise<void>
   canUnlinkGoogle: boolean
-  canRegisterRecoveryEmail: boolean
+  showEmailSettings: boolean
   groups: Group[]
   createGroup: (name: string, avatarImageUrl?: string | null) => Promise<Group>
   joinGroup: (code: string) => Promise<Group>
@@ -86,7 +86,7 @@ export function ProfileSheet({
   unlinkGoogleAccount,
   registerRecoveryEmail,
   canUnlinkGoogle,
-  canRegisterRecoveryEmail,
+  showEmailSettings,
   groups,
   createGroup,
   joinGroup,
@@ -492,7 +492,9 @@ export function ProfileSheet({
                     </div>
                     <div className="profile-card__title">
                       <h3>{profile.name}</h3>
-                      {profile.email && <p className="profile-card__email">{profile.email}</p>}
+                      {!profile.googleLinked && profile.emailVerified && profile.email && (
+                        <p className="profile-card__email">{profile.email}</p>
+                      )}
                     </div>
                   </div>
 
@@ -502,6 +504,9 @@ export function ProfileSheet({
                     <div>
                       <strong>Googleアカウント</strong>
                       <p>{profile.googleLinked ? '連携済みです' : '連携すると次回からGoogleでログインできます'}</p>
+                      {profile.googleLinked && profile.googleEmail && (
+                        <p className="google-link-card__email">{profile.googleEmail}</p>
+                      )}
                     </div>
                     {profile.googleLinked ? (
                       canUnlinkGoogle ? (
@@ -553,8 +558,11 @@ export function ProfileSheet({
                   </div>
                   {googleLinkError && <p className="profile-card__link-error">{googleLinkError}</p>}
 
-                  {canRegisterRecoveryEmail && (
-                    <RecoveryEmailForm registerRecoveryEmail={registerRecoveryEmail} />
+                  {showEmailSettings && (
+                    <RecoveryEmailForm
+                      registerRecoveryEmail={registerRecoveryEmail}
+                      currentEmail={profile.emailVerified ? profile.email : undefined}
+                    />
                   )}
 
                   <div className="profile-card__actions">

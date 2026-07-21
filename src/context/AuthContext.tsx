@@ -251,7 +251,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ...currentUser,
           authUserId: null,
           email: undefined,
+          emailVerified: false,
           googleLinked: false,
+          googleEmail: undefined,
         })
       }
     } catch (err: unknown) {
@@ -284,33 +286,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!currentUser?.hasPassword) {
       throw new Error('メールを登録できるパスワードアカウントではありません')
     }
-    if (currentUser.authUserId) {
-      throw new Error('このアカウントにはすでに認証情報が連携されています')
-    }
     if (!isSupabaseConfigured || !supabase) {
       throw new Error('メール登録にはSupabaseの設定が必要です')
     }
 
     setLoading(true)
-    const token = createLinkToken()
+    const isChangingEmail = !!currentUser.authUserId && !!currentUser.emailVerified
+    const token = isChangingEmail ? null : createLinkToken()
     try {
-      const [passwordHash, tokenHash] = await Promise.all([
-        hashPassword(currentPassword),
-        hashPassword(token),
-      ])
-      await beginEmailAccountLink(currentUser.id, passwordHash, tokenHash)
-      localStorage.setItem(PENDING_EMAIL_LINK_TOKEN_KEY, token)
+      const passwordHash = await hashPassword(currentPassword)
+      const authenticatedUser = await authenticateUser(currentUser.username, passwordHash)
+      if (authenticatedUser.id !== currentUser.id) {
+        throw new Error('現在のパスワードが正しくありません')
+      }
 
-      const { error: anonymousError } = await supabase.auth.signInAnonymously()
-      if (anonymousError) throw anonymousError
+      if (isChangingEmail) {
+        const { data, error: authUserError } = await supabase.auth.getUser()
+        if (authUserError) throw authUserError
+        if (data.user?.id !== currentUser.authUserId) {
+          throw new Error('メール認証のセッションが切れています。再度ログインしてお試しください')
+        }
+      } else {
+        const tokenHash = await hashPassword(token!)
+        await beginEmailAccountLink(currentUser.id, passwordHash, tokenHash)
+        localStorage.setItem(PENDING_EMAIL_LINK_TOKEN_KEY, token!)
+
+        const { error: anonymousError } = await supabase.auth.signInAnonymously()
+        if (anonymousError) throw anonymousError
+      }
+
       const { error: emailError } = await supabase.auth.updateUser(
         { email },
         { emailRedirectTo: window.location.origin },
       )
       if (emailError) throw emailError
     } catch (err: unknown) {
-      localStorage.removeItem(PENDING_EMAIL_LINK_TOKEN_KEY)
-      await supabase.auth.signOut({ scope: 'local' })
+      if (!isChangingEmail) {
+        localStorage.removeItem(PENDING_EMAIL_LINK_TOKEN_KEY)
+        await supabase.auth.signOut({ scope: 'local' })
+      }
       const message = err instanceof Error ? err.message : '確認メールを送信できませんでした'
       setError(message)
       throw err

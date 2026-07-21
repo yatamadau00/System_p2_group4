@@ -51,12 +51,20 @@ function oauthUsername(authUser: SupabaseAuthUser) {
   return `${safeName}-${authUser.id.slice(0, 8)}`
 }
 
-function hasGoogleIdentity(authUser: SupabaseAuthUser) {
-  return (
-    authUser.identities?.some((identity) => identity.provider === 'google') ??
-    authUser.app_metadata.providers?.includes('google') ??
-    authUser.app_metadata.provider === 'google'
-  )
+function getAuthIdentityDetails(authUser: SupabaseAuthUser) {
+  const emailIdentity = authUser.identities?.find((identity) => identity.provider === 'email')
+  const googleIdentity = authUser.identities?.find((identity) => identity.provider === 'google')
+  const googleEmail = googleIdentity?.identity_data?.email
+
+  return {
+    email: emailIdentity ? authUser.email : undefined,
+    emailVerified: !!emailIdentity && !!authUser.email_confirmed_at,
+    googleLinked:
+      !!googleIdentity ||
+      authUser.app_metadata.providers?.includes('google') ||
+      authUser.app_metadata.provider === 'google',
+    googleEmail: typeof googleEmail === 'string' ? googleEmail : undefined,
+  }
 }
 
 function rowToUser(row: UserRow): User {
@@ -228,7 +236,7 @@ export async function completeEmailAccountLink(
 
   const user = await getSupabaseUserByAuthUserId(authUser.id)
   if (!user) throw new Error('連携先のユーザーが見つかりません')
-  return { ...user, email: authUser.email, googleLinked: hasGoogleIdentity(authUser) }
+  return { ...user, ...getAuthIdentityDetails(authUser) }
 }
 
 /** メールで本人確認済みのAuthセッションから、連携済みユーザーのパスワードを再設定する。 */
@@ -279,7 +287,7 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
   // auth_user_id で既存プロフィールに到達した場合、Googleは認証手段としてのみ使う。
   // ユーザーが設定した表示名・自己紹介・アバターは上書きしない。
   if (linkedData) {
-    return { ...existing!, email: authUser.email, googleLinked: hasGoogleIdentity(authUser) }
+    return { ...existing!, ...getAuthIdentityDetails(authUser) }
   }
 
   if (existing) {
@@ -294,8 +302,7 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
     if (error) throw error
     return {
       ...rowToUser(data as unknown as UserRow),
-      email: authUser.email,
-      googleLinked: hasGoogleIdentity(authUser),
+      ...getAuthIdentityDetails(authUser),
     }
   }
 
@@ -319,8 +326,7 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
   if (error) throw error
   return {
     ...rowToUser(data as unknown as UserRow),
-    email: authUser.email,
-    googleLinked: hasGoogleIdentity(authUser),
+    ...getAuthIdentityDetails(authUser),
   }
 }
 
@@ -342,8 +348,7 @@ export async function completeGoogleAccountLink(
   if (error) throw error
   return {
     ...rowToUser(data as unknown as UserRow),
-    email: authUser.email,
-    googleLinked: hasGoogleIdentity(authUser),
+    ...getAuthIdentityDetails(authUser),
   }
 }
 
