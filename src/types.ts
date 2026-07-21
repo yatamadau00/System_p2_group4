@@ -157,10 +157,12 @@ export interface User {
   username: string
   /** 表示名 */
   displayName: string
-  /** OAuthプロバイダーから取得したメールアドレス */
+  /** Supabase Authに登録されているメールアドレス */
   email?: string
   /** 対応するSupabase AuthユーザーID */
   authUserId?: string | null
+  /** Supabase AuthにGoogle Identityが登録されているか */
+  googleLinked?: boolean
   /** 自己紹介 */
   bio?: string
   /** アバター絵文字 */

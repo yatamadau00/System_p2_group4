@@ -669,7 +669,10 @@ export function App() {
           registerRecoveryEmail={registerRecoveryEmail}
           canUnlinkGoogle={!!currentUser?.hasPassword}
           canRegisterRecoveryEmail={
-            !!currentUser?.hasPassword && !currentUser.authUserId && !currentUser.email
+            !!currentUser?.hasPassword &&
+            !currentUser.googleLinked &&
+            !currentUser.authUserId &&
+            !currentUser.email
           }
           groups={groups}
           createGroup={createGroup}

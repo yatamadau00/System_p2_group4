@@ -15,7 +15,7 @@ function userToProfile(user: User): UserProfile {
     id: user.id,
     name: user.displayName,
     email: user.email,
-    googleLinked: !!user.authUserId,
+    googleLinked: !!user.googleLinked,
     bio: user.bio ?? DEFAULT_BIO,
     avatarEmoji: user.avatarEmoji ?? DEFAULT_AVATAR_EMOJI,
     avatarColor: user.avatarColor ?? DEFAULT_AVATAR_COLOR,
@@ -90,7 +90,11 @@ export function useUserProfile(currentUser: User | null) {
           avatarColor: nextProfile.avatarColor,
           avatarImageUrl: nextProfile.avatarImageUrl ?? null,
         })
-        setProfile(userToProfile(updated))
+        setProfile({
+          ...userToProfile(updated),
+          email: currentUser.email,
+          googleLinked: !!currentUser.googleLinked,
+        })
         return
       }
 

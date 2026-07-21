@@ -180,16 +180,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const linkGoogleAccount = async () => {
     setError(null)
     if (!currentUser) throw new Error('先に既存アカウントへログインしてください')
-    if (currentUser.authUserId) throw new Error('Googleアカウントはすでに連携済みです')
+    if (currentUser.googleLinked) throw new Error('Googleアカウントはすでに連携済みです')
     if (!isSupabaseConfigured || !supabase) {
       throw new Error('Googleアカウント連携にはSupabaseの設定が必要です')
     }
 
     setLoading(true)
-    localStorage.setItem(PENDING_GOOGLE_LINK_KEY, currentUser.id)
     try {
-      const { error: anonymousError } = await supabase.auth.signInAnonymously()
-      if (anonymousError) throw anonymousError
+      if (currentUser.authUserId) {
+        const { data, error: authUserError } = await supabase.auth.getUser()
+        if (authUserError) throw authUserError
+        if (data.user?.id !== currentUser.authUserId) {
+          throw new Error('メール認証のセッションが切れています。再度ログインしてお試しください')
+        }
+      } else {
+        localStorage.setItem(PENDING_GOOGLE_LINK_KEY, currentUser.id)
+        const { error: anonymousError } = await supabase.auth.signInAnonymously()
+        if (anonymousError) throw anonymousError
+      }
+
       const { error: linkError } = await supabase.auth.linkIdentity({
         provider: 'google',
         options: { redirectTo: window.location.origin },
@@ -218,16 +227,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setLoading(true)
     try {
-      const { error: unlinkError } = await supabase.rpc('disconnect_google_account')
-      if (unlinkError) throw unlinkError
+      const { data, error: authUserError } = await supabase.auth.getUser()
+      if (authUserError) throw authUserError
+      const authUser = data.user
+      const googleIdentity = authUser?.identities?.find(
+        (identity) => identity.provider === 'google',
+      )
+      const hasEmailIdentity = authUser?.identities?.some(
+        (identity) => identity.provider === 'email',
+      )
 
-      // DB関数でAuthユーザーを削除した後、ブラウザ内のセッションも破棄する。
-      await supabase.auth.signOut({ scope: 'local' })
-      setCurrentUser({
-        ...currentUser,
-        authUserId: null,
-        email: undefined,
-      })
+      if (googleIdentity && hasEmailIdentity) {
+        const { error: unlinkError } = await supabase.auth.unlinkIdentity(googleIdentity)
+        if (unlinkError) throw unlinkError
+        setCurrentUser({ ...currentUser, googleLinked: false })
+      } else {
+        const { error: unlinkError } = await supabase.rpc('disconnect_google_account')
+        if (unlinkError) throw unlinkError
+
+        // Googleが唯一のAuth Identityなら、Authユーザーとアプリ側の紐付けを解除する。
+        await supabase.auth.signOut({ scope: 'local' })
+        setCurrentUser({
+          ...currentUser,
+          authUserId: null,
+          email: undefined,
+          googleLinked: false,
+        })
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Googleアカウント連携を解除できませんでした'
       setError(message)

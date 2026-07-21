@@ -51,6 +51,14 @@ function oauthUsername(authUser: SupabaseAuthUser) {
   return `${safeName}-${authUser.id.slice(0, 8)}`
 }
 
+function hasGoogleIdentity(authUser: SupabaseAuthUser) {
+  return (
+    authUser.identities?.some((identity) => identity.provider === 'google') ??
+    authUser.app_metadata.providers?.includes('google') ??
+    authUser.app_metadata.provider === 'google'
+  )
+}
+
 function rowToUser(row: UserRow): User {
   return {
     id: row.id,
@@ -220,7 +228,7 @@ export async function completeEmailAccountLink(
 
   const user = await getSupabaseUserByAuthUserId(authUser.id)
   if (!user) throw new Error('連携先のユーザーが見つかりません')
-  return { ...user, email: authUser.email }
+  return { ...user, email: authUser.email, googleLinked: hasGoogleIdentity(authUser) }
 }
 
 /** メールで本人確認済みのAuthセッションから、連携済みユーザーのパスワードを再設定する。 */
@@ -271,7 +279,7 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
   // auth_user_id で既存プロフィールに到達した場合、Googleは認証手段としてのみ使う。
   // ユーザーが設定した表示名・自己紹介・アバターは上書きしない。
   if (linkedData) {
-    return { ...existing!, email: authUser.email }
+    return { ...existing!, email: authUser.email, googleLinked: hasGoogleIdentity(authUser) }
   }
 
   if (existing) {
@@ -284,7 +292,11 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
       .select(USER_COLUMNS)
       .single()
     if (error) throw error
-    return { ...rowToUser(data as unknown as UserRow), email: authUser.email }
+    return {
+      ...rowToUser(data as unknown as UserRow),
+      email: authUser.email,
+      googleLinked: hasGoogleIdentity(authUser),
+    }
   }
 
   const { data, error } = await supabase
@@ -305,7 +317,11 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
     .select(USER_COLUMNS)
     .single()
   if (error) throw error
-  return { ...rowToUser(data as unknown as UserRow), email: authUser.email }
+  return {
+    ...rowToUser(data as unknown as UserRow),
+    email: authUser.email,
+    googleLinked: hasGoogleIdentity(authUser),
+  }
 }
 
 /** Google Identityのリンク完了後、既存プロフィールをAuthユーザーへ紐づける。 */
@@ -324,7 +340,11 @@ export async function completeGoogleAccountLink(
     .select(USER_COLUMNS)
     .single()
   if (error) throw error
-  return { ...rowToUser(data as unknown as UserRow), email: authUser.email }
+  return {
+    ...rowToUser(data as unknown as UserRow),
+    email: authUser.email,
+    googleLinked: hasGoogleIdentity(authUser),
+  }
 }
 
 /** プロフィール情報を更新する */

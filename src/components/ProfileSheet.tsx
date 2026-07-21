@@ -551,11 +551,6 @@ export function ProfileSheet({
                       </button>
                     )}
                   </div>
-                  {profile.googleLinked && (
-                    <p className="google-link-card__note">
-                      Google側でアクセス権を取り消した場合も、ことづて側の登録は残ります。完全に解除するにはこの画面の「連携解除」を使用してください。
-                    </p>
-                  )}
                   {googleLinkError && <p className="profile-card__link-error">{googleLinkError}</p>}
 
                   {canRegisterRecoveryEmail && (
