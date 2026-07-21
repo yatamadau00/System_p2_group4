@@ -16,9 +16,16 @@
   padding: var(--sp-2) var(--sp-4);
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  /* スクロール帯はタッチを受け取る（横スワイプでスクロール可能に） */
-  pointer-events: auto;
+  cursor: grab;
+  user-select: none;
   touch-action: pan-x;
+  /* .nearby-deck の pointer-events:none を継承すると、カードの隙間や余白で
+     ホイール/ドラッグ/タッチスワイプが地図側へ抜けてしまうため、ここで明示的に受け止める */
+  pointer-events: auto;
+}
+
+.nearby-scroll:active {
+  cursor: grabbing;
 }
 
 .nearby-scroll::-webkit-scrollbar {
