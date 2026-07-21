@@ -29,6 +29,13 @@ interface UserRow {
   created_at: string
 }
 
+interface UserAuthDetails {
+  email?: string
+  email_verified?: boolean
+  google_linked?: boolean
+  google_email?: string
+}
+
 /** 端末内保存の StoredUser から、ハッシュを取り除いたアプリ用 User を作る。 */
 function toAppUser(stored: StoredUser): User {
   const { passwordHash: _passwordHash, ...user } = stored
@@ -49,6 +56,22 @@ function oauthUsername(authUser: SupabaseAuthUser) {
   const emailName = authUser.email?.split('@')[0] ?? 'google-user'
   const safeName = emailName.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20) || 'google-user'
   return `${safeName}-${authUser.id.slice(0, 8)}`
+}
+
+function getAuthIdentityDetails(authUser: SupabaseAuthUser) {
+  const emailIdentity = authUser.identities?.find((identity) => identity.provider === 'email')
+  const googleIdentity = authUser.identities?.find((identity) => identity.provider === 'google')
+  const googleEmail = googleIdentity?.identity_data?.email
+
+  return {
+    email: emailIdentity ? authUser.email : undefined,
+    emailVerified: !!emailIdentity && !!authUser.email_confirmed_at,
+    googleLinked:
+      !!googleIdentity ||
+      authUser.app_metadata.providers?.includes('google') ||
+      authUser.app_metadata.provider === 'google',
+    googleEmail: typeof googleEmail === 'string' ? googleEmail : undefined,
+  }
 }
 
 function rowToUser(row: UserRow): User {
@@ -72,6 +95,16 @@ async function getSupabaseUserByUsername(username: string) {
     .from('users')
     .select(USER_COLUMNS)
     .eq('username', username)
+    .maybeSingle()
+  if (error) throw error
+  return data ? rowToUser(data as unknown as UserRow) : undefined
+}
+
+async function getSupabaseUserByAuthUserId(authUserId: string) {
+  const { data, error } = await supabase!
+    .from('users')
+    .select(USER_COLUMNS)
+    .eq('auth_user_id', authUserId)
     .maybeSingle()
   if (error) throw error
   return data ? rowToUser(data as unknown as UserRow) : undefined
@@ -165,7 +198,27 @@ export async function authenticateUser(
     if (!row) {
       throw new Error('ユーザー名またはパスワードが正しくありません')
     }
-    return rowToUser(row as UserRow)
+    const user = rowToUser(row as UserRow)
+    const { data: authDetails, error: authDetailsError } = await supabase!.rpc(
+      'get_user_auth_details',
+      {
+        p_user_id: user.id,
+        p_password_hash: passwordHash,
+      },
+    )
+    if (authDetailsError) {
+      // SQLの適用前でも従来のログイン機能は止めない。
+      console.warn('認証方式の表示情報を取得できませんでした:', authDetailsError.message)
+      return user
+    }
+    const details = authDetails as UserAuthDetails | null
+    return {
+      ...user,
+      email: details?.email,
+      emailVerified: !!details?.email_verified,
+      googleLinked: !!details?.google_linked,
+      googleEmail: details?.google_email,
+    }
   }
 
   const db = await getDb()
@@ -174,6 +227,55 @@ export async function authenticateUser(
     throw new Error('ユーザー名またはパスワードが正しくありません')
   }
   return toAppUser(stored)
+}
+
+/** 現在のパスワードを確認し、メール連携用の一度限りのトークンを登録する。 */
+export async function beginEmailAccountLink(
+  userId: string,
+  passwordHash: string,
+  tokenHash: string,
+): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('メール登録にはSupabaseの設定が必要です')
+  }
+  const { data, error } = await supabase.rpc('begin_email_account_link', {
+    p_user_id: userId,
+    p_password_hash: passwordHash,
+    p_token_hash: tokenHash,
+  })
+  if (error) throw error
+  if (!data) throw new Error('現在のパスワードが正しくありません')
+}
+
+/** メール確認済みAuthユーザーを、開始時に認証した既存プロフィールへ紐づける。 */
+export async function completeEmailAccountLink(
+  tokenHash: string,
+  authUser: SupabaseAuthUser,
+): Promise<User> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('メール登録にはSupabaseの設定が必要です')
+  }
+  const { data, error } = await supabase.rpc('complete_email_account_link', {
+    p_token_hash: tokenHash,
+  })
+  if (error) throw error
+  if (!data) throw new Error('メール確認の有効期限が切れたか、連携を完了できませんでした')
+
+  const user = await getSupabaseUserByAuthUserId(authUser.id)
+  if (!user) throw new Error('連携先のユーザーが見つかりません')
+  return { ...user, ...getAuthIdentityDetails(authUser) }
+}
+
+/** メールで本人確認済みのAuthセッションから、連携済みユーザーのパスワードを再設定する。 */
+export async function resetLinkedUserPassword(passwordHash: string): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('パスワード再設定にはSupabaseの設定が必要です')
+  }
+  const { data, error } = await supabase.rpc('reset_linked_user_password', {
+    p_new_password_hash: passwordHash,
+  })
+  if (error) throw error
+  if (!data) throw new Error('再設定リンクが無効か、対象のユーザーが見つかりません')
 }
 
 /** ユーザーを ID から取得する */
@@ -212,7 +314,7 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
   // auth_user_id で既存プロフィールに到達した場合、Googleは認証手段としてのみ使う。
   // ユーザーが設定した表示名・自己紹介・アバターは上書きしない。
   if (linkedData) {
-    return { ...existing!, email: authUser.email }
+    return { ...existing!, ...getAuthIdentityDetails(authUser) }
   }
 
   if (existing) {
@@ -225,7 +327,10 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
       .select(USER_COLUMNS)
       .single()
     if (error) throw error
-    return { ...rowToUser(data as unknown as UserRow), email: authUser.email }
+    return {
+      ...rowToUser(data as unknown as UserRow),
+      ...getAuthIdentityDetails(authUser),
+    }
   }
 
   const { data, error } = await supabase
@@ -246,7 +351,10 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
     .select(USER_COLUMNS)
     .single()
   if (error) throw error
-  return { ...rowToUser(data as unknown as UserRow), email: authUser.email }
+  return {
+    ...rowToUser(data as unknown as UserRow),
+    ...getAuthIdentityDetails(authUser),
+  }
 }
 
 /** Google Identityのリンク完了後、既存プロフィールをAuthユーザーへ紐づける。 */
@@ -265,7 +373,10 @@ export async function completeGoogleAccountLink(
     .select(USER_COLUMNS)
     .single()
   if (error) throw error
-  return { ...rowToUser(data as unknown as UserRow), email: authUser.email }
+  return {
+    ...rowToUser(data as unknown as UserRow),
+    ...getAuthIdentityDetails(authUser),
+  }
 }
 
 /** プロフィール情報を更新する */

@@ -9,6 +9,7 @@ import { GeoBanner } from './components/GeoBanner'
 import { AuthSheet } from './components/AuthSheet'
 import { AuthGate } from './components/AuthGate'
 import { GoogleProfileSetup } from './components/GoogleProfileSetup'
+import { PasswordRecoverySheet } from './components/PasswordRecoverySheet'
 import { CheckIcon, PlusIcon } from './components/icons'
 import { useGeolocation } from './hooks/useGeolocation'
 import { useKotozute } from './hooks/useKotozute'
@@ -53,6 +54,8 @@ export function App() {
     logout,
     linkGoogleAccount,
     unlinkGoogleAccount,
+    registerRecoveryEmail,
+    passwordRecovery,
   } = useAuth()
   const {
     items,
@@ -517,6 +520,7 @@ export function App() {
     showProfile ||
     !!selected ||
     showAuth ||
+    passwordRecovery ||
     showNotifications ||
     needsGoogleProfileSetup
 
@@ -662,7 +666,14 @@ export function App() {
           updateProfile={updateProfile}
           linkGoogleAccount={linkGoogleAccount}
           unlinkGoogleAccount={unlinkGoogleAccount}
+          registerRecoveryEmail={registerRecoveryEmail}
           canUnlinkGoogle={!!currentUser?.hasPassword}
+          showEmailSettings={
+            !!currentUser?.hasPassword &&
+            !currentUser.googleLinked &&
+            (!!currentUser.emailVerified ||
+              (!currentUser.googleLinked && !currentUser.authUserId && !currentUser.email))
+          }
           groups={groups}
           createGroup={createGroup}
           joinGroup={joinGroup}
@@ -710,6 +721,8 @@ export function App() {
       {showAuth && (
         <AuthSheet onClose={() => setShowAuth(false)} />
       )}
+
+      {passwordRecovery && <PasswordRecoverySheet />}
 
       {/* Googleで新規登録した場合の初回プロフィール設定 */}
       {needsGoogleProfileSetup && (

@@ -147,6 +147,30 @@
   animation: fade-in var(--dur-2) var(--ease-out);
 }
 
+.auth-form__success {
+  padding: 10px 14px;
+  border-left: 3px solid var(--c-moss-deep);
+  border-radius: var(--r-sm);
+  background: var(--c-moss-soft);
+  color: var(--c-moss-deep);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.auth-form__forgot-btn {
+  align-self: center;
+  padding: 2px 6px;
+  border: 0;
+  background: none;
+  color: var(--c-amber-deep);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-form__forgot-btn:hover {
+  text-decoration: underline;
+}
+
 .auth-form__footer {
   text-align: center;
   margin-top: var(--sp-3);
