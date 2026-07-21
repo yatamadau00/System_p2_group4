@@ -90,7 +90,7 @@ export function App() {
 
   const needsGoogleProfileSetup =
     !!currentUser?.authUserId &&
-    currentUser.passwordHash === '' &&
+    !currentUser.hasPassword &&
     !profile.name.trim()
 
   const mapRef = useRef<google.maps.Map | null>(null)
@@ -644,7 +644,7 @@ export function App() {
           updateProfile={updateProfile}
           linkGoogleAccount={linkGoogleAccount}
           unlinkGoogleAccount={unlinkGoogleAccount}
-          canUnlinkGoogle={!!currentUser?.passwordHash}
+          canUnlinkGoogle={!!currentUser?.hasPassword}
           groups={groups}
           createGroup={createGroup}
           joinGroup={joinGroup}
