@@ -49,7 +49,6 @@ export function App() {
   const { currentUser, logout, linkGoogleAccount, unlinkGoogleAccount } = useAuth()
   const {
     items,
-    openHistory,
     loading,
     create,
     update,
@@ -638,8 +637,6 @@ export function App() {
       {/* プロフィール & グループ */}
       {showProfile && (
         <ProfileSheet
-          items={visibleItems}
-          openHistory={openHistory}
           profile={profile}
           updateProfile={updateProfile}
           linkGoogleAccount={linkGoogleAccount}
@@ -651,12 +648,6 @@ export function App() {
           leaveGroup={leaveGroup}
           updateGroup={updateGroup}
           getGroupMembers={getGroupMembers}
-          onSelectKotozute={(id) => {
-            setShowProfile(false)
-            setProfileUnlockedId(id)
-            setSelectedId(id)
-          }}
-          onDeleteKotozute={handleDelete}
           onLogout={() => {
             logout()
             setShowProfile(false)
