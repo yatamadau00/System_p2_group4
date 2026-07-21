@@ -18,6 +18,7 @@ import {
   ImageIcon,
   LinkIcon,
   LockIcon,
+  PinIcon,
   StarIcon,
   TrashIcon,
   VideoIcon,
@@ -54,6 +55,8 @@ interface OpenViewProps {
   onOpened?: (id: string) => void
   onToggleLike: (id: string) => Promise<void>
   onToggleFavorite: (id: string) => Promise<void>
+  /** 現在地からこのことづてまでの経路を地図に表示する */
+  onShowRoute?: () => void
   /** 自分のことづての本文・場所名・リンク・開封期間を編集する */
   onEdit?: (
     id: string,
@@ -85,6 +88,7 @@ export function OpenView({
   onOpened,
   onToggleLike,
   onToggleFavorite,
+  onShowRoute,
   onEdit,
   onDelete,
   group,
@@ -229,6 +233,7 @@ export function OpenView({
             progress={progress}
             titleId={titleId}
             onToggleFavorite={onToggleFavorite}
+            onShowRoute={onShowRoute}
           />
         )}
 
@@ -366,11 +371,13 @@ function LockedView({
   progress,
   titleId,
   onToggleFavorite,
+  onShowRoute,
 }: {
   kotozute: EnrichedKotozute
   progress: number
   titleId: string
   onToggleFavorite: (id: string) => Promise<void>
+  onShowRoute?: () => void
 }) {
   const d = kotozute.distance
   const remaining = d != null ? Math.max(0, d - UNLOCK_RADIUS_M) : null
@@ -426,6 +433,12 @@ function LockedView({
         <br />
         もう少しだけ、近づいてみてください。
       </p>
+      {onShowRoute && (
+        <button className="route-launch" type="button" onClick={onShowRoute}>
+          <PinIcon width={18} height={18} />
+          ここまでの経路を見る
+        </button>
+      )}
       <div className="locked__peek">
         {kindLabel(kotozute)}が、ここで待っています
       </div>

@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import {
   GoogleMap,
   OverlayView,
@@ -43,6 +43,23 @@ interface MapScreenProps {
   groups: Group[]
   groupLayerVisibility: GroupLayerVisibility
   onToggleGroupLayer: (groupId: string) => void
+  routeTarget: EnrichedKotozute | null
+  onCloseRoute: () => void
+}
+
+type RouteMode = 'WALKING' | 'TRANSIT' | 'DRIVING'
+type RouteStatus = 'idle' | 'loading' | 'active' | 'error'
+
+interface RouteSummary {
+  distanceMeters: number | null
+  durationMillis: number | null
+}
+
+interface MapsRoute {
+  distanceMeters?: number
+  durationMillis?: number
+  viewport?: google.maps.LatLngBounds | google.maps.LatLngBoundsLiteral
+  createPolylines: () => google.maps.Polyline[]
 }
 
 const hasKey = GOOGLE_MAPS_API_KEY.trim().length > 0
@@ -50,6 +67,21 @@ const hasKey = GOOGLE_MAPS_API_KEY.trim().length > 0
 const overlayOffset = {
   x: 0,
   y: 0,
+}
+
+function formatRouteDuration(durationMillis: number | null) {
+  if (durationMillis == null) return '—'
+  const minutes = Math.max(1, Math.round(durationMillis / 60_000))
+  if (minutes < 60) return `約${minutes}分`
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  return rest ? `約${hours}時間${rest}分` : `約${hours}時間`
+}
+
+function formatRouteDistance(distanceMeters: number | null) {
+  if (distanceMeters == null) return '—'
+  if (distanceMeters < 1000) return `約${Math.round(distanceMeters)}m`
+  return `約${(distanceMeters / 1000).toFixed(distanceMeters < 10_000 ? 1 : 0)}km`
 }
 
 export function MapScreen(props: MapScreenProps) {
@@ -75,16 +107,22 @@ export function MapScreen(props: MapScreenProps) {
     groups,
     groupLayerVisibility,
     onToggleGroupLayer,
+    routeTarget,
+    onCloseRoute,
   } = props
   const [groupSelectorOpen, setGroupSelectorOpen] = useState(false)
 
   // ハイライト中のピンを最後に描画して、重なっても前面に出す
+  const itemsWithRouteTarget =
+    routeTarget && !items.some((item) => item.id === routeTarget.id)
+      ? [...items, routeTarget]
+      : items
   const orderedItems = highlightedId
     ? [
-        ...items.filter((k) => k.id !== highlightedId),
-        ...items.filter((k) => k.id === highlightedId),
+        ...itemsWithRouteTarget.filter((k) => k.id !== highlightedId),
+        ...itemsWithRouteTarget.filter((k) => k.id === highlightedId),
       ]
-    : items
+    : itemsWithRouteTarget
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'kotozute-google-maps',
@@ -92,10 +130,20 @@ export function MapScreen(props: MapScreenProps) {
   })
 
   const mapRef = useRef<google.maps.Map | null>(null)
+  const routePolylinesRef = useRef<google.maps.Polyline[]>([])
+  const routeRequestRef = useRef(0)
+  const routeOriginTargetRef = useRef<string | null>(null)
+  const [mapReady, setMapReady] = useState(false)
+  const [routeMode, setRouteMode] = useState<RouteMode>('WALKING')
+  const [routeOrigin, setRouteOrigin] = useState<LatLng | null>(null)
+  const [routeStatus, setRouteStatus] = useState<RouteStatus>('idle')
+  const [routeSummary, setRouteSummary] = useState<RouteSummary | null>(null)
+  const [routeError, setRouteError] = useState<string | null>(null)
 
   const handleLoad = useCallback(
     (map: google.maps.Map) => {
       mapRef.current = map
+      setMapReady(true)
       onMapLoad(map)
     },
     [onMapLoad],
@@ -103,6 +151,7 @@ export function MapScreen(props: MapScreenProps) {
 
   const handleUnmount = useCallback(() => {
     mapRef.current = null
+    setMapReady(false)
     onMapLoad(null)
   }, [onMapLoad])
 
@@ -112,6 +161,113 @@ export function MapScreen(props: MapScreenProps) {
       mapRef.current.setZoom(DEFAULT_ZOOM)
     }
   }, [position])
+
+  const clearRoutePolylines = useCallback(() => {
+    routePolylinesRef.current.forEach((polyline) => polyline.setMap(null))
+    routePolylinesRef.current = []
+  }, [])
+
+  // 経路開始時の現在地を出発地として固定。watchPosition のたびに
+  // Routes API を呼び直さず、モード切替時だけ再計算する。
+  useEffect(() => {
+    if (!routeTarget) {
+      routeOriginTargetRef.current = null
+      setRouteOrigin(null)
+      setRouteStatus('idle')
+      setRouteSummary(null)
+      setRouteError(null)
+      clearRoutePolylines()
+      return
+    }
+
+    if (position && routeOriginTargetRef.current !== routeTarget.id) {
+      routeOriginTargetRef.current = routeTarget.id
+      setRouteOrigin(position)
+    }
+  }, [clearRoutePolylines, position, routeTarget])
+
+  useEffect(() => {
+    if (!routeTarget) return
+    if (!routeOrigin) {
+      setRouteStatus('error')
+      setRouteError('経路を表示するには位置情報が必要です。')
+      return
+    }
+    if (!hasKey) {
+      setRouteStatus('error')
+      setRouteError('Google Maps APIが設定されていません。')
+      return
+    }
+    if (!mapReady || !mapRef.current) return
+
+    const requestId = ++routeRequestRef.current
+    clearRoutePolylines()
+    setRouteStatus('loading')
+    setRouteSummary(null)
+    setRouteError(null)
+
+    ;(async () => {
+      try {
+        const importLibrary = google.maps.importLibrary as unknown as (
+          name: string,
+        ) => Promise<Record<string, unknown>>
+        const routesLibrary = await importLibrary('routes')
+        const Route = routesLibrary.Route as {
+          computeRoutes: (request: Record<string, unknown>) => Promise<{ routes: MapsRoute[] }>
+        }
+        const fields = ['path', 'distanceMeters', 'durationMillis', 'viewport']
+        if (routeMode === 'TRANSIT') fields.push('legs')
+
+        const { routes } = await Route.computeRoutes({
+          origin: routeOrigin,
+          destination: routeTarget.location,
+          travelMode: routeMode,
+          fields,
+          ...(routeMode === 'DRIVING' ? { routingPreference: 'TRAFFIC_AWARE' } : {}),
+        })
+        if (requestId !== routeRequestRef.current) return
+        const route = routes[0]
+        if (!route) throw new Error('route not found')
+
+        const polylines = route.createPolylines()
+        polylines.forEach((polyline) => {
+          polyline.setOptions({
+            strokeColor: '#d67b3f',
+            strokeOpacity: 0.95,
+            strokeWeight: 6,
+            zIndex: 10,
+          })
+          polyline.setMap(mapRef.current)
+        })
+        routePolylinesRef.current = polylines
+        if (route.viewport) mapRef.current?.fitBounds(route.viewport, 72)
+
+        setRouteSummary({
+          distanceMeters: route.distanceMeters ?? null,
+          durationMillis: route.durationMillis ?? null,
+        })
+        setRouteStatus('active')
+      } catch (error) {
+        console.warn('Failed to calculate route:', error)
+        if (requestId !== routeRequestRef.current) return
+        setRouteStatus('error')
+        setRouteError('この移動手段での経路を取得できませんでした。')
+      }
+    })()
+
+    return () => {
+      routeRequestRef.current += 1
+      clearRoutePolylines()
+    }
+  }, [
+    clearRoutePolylines,
+    mapReady,
+    routeMode,
+    routeOrigin,
+    routeTarget?.id,
+    routeTarget?.location.lat,
+    routeTarget?.location.lng,
+  ])
 
   // ブランド情報とユーザー（アバター＋名前）を 1 本のトップバーに統合。
   // ユーザーチップをタップするとプロフィールが開く（ログアウトはプロフィール内へ集約）。
@@ -269,13 +425,76 @@ export function MapScreen(props: MapScreenProps) {
     </div>
   )
 
+  const mapsUrl = routeTarget
+    ? `https://www.google.com/maps/dir/?api=1&destination=${routeTarget.location.lat},${routeTarget.location.lng}&travelmode=${routeMode.toLowerCase()}`
+    : '#'
+  const routePanel = routeTarget ? (
+    <section className="route-panel" aria-label="目的地までの経路">
+      <div className="route-panel__header">
+        <div>
+          <div className="route-panel__eyebrow">目的地までの経路</div>
+          <strong>{routeTarget.placeLabel || 'ことづての場所'}</strong>
+        </div>
+        <button type="button" className="route-panel__close" onClick={onCloseRoute}>
+          終了
+        </button>
+      </div>
+      <div className="route-modes" role="group" aria-label="移動手段">
+        {([
+          ['WALKING', '🚶', '徒歩'],
+          ['TRANSIT', '🚆', '公共交通'],
+          ['DRIVING', '🚗', '車'],
+        ] as const).map(([mode, icon, label]) => (
+          <button
+            key={mode}
+            type="button"
+            className={`route-mode${routeMode === mode ? ' route-mode--active' : ''}`}
+            aria-pressed={routeMode === mode}
+            onClick={() => setRouteMode(mode)}
+          >
+            <span aria-hidden>{icon}</span>
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="route-panel__result" role="status" aria-live="polite">
+        {routeStatus === 'loading' && <span>経路を探しています…</span>}
+        {routeStatus === 'active' && routeSummary && (
+          <>
+            <b>{formatRouteDuration(routeSummary.durationMillis)}</b>
+            <span>{formatRouteDistance(routeSummary.distanceMeters)}</span>
+          </>
+        )}
+        {routeStatus === 'error' && <span>{routeError}</span>}
+      </div>
+      {routeStatus === 'error' && (
+        <div className="route-panel__fallbacks">
+          {position && (
+            <button
+              type="button"
+              onClick={() => setRouteOrigin({ ...position })}
+            >
+              もう一度試す
+            </button>
+          )}
+          <a href={mapsUrl} target="_blank" rel="noreferrer">
+            Googleマップで開く
+          </a>
+        </div>
+      )}
+      {routeMode === 'WALKING' && routeStatus === 'active' && (
+        <p className="route-panel__notice">実際の歩道や通行状況を確認して移動してください。</p>
+      )}
+    </section>
+  ) : null
+
   // --- フォールバック地図（キー未設定 or 読み込み失敗） ---
   if (!hasKey || loadError) {
     return (
       <div className="map-root">
         <FallbackMap items={items} onSelectPin={onSelectPin} />
         {topBar}
-        {layerControls}
+        {routeTarget ? routePanel : layerControls}
         <div className="map-controls">
           <button
             className="map-btn map-btn--notification"
@@ -361,8 +580,8 @@ export function MapScreen(props: MapScreenProps) {
       </GoogleMap>
 
       {topBar}
-      {layerControls}
-      <div className="map-controls">
+      {routeTarget ? routePanel : layerControls}
+      {!routeTarget && <div className="map-controls">
         <button
           className="map-btn map-btn--notification"
           onClick={onOpenNotifications}
@@ -386,7 +605,7 @@ export function MapScreen(props: MapScreenProps) {
         >
           <LocateIcon />
         </button>
-      </div>
+      </div>}
     </div>
   )
 }

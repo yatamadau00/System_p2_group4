@@ -536,6 +536,126 @@
   transform: scale(0.92);
 }
 
+/* ====== 目的地までの経路 ====== */
+.route-panel {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + var(--sp-4));
+  z-index: var(--z-overlay);
+  width: min(440px, calc(100vw - 24px));
+  transform: translateX(-50%);
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(248, 244, 233, 0.96);
+  color: var(--c-ink);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(14px);
+}
+
+.route-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.route-panel__header strong {
+  display: block;
+  max-width: 290px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+}
+
+.route-panel__eyebrow {
+  margin-bottom: 2px;
+  color: var(--c-ink-2);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.route-panel__close {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border-radius: var(--r-pill);
+  background: rgba(32, 40, 52, 0.08);
+  color: var(--c-ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.route-modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(32, 40, 52, 0.07);
+}
+
+.route-mode {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 8px;
+  border-radius: 11px;
+  color: var(--c-ink-2);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.route-mode--active {
+  background: #fff;
+  color: var(--c-amber-deep);
+  box-shadow: var(--shadow-sm);
+}
+
+.route-panel__result {
+  min-height: 28px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  color: var(--c-ink-2);
+  font-size: 0.86rem;
+}
+
+.route-panel__result b {
+  color: var(--c-ink);
+  font-size: 1.18rem;
+}
+
+.route-panel__fallbacks {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.route-panel__fallbacks button,
+.route-panel__fallbacks a {
+  padding: 8px 12px;
+  border-radius: var(--r-pill);
+  background: var(--c-amber-deep);
+  color: var(--c-on-amber);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.route-panel__notice {
+  margin: -4px 0 0;
+  color: var(--c-ink-2);
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
 /* ====== 上部トップバー（ブランド＋ユーザーを統合） ====== */
 .topbar {
   position: absolute;

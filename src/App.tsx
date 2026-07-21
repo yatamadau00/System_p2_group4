@@ -87,6 +87,7 @@ export function App() {
   )
   const [groupLayerVisibility, setGroupLayerVisibility] = useState<GroupLayerVisibility>({})
   const [favoriteOnly, setFavoriteOnly] = useState(false)
+  const [routeTargetId, setRouteTargetId] = useState<string | null>(null)
 
   const needsGoogleProfileSetup =
     !!currentUser?.authUserId &&
@@ -185,6 +186,10 @@ export function App() {
   const replyTarget = useMemo(
     () => enriched.find((k) => k.id === replyTargetId) ?? null,
     [enriched, replyTargetId],
+  )
+  const routeTarget = useMemo(
+    () => enriched.find((item) => item.id === routeTargetId) ?? null,
+    [enriched, routeTargetId],
   )
   const selectedReplies = useMemo(() => {
     if (!selected) return []
@@ -512,6 +517,7 @@ export function App() {
     !!selected ||
     showAuth ||
     showNotifications ||
+    !!routeTarget ||
     needsGoogleProfileSetup
 
   return (
@@ -538,6 +544,8 @@ export function App() {
         groups={groups}
         groupLayerVisibility={groupLayerVisibility}
         onToggleGroupLayer={handleToggleGroupLayer}
+        routeTarget={routeTarget}
+        onCloseRoute={() => setRouteTargetId(null)}
       />
 
       {/* 位置情報の状態フィードバック（オーバーレイ中は隠す） */}
@@ -686,6 +694,12 @@ export function App() {
           onDelete={handleDelete}
           onToggleLike={handleToggleLike}
           onToggleFavorite={handleToggleFavorite}
+          onShowRoute={() => {
+            setRouteTargetId(selected.id)
+            setHighlightedId(selected.id)
+            setSelectedId(null)
+            setProfileUnlockedId(null)
+          }}
           group={
             selected.visibility === 'group' && selected.groupId
               ? groups.find((g) => g.id === selected.groupId)
