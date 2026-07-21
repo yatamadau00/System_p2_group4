@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
-import type { Kotozute, NewKotozute, User } from '../types'
+import type { Kotozute, NewKotozute, StoredUser } from '../types'
 import {
   generateId,
   type KotozuteRepository,
@@ -17,7 +17,7 @@ interface KotozuteDB extends DBSchema {
   }
   users: {
     key: string
-    value: User
+    value: StoredUser
     indexes: { username: string }
   }
   kotozuteOpens: {

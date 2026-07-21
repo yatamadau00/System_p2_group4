@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Sheet } from './Sheet'
 import { useAuth } from '../hooks/useAuth'
+import { EyeIcon, EyeOffIcon } from './icons'
 import './AuthSheet.css'
 
 interface AuthSheetProps {
@@ -14,6 +15,7 @@ export function AuthSheet({ onClose }: AuthSheetProps) {
   const [mode, setMode] = useState<AuthMode>('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [displayName, setDisplayName] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
@@ -22,6 +24,7 @@ export function AuthSheet({ onClose }: AuthSheetProps) {
     setMode((prev) => (prev === 'login' ? 'signup' : 'login'))
     setUsername('')
     setPassword('')
+    setShowPassword(false)
     setDisplayName('')
     setLocalError(null)
     clearError()
@@ -144,18 +147,30 @@ export function AuthSheet({ onClose }: AuthSheetProps) {
           <label className="auth-form__label" htmlFor="password">
             パスワード
           </label>
-          <input
-            className="auth-form__input"
-            id="password"
-            name="password"
-            type="password"
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="4文字以上"
-            disabled={submitting}
-            required
-          />
+          <div className="auth-form__password-field">
+            <input
+              className="auth-form__input auth-form__password-input"
+              id="password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="4文字以上"
+              disabled={submitting}
+              required
+            />
+            <button
+              className="auth-form__password-toggle"
+              type="button"
+              onClick={() => setShowPassword((visible) => !visible)}
+              disabled={submitting}
+              aria-label={showPassword ? 'パスワードを非表示にする' : 'パスワードを表示する'}
+              aria-pressed={showPassword}
+            >
+              {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+            </button>
+          </div>
         </div>
 
         <button
