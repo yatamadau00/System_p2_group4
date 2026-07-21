@@ -66,8 +66,8 @@
 .fab {
   position: absolute;
   left: 50%;
-  /* 下部カルーセルの上に乗るよう持ち上げる */
-  bottom: calc(var(--safe-bottom) + 132px);
+  /* 下部カルーセルのすぐ上に乗るよう持ち上げる */
+  bottom: calc(var(--safe-bottom) + 96px);
   transform: translateX(-50%);
   z-index: var(--z-fab);
   display: inline-flex;
