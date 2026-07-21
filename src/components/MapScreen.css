@@ -319,13 +319,15 @@
   left: var(--sp-4);
   bottom: calc(var(--safe-bottom) + 204px);
   z-index: var(--z-overlay);
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: flex-start;
-  gap: 12px;
+  /* ボタンのサイズだけ確保し、パネルはabsoluteで上に展開 */
+  width: 48px;
+  height: 48px;
 }
 
 .map-layers {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 0;
   display: grid;
   gap: 10px;
   width: min(190px, calc(100vw - 112px));
