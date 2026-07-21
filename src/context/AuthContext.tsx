@@ -177,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!currentUser?.authUserId) {
       throw new Error('Googleアカウントは連携されていません')
     }
-    if (!currentUser.passwordHash) {
+    if (!currentUser.hasPassword) {
       throw new Error('Googleで作成したアカウントは連携解除できません')
     }
     if (!isSupabaseConfigured || !supabase) {
