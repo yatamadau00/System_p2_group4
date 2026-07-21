@@ -66,21 +66,22 @@
 .fab {
   position: absolute;
   left: 50%;
-  /* 下部カルーセルの上に乗るよう持ち上げる */
-  bottom: calc(var(--safe-bottom) + 132px);
+  /* 下部カルーセルのすぐ上に乗るよう持ち上げる */
+  bottom: calc(var(--safe-bottom) + 96px);
   transform: translateX(-50%);
   z-index: var(--z-fab);
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
-  padding: 16px 26px 16px 20px;
+  padding: 11px 20px 11px 14px;
   border-radius: var(--r-pill);
   background: linear-gradient(160deg, var(--c-amber), var(--c-amber-deep));
   color: var(--c-on-amber);
   font-family: var(--font-serif);
   font-weight: 600;
-  font-size: 1.02rem;
-  letter-spacing: 0.04em;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
   box-shadow: var(--shadow-amber), 0 2px 8px rgba(0, 0, 0, 0.18);
   transition: transform var(--dur-2) var(--ease-soft);
   /* 中央寄せ(translateX(-50%))を保ったまま登場させる専用アニメーション。
@@ -107,8 +108,8 @@
 .fab__plus {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.22);
 }
