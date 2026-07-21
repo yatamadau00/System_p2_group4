@@ -8,7 +8,9 @@ import {
 import type { User } from '../types'
 import {
   authenticateUser,
+  beginEmailAccountLink,
   changeUserPassword,
+  completeEmailAccountLink,
   completeGoogleAccountLink,
   getUserById,
   hashPassword,
@@ -26,6 +28,7 @@ interface AuthContextType {
   linkGoogleAccount: () => Promise<void>
   unlinkGoogleAccount: () => Promise<void>
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>
+  registerRecoveryEmail: (email: string, currentPassword: string) => Promise<void>
   signUp: (
     username: string,
     displayName: string,
@@ -39,6 +42,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 const STORAGE_KEY = 'kotozute_user_id'
 const PENDING_GOOGLE_LINK_KEY = 'kotozute_pending_google_link_user_id'
+const PENDING_EMAIL_LINK_TOKEN_KEY = 'kotozute_pending_email_link_token'
+
+function createLinkToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32))
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
@@ -56,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (sessionError) throw sessionError
           if (data.session?.user) {
             const pendingUserId = localStorage.getItem(PENDING_GOOGLE_LINK_KEY)
+            const pendingEmailToken = localStorage.getItem(PENDING_EMAIL_LINK_TOKEN_KEY)
             if (data.session.user.is_anonymous) {
               const savedId = pendingUserId ?? localStorage.getItem(STORAGE_KEY)
               if (savedId) {
@@ -64,9 +74,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
               return
             }
-            const user = pendingUserId
-              ? await completeGoogleAccountLink(pendingUserId, data.session.user)
-              : await syncGoogleUser(data.session.user)
+            const user = pendingEmailToken
+              ? await completeEmailAccountLink(
+                  await hashPassword(pendingEmailToken),
+                  data.session.user,
+                )
+              : pendingUserId
+                ? await completeGoogleAccountLink(pendingUserId, data.session.user)
+                : await syncGoogleUser(data.session.user)
+            if (pendingEmailToken) localStorage.removeItem(PENDING_EMAIL_LINK_TOKEN_KEY)
             if (pendingUserId) localStorage.removeItem(PENDING_GOOGLE_LINK_KEY)
             if (active) setCurrentUser(user)
             localStorage.setItem(STORAGE_KEY, user.id)
@@ -96,15 +112,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (event !== 'SIGNED_IN' || !session?.user) return
       if (session.user.is_anonymous) return
       const pendingUserId = localStorage.getItem(PENDING_GOOGLE_LINK_KEY)
-      const userPromise = pendingUserId
-        ? completeGoogleAccountLink(pendingUserId, session.user)
-        : syncGoogleUser(session.user)
+      const pendingEmailToken = localStorage.getItem(PENDING_EMAIL_LINK_TOKEN_KEY)
+      const userPromise = pendingEmailToken
+        ? hashPassword(pendingEmailToken).then((tokenHash) =>
+            completeEmailAccountLink(tokenHash, session.user),
+          )
+        : pendingUserId
+          ? completeGoogleAccountLink(pendingUserId, session.user)
+          : syncGoogleUser(session.user)
       void userPromise
         .then((user) => {
           if (!active) return
           setCurrentUser(user)
           localStorage.setItem(STORAGE_KEY, user.id)
           localStorage.removeItem(PENDING_GOOGLE_LINK_KEY)
+          localStorage.removeItem(PENDING_EMAIL_LINK_TOKEN_KEY)
           setError(null)
         })
         .catch((err: unknown) => {
@@ -245,6 +267,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const registerRecoveryEmail = async (email: string, currentPassword: string) => {
+    setError(null)
+    if (!currentUser?.hasPassword) {
+      throw new Error('メールを登録できるパスワードアカウントではありません')
+    }
+    if (currentUser.authUserId) {
+      throw new Error('このアカウントにはすでに認証情報が連携されています')
+    }
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error('メール登録にはSupabaseの設定が必要です')
+    }
+
+    setLoading(true)
+    const token = createLinkToken()
+    try {
+      const [passwordHash, tokenHash] = await Promise.all([
+        hashPassword(currentPassword),
+        hashPassword(token),
+      ])
+      await beginEmailAccountLink(currentUser.id, passwordHash, tokenHash)
+      localStorage.setItem(PENDING_EMAIL_LINK_TOKEN_KEY, token)
+
+      const { error: anonymousError } = await supabase.auth.signInAnonymously()
+      if (anonymousError) throw anonymousError
+      const { error: emailError } = await supabase.auth.updateUser(
+        { email },
+        { emailRedirectTo: window.location.origin },
+      )
+      if (emailError) throw emailError
+    } catch (err: unknown) {
+      localStorage.removeItem(PENDING_EMAIL_LINK_TOKEN_KEY)
+      await supabase.auth.signOut({ scope: 'local' })
+      const message = err instanceof Error ? err.message : '確認メールを送信できませんでした'
+      setError(message)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const signUp = async (
     username: string,
     displayName: string,
@@ -289,6 +351,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         linkGoogleAccount,
         unlinkGoogleAccount,
         changePassword,
+        registerRecoveryEmail,
         signUp,
         logout,
         clearError,

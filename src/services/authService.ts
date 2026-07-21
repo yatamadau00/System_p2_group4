@@ -77,6 +77,16 @@ async function getSupabaseUserByUsername(username: string) {
   return data ? rowToUser(data as unknown as UserRow) : undefined
 }
 
+async function getSupabaseUserByAuthUserId(authUserId: string) {
+  const { data, error } = await supabase!
+    .from('users')
+    .select(USER_COLUMNS)
+    .eq('auth_user_id', authUserId)
+    .maybeSingle()
+  if (error) throw error
+  return data ? rowToUser(data as unknown as UserRow) : undefined
+}
+
 /** Web Crypto API を用いてパスワードを SHA-256 でハッシュ化する */
 export async function hashPassword(password: string): Promise<string> {
   const msgUint8 = new TextEncoder().encode(password)
@@ -205,6 +215,43 @@ export async function changeUserPassword(
     passwordHash: newPasswordHash,
     hasPassword: true,
   })
+}
+
+/** 現在のパスワードを確認し、メール連携用の一度限りのトークンを登録する。 */
+export async function beginEmailAccountLink(
+  userId: string,
+  passwordHash: string,
+  tokenHash: string,
+): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('メール登録にはSupabaseの設定が必要です')
+  }
+  const { data, error } = await supabase.rpc('begin_email_account_link', {
+    p_user_id: userId,
+    p_password_hash: passwordHash,
+    p_token_hash: tokenHash,
+  })
+  if (error) throw error
+  if (!data) throw new Error('現在のパスワードが正しくありません')
+}
+
+/** メール確認済みAuthユーザーを、開始時に認証した既存プロフィールへ紐づける。 */
+export async function completeEmailAccountLink(
+  tokenHash: string,
+  authUser: SupabaseAuthUser,
+): Promise<User> {
+  if (!isSupabaseConfigured || !supabase) {
+    throw new Error('メール登録にはSupabaseの設定が必要です')
+  }
+  const { data, error } = await supabase.rpc('complete_email_account_link', {
+    p_token_hash: tokenHash,
+  })
+  if (error) throw error
+  if (!data) throw new Error('メール確認の有効期限が切れたか、連携を完了できませんでした')
+
+  const user = await getSupabaseUserByAuthUserId(authUser.id)
+  if (!user) throw new Error('連携先のユーザーが見つかりません')
+  return { ...user, email: authUser.email }
 }
 
 /** ユーザーを ID から取得する */
