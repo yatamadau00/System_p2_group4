@@ -10,6 +10,7 @@ import {
   markRemoteNotificationAsRead,
   removeRemoteNotification,
 } from '../services/notificationService'
+import { canUsePush, sendPushToUser, subscribeToPush } from '../services/pushService'
 
 interface NotificationContextType {
   notifications: AppNotification[]
@@ -105,6 +106,15 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   }, [browserNotificationSupported])
 
+  // ログイン中かつ通知許可済みなら、この端末をWeb Pushに購読させる。
+  // （閉じている間もサーバーからプッシュを受け取れるようにする）
+  useEffect(() => {
+    if (!remoteUserId || permission !== 'granted' || !canUsePush()) return
+    subscribeToPush(remoteUserId).catch((e) => {
+      console.warn('Push subscription failed:', e)
+    })
+  }, [remoteUserId, permission])
+
   // 未読件数
   const unreadCount = notifications.filter((n) => !n.read).length
 
@@ -147,6 +157,16 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         createRemoteNotification(targetUserId, newNotif).catch((e) => {
           console.warn('Remote notification could not be saved:', e)
         })
+
+        // 他ユーザー宛ての通知は、その人の端末へバックグラウンドプッシュも送る
+        // （アプリを閉じていても届くように）。自分宛ては起動中に出るため送らない。
+        if (targetUserId !== remoteUserId) {
+          void sendPushToUser(targetUserId, {
+            title,
+            body: message,
+            relatedId,
+          })
+        }
       }
 
       // ブラウザ標準の通知を送信する
