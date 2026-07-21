@@ -171,10 +171,25 @@ export interface User {
   avatarImageUrl?: string | null
   /** フレンド追加用コード */
   friendCode?: string
-  /** パスワードのSHA-256ハッシュ */
-  passwordHash: string
+  /**
+   * パスワードを設定しているか。
+   * Google専用アカウント（パスワード未設定）は false。
+   * セキュリティ上、パスワードのハッシュ自体はクライアントへは渡さず、
+   * この真偽値だけをサーバーから受け取る。
+   */
+  hasPassword: boolean
   /** 作成時刻（epoch ms） */
   createdAt: number
+}
+
+/**
+ * IndexedDB（端末内フォールバック）にのみ保存されるユーザー表現。
+ * ハッシュは端末から出ないため、ローカル照合用にここだけ保持する。
+ * Supabase 経由の User には passwordHash は一切含まれない。
+ */
+export interface StoredUser extends User {
+  /** パスワードのSHA-256ハッシュ（端末内保存専用） */
+  passwordHash: string
 }
 
 /** アプリ内通知情報 */

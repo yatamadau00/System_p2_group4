@@ -1,24 +1,39 @@
 import { getDb } from './indexedDbRepository'
 import { generateId } from './repository'
 import { isSupabaseConfigured, supabase } from './supabaseClient'
-import type { User } from '../types'
+import type { StoredUser, User } from '../types'
 import type { User as SupabaseAuthUser } from '@supabase/supabase-js'
 
 const DEFAULT_AVATAR_EMOJI = '🦉'
 const DEFAULT_AVATAR_COLOR = '#f1e8d6'
+
+/**
+ * users テーブルから取得してよい列。
+ * password_hash は DB 側の列レベル権限で anon から遮断されているため含めない。
+ * （含めると select がエラーになる）
+ */
+const USER_COLUMNS =
+  'id, auth_user_id, username, display_name, bio, avatar_emoji, avatar_color, avatar_image_url, friend_code, created_at, has_password'
 
 interface UserRow {
   id: string
   auth_user_id: string | null
   username: string
   display_name: string
-  password_hash: string
+  has_password: boolean
   bio: string | null
   avatar_emoji: string | null
   avatar_color: string | null
   avatar_image_url: string | null
   friend_code: string | null
   created_at: string
+}
+
+/** 端末内保存の StoredUser から、ハッシュを取り除いたアプリ用 User を作る。 */
+function toAppUser(stored: StoredUser): User {
+  const { passwordHash: _passwordHash, ...user } = stored
+  void _passwordHash
+  return user
 }
 
 function createFriendCode() {
@@ -42,7 +57,7 @@ function rowToUser(row: UserRow): User {
     authUserId: row.auth_user_id ?? null,
     username: row.username,
     displayName: row.display_name,
-    passwordHash: row.password_hash,
+    hasPassword: row.has_password ?? false,
     bio: row.bio ?? '',
     avatarEmoji: row.avatar_emoji ?? DEFAULT_AVATAR_EMOJI,
     avatarColor: row.avatar_color ?? DEFAULT_AVATAR_COLOR,
@@ -55,11 +70,11 @@ function rowToUser(row: UserRow): User {
 async function getSupabaseUserByUsername(username: string) {
   const { data, error } = await supabase!
     .from('users')
-    .select('*')
+    .select(USER_COLUMNS)
     .eq('username', username)
     .maybeSingle()
   if (error) throw error
-  return data ? rowToUser(data as UserRow) : undefined
+  return data ? rowToUser(data as unknown as UserRow) : undefined
 }
 
 /** Web Crypto API を用いてパスワードを SHA-256 でハッシュ化する */
@@ -102,10 +117,10 @@ export async function registerUser(
         avatar_image_url: null,
         friend_code: createFriendCode(),
       })
-      .select()
+      .select(USER_COLUMNS)
       .single()
     if (error) throw error
-    return rowToUser(data as UserRow)
+    return rowToUser(data as unknown as UserRow)
   }
 
   const db = await getDb()
@@ -114,7 +129,7 @@ export async function registerUser(
     throw new Error('このユーザー名はすでに使用されています')
   }
 
-  const user: User = {
+  const stored: StoredUser = {
     id: generateId(),
     username: cleanUsername,
     displayName: displayName.trim() || cleanUsername,
@@ -123,12 +138,13 @@ export async function registerUser(
     avatarColor: DEFAULT_AVATAR_COLOR,
     avatarImageUrl: null,
     friendCode: createFriendCode(),
+    hasPassword: passwordHash !== '',
     passwordHash,
     createdAt: Date.now(),
   }
 
-  await db.put('users', user)
-  return user
+  await db.put('users', stored)
+  return toAppUser(stored)
 }
 
 /** ユーザーを認証する */
@@ -139,19 +155,25 @@ export async function authenticateUser(
   const cleanUsername = username.trim()
 
   if (isSupabaseConfigured) {
-    const user = await getSupabaseUserByUsername(cleanUsername)
-    if (!user || user.passwordHash !== passwordHash) {
+    // ハッシュ照合は DB 内の RPC で行う。ハッシュ本体はクライアントへ渡さない。
+    const { data, error } = await supabase!.rpc('authenticate_user', {
+      p_username: cleanUsername,
+      p_password_hash: passwordHash,
+    })
+    if (error) throw error
+    const row = Array.isArray(data) ? data[0] : data
+    if (!row) {
       throw new Error('ユーザー名またはパスワードが正しくありません')
     }
-    return user
+    return rowToUser(row as UserRow)
   }
 
   const db = await getDb()
-  const user = await db.getFromIndex('users', 'username', cleanUsername)
-  if (!user || user.passwordHash !== passwordHash) {
+  const stored = await db.getFromIndex('users', 'username', cleanUsername)
+  if (!stored || stored.passwordHash !== passwordHash) {
     throw new Error('ユーザー名またはパスワードが正しくありません')
   }
-  return user
+  return toAppUser(stored)
 }
 
 /** ユーザーを ID から取得する */
@@ -159,15 +181,16 @@ export async function getUserById(id: string): Promise<User | undefined> {
   if (isSupabaseConfigured) {
     const { data, error } = await supabase!
       .from('users')
-      .select('*')
+      .select(USER_COLUMNS)
       .eq('id', id)
       .maybeSingle()
     if (error) throw error
-    return data ? rowToUser(data as UserRow) : undefined
+    return data ? rowToUser(data as unknown as UserRow) : undefined
   }
 
   const db = await getDb()
-  return db.get('users', id)
+  const stored = await db.get('users', id)
+  return stored ? toAppUser(stored) : undefined
 }
 
 /** Supabase AuthのGoogleユーザーを既存のアプリ内プロフィールへ同期する。 */
@@ -178,13 +201,13 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
 
   const { data: linkedData, error: linkedError } = await supabase
     .from('users')
-    .select('*')
+    .select(USER_COLUMNS)
     .eq('auth_user_id', authUser.id)
     .maybeSingle()
   if (linkedError) throw linkedError
 
   const existing = linkedData
-    ? rowToUser(linkedData as UserRow)
+    ? rowToUser(linkedData as unknown as UserRow)
     : await getUserById(authUser.id)
   // auth_user_id で既存プロフィールに到達した場合、Googleは認証手段としてのみ使う。
   // ユーザーが設定した表示名・自己紹介・アバターは上書きしない。
@@ -199,10 +222,10 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
         auth_user_id: authUser.id,
       })
       .eq('id', existing.id)
-      .select()
+      .select(USER_COLUMNS)
       .single()
     if (error) throw error
-    return { ...rowToUser(data as UserRow), email: authUser.email }
+    return { ...rowToUser(data as unknown as UserRow), email: authUser.email }
   }
 
   const { data, error } = await supabase
@@ -220,10 +243,10 @@ export async function syncGoogleUser(authUser: SupabaseAuthUser): Promise<User> 
       avatar_image_url: null,
       friend_code: createFriendCode(),
     })
-    .select()
+    .select(USER_COLUMNS)
     .single()
   if (error) throw error
-  return { ...rowToUser(data as UserRow), email: authUser.email }
+  return { ...rowToUser(data as unknown as UserRow), email: authUser.email }
 }
 
 /** Google Identityのリンク完了後、既存プロフィールをAuthユーザーへ紐づける。 */
@@ -239,10 +262,10 @@ export async function completeGoogleAccountLink(
     .from('users')
     .update({ auth_user_id: authUser.id })
     .eq('id', existingUserId)
-    .select()
+    .select(USER_COLUMNS)
     .single()
   if (error) throw error
-  return { ...rowToUser(data as UserRow), email: authUser.email }
+  return { ...rowToUser(data as unknown as UserRow), email: authUser.email }
 }
 
 /** プロフィール情報を更新する */
@@ -264,10 +287,10 @@ export async function updateUserProfile(
         avatar_image_url: updates.avatarImageUrl ?? null,
       })
       .eq('id', id)
-      .select()
+      .select(USER_COLUMNS)
       .single()
     if (error) throw error
-    return rowToUser(data as UserRow)
+    return rowToUser(data as unknown as UserRow)
   }
 
   const db = await getDb()
@@ -275,7 +298,7 @@ export async function updateUserProfile(
   if (!current) {
     throw new Error('ユーザーが見つかりません')
   }
-  const next: User = {
+  const next: StoredUser = {
     ...current,
     displayName: updates.displayName,
     bio: updates.bio,
@@ -284,5 +307,5 @@ export async function updateUserProfile(
     avatarImageUrl: updates.avatarImageUrl ?? null,
   }
   await db.put('users', next)
-  return next
+  return toAppUser(next)
 }

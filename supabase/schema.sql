@@ -22,7 +22,10 @@ create table public.users (
   avatar_color text not null default '#f1e8d6',
   avatar_image_url text,
   friend_code text not null unique,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- パスワードを持つか（Google専用アカウントは空ハッシュ→false）。
+  -- password_hash から自動計算され、ハッシュ本体を露出せずに判定に使える。
+  has_password boolean generated always as (coalesce(password_hash, '') <> '') stored
 );
 
 create table public.kotozute (
@@ -208,6 +211,66 @@ $$;
 
 revoke all on function public.disconnect_google_account() from public;
 grant execute on function public.disconnect_google_account() to authenticated;
+
+-- password_hash 列だけをクライアント（anonキー）から読めなくする。
+-- 行ポリシー（誰でも読める授業用の緩さ）は維持し、列レベル権限で password_hash のみ塞ぐ。
+revoke select on public.users from anon, authenticated;
+grant select (
+  id,
+  auth_user_id,
+  username,
+  display_name,
+  bio,
+  avatar_emoji,
+  avatar_color,
+  avatar_image_url,
+  friend_code,
+  created_at,
+  has_password
+) on public.users to anon, authenticated;
+
+-- ログイン用 RPC。ハッシュ照合を DB 内で完結させ、ハッシュ本体はクライアントへ返さない。
+create or replace function public.authenticate_user(
+  p_username text,
+  p_password_hash text
+)
+returns table (
+  id text,
+  auth_user_id uuid,
+  username text,
+  display_name text,
+  bio text,
+  avatar_emoji text,
+  avatar_color text,
+  avatar_image_url text,
+  friend_code text,
+  created_at timestamptz,
+  has_password boolean
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    u.id,
+    u.auth_user_id,
+    u.username,
+    u.display_name,
+    u.bio,
+    u.avatar_emoji,
+    u.avatar_color,
+    u.avatar_image_url,
+    u.friend_code,
+    u.created_at,
+    (coalesce(u.password_hash, '') <> '') as has_password
+  from public.users u
+  where u.username = p_username
+    and u.password_hash = p_password_hash
+    and coalesce(u.password_hash, '') <> '';
+$$;
+
+revoke all on function public.authenticate_user(text, text) from public;
+grant execute on function public.authenticate_user(text, text) to anon, authenticated;
 
 insert into storage.buckets (id, name, public)
 values ('kotozute-media', 'kotozute-media', true)
