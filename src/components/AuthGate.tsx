@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import type { EmailOtpType } from '@supabase/supabase-js'
 import { useAuth } from '../hooks/useAuth'
+import { isSupabaseConfigured, supabase } from '../services/supabaseClient'
 import { EyeIcon, EyeOffIcon, PigeonIcon } from './icons'
 import './AuthSheet.css'
 import './AuthGate.css'
@@ -19,6 +21,8 @@ export function AuthGate() {
   const [displayName, setDisplayName] = useState('')
   const [recoveryEmail, setRecoveryEmail] = useState('')
   const [recoverySent, setRecoverySent] = useState(false)
+  const [verifyingEmail, setVerifyingEmail] = useState(false)
+  const [emailVerified, setEmailVerified] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
 
@@ -107,6 +111,89 @@ export function AuthGate() {
   }
 
   const displayError = localError || error
+  const urlParams = new URLSearchParams(window.location.search)
+  const emailTokenHash = urlParams.get('token_hash')
+  const emailTokenType = urlParams.get('type')
+  const supportedEmailTokenTypes = new Set<EmailOtpType>(['email', 'email_change', 'recovery'])
+
+  const handleVerifyEmailToken = async () => {
+    if (
+      !emailTokenHash ||
+      !emailTokenType ||
+      !supportedEmailTokenTypes.has(emailTokenType as EmailOtpType) ||
+      !isSupabaseConfigured ||
+      !supabase
+    ) {
+      setLocalError('確認リンクが正しくありません')
+      return
+    }
+
+    setVerifyingEmail(true)
+    setLocalError(null)
+    clearError()
+    try {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        token_hash: emailTokenHash,
+        type: emailTokenType as EmailOtpType,
+      })
+      if (verifyError) throw verifyError
+      setEmailVerified(true)
+      window.history.replaceState({}, '', window.location.pathname)
+    } catch (err: unknown) {
+      setLocalError(
+        err instanceof Error ? err.message : 'メールアドレスを確認できませんでした',
+      )
+    } finally {
+      setVerifyingEmail(false)
+    }
+  }
+
+  if (emailTokenHash && emailTokenType) {
+    const isRecovery = emailTokenType === 'recovery'
+    return (
+      <div className="auth-gate">
+        <div className="auth-gate__card">
+          <div className="auth-gate__brand">
+            <span className="auth-gate__mark">
+              <PigeonIcon width={34} height={34} />
+            </span>
+            <h1 className="auth-gate__title">
+              {isRecovery ? 'パスワード再設定' : 'メールアドレス確認'}
+            </h1>
+            <p className="auth-gate__lead">
+              {isRecovery
+                ? '確認後、新しいパスワードを設定します。'
+                : 'ボタンを押すとメールアドレスの登録が完了します。'}
+            </p>
+          </div>
+
+          <div className="auth-form">
+            {(localError || error) && (
+              <div className="auth-form__error">{localError || error}</div>
+            )}
+            {emailVerified ? (
+              <div className="auth-form__success" role="status">
+                確認が完了しました。画面が切り替わるまでお待ちください。
+              </div>
+            ) : (
+              <button
+                className="btn btn--primary btn--block"
+                type="button"
+                onClick={() => void handleVerifyEmailToken()}
+                disabled={verifyingEmail}
+              >
+                {verifyingEmail
+                  ? '確認中…'
+                  : isRecovery
+                    ? '本人確認して再設定へ進む'
+                    : 'メールアドレスを確認する'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (mode === 'recovery') {
     return (

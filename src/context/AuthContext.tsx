@@ -298,10 +298,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured || !supabase) {
       throw new Error('パスワード再設定にはSupabaseの設定が必要です')
     }
-    const redirectUrl = new URL(window.location.origin)
-    redirectUrl.searchParams.set('password-recovery', '1')
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl.toString(),
+      redirectTo: window.location.origin,
     })
     if (resetError) {
       setError(resetError.message)
