@@ -9,6 +9,7 @@ import type {
 import { Sheet } from './Sheet'
 import { GroupSheet } from './GroupSheet'
 import { TrashIcon, PigeonIcon, LockIcon } from './icons'
+import { ChangePasswordForm } from './ChangePasswordForm'
 import { imageFileToSquareDataUrl } from '../lib/image'
 import './ProfileSheet.css'
 
@@ -21,7 +22,9 @@ interface ProfileSheetProps {
   ) => Promise<void>
   linkGoogleAccount: () => Promise<void>
   unlinkGoogleAccount: () => Promise<void>
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   canUnlinkGoogle: boolean
+  canChangePassword: boolean
   groups: Group[]
   createGroup: (name: string, avatarImageUrl?: string | null) => Promise<Group>
   joinGroup: (code: string) => Promise<Group>
@@ -93,7 +96,9 @@ export function ProfileSheet({
   updateProfile,
   linkGoogleAccount,
   unlinkGoogleAccount,
+  changePassword,
   canUnlinkGoogle,
+  canChangePassword,
   groups,
   createGroup,
   joinGroup,
@@ -692,6 +697,10 @@ export function ProfileSheet({
                 </ul>
               )}
             </div>
+
+            {canChangePassword && (
+              <ChangePasswordForm changePassword={changePassword} />
+            )}
 
             {/* アカウント操作（ログアウト） */}
             <div className="account-section">
