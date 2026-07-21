@@ -1,5 +1,7 @@
 -- メール確認済みのSupabase Authセッションから、連携済みユーザーの
 -- アプリ用パスワードを再設定する非破壊マイグレーションです。
+-- verifyOtp(type: 'recovery') 後のJWTでは環境によりamrが'recovery'にならないため、
+-- 確認済みAuthユーザーとpublic.usersの厳密な紐付けを本人確認に使用します。
 
 create or replace function public.reset_linked_user_password(p_new_password_hash text)
 returns boolean
@@ -10,11 +12,6 @@ as $$
 begin
   if auth.uid() is null
     or coalesce(p_new_password_hash, '') = ''
-    or not exists (
-      select 1
-      from jsonb_array_elements(coalesce(auth.jwt() -> 'amr', '[]'::jsonb)) as method
-      where method ->> 'method' = 'recovery'
-    )
     or not exists (
       select 1 from auth.users
       where id = auth.uid() and email_confirmed_at is not null

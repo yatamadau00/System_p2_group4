@@ -414,11 +414,6 @@ begin
   if auth.uid() is null
     or coalesce(p_new_password_hash, '') = ''
     or not exists (
-      select 1
-      from jsonb_array_elements(coalesce(auth.jwt() -> 'amr', '[]'::jsonb)) as method
-      where method ->> 'method' = 'recovery'
-    )
-    or not exists (
       select 1 from auth.users
       where id = auth.uid() and email_confirmed_at is not null
     ) then

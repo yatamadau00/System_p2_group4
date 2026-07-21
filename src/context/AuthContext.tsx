@@ -355,8 +355,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const passwordHash = await hashPassword(newPassword)
       await resetLinkedUserPassword(passwordHash)
-      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
-      if (updateError) throw updateError
       setPasswordRecovery(false)
       window.history.replaceState({}, '', window.location.pathname)
     } catch (err: unknown) {
