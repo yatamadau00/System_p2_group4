@@ -98,10 +98,13 @@ export type NewKotozute = Omit<Kotozute, 'id' | 'createdAt' | 'mine'> &
 export interface UserProfile {
   id: string
   name: string
-  /** Googleログイン時に取得したメールアドレス（編集不可） */
+  /** メールIdentityで確認済みのメールアドレス（編集不可） */
   email?: string
+  emailVerified?: boolean
   /** Googleアカウントとの連携が完了しているか */
   googleLinked?: boolean
+  /** 連携したGoogleアカウントのメールアドレス */
+  googleEmail?: string
   bio: string
   avatarEmoji: string
   avatarColor: string
@@ -157,10 +160,16 @@ export interface User {
   username: string
   /** 表示名 */
   displayName: string
-  /** OAuthプロバイダーから取得したメールアドレス */
+  /** Supabase Authに登録されているメールアドレス */
   email?: string
+  /** メールIdentityによる本人確認が完了しているか */
+  emailVerified?: boolean
   /** 対応するSupabase AuthユーザーID */
   authUserId?: string | null
+  /** Supabase AuthにGoogle Identityが登録されているか */
+  googleLinked?: boolean
+  /** 連携したGoogle Identityのメールアドレス */
+  googleEmail?: string
   /** 自己紹介 */
   bio?: string
   /** アバター絵文字 */

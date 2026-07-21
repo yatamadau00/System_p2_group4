@@ -3,6 +3,7 @@ import type { UserProfile, Group, GroupMember } from '../types'
 import { Sheet } from './Sheet'
 import { GroupSheet } from './GroupSheet'
 import { PlusIcon, CloseIcon } from './icons'
+import { RecoveryEmailForm } from './RecoveryEmailForm'
 import { imageFileToSquareDataUrl } from '../lib/image'
 import './ProfileSheet.css'
 
@@ -13,7 +14,9 @@ interface ProfileSheetProps {
   ) => Promise<void>
   linkGoogleAccount: () => Promise<void>
   unlinkGoogleAccount: () => Promise<void>
+  registerRecoveryEmail: (email: string, currentPassword: string) => Promise<void>
   canUnlinkGoogle: boolean
+  showEmailSettings: boolean
   groups: Group[]
   createGroup: (name: string, avatarImageUrl?: string | null) => Promise<Group>
   joinGroup: (code: string) => Promise<Group>
@@ -81,7 +84,9 @@ export function ProfileSheet({
   updateProfile,
   linkGoogleAccount,
   unlinkGoogleAccount,
+  registerRecoveryEmail,
   canUnlinkGoogle,
+  showEmailSettings,
   groups,
   createGroup,
   joinGroup,
@@ -487,7 +492,9 @@ export function ProfileSheet({
                     </div>
                     <div className="profile-card__title">
                       <h3>{profile.name}</h3>
-                      {profile.email && <p className="profile-card__email">{profile.email}</p>}
+                      {!profile.googleLinked && profile.emailVerified && profile.email && (
+                        <p className="profile-card__email">{profile.email}</p>
+                      )}
                     </div>
                   </div>
 
@@ -497,6 +504,9 @@ export function ProfileSheet({
                     <div>
                       <strong>Googleアカウント</strong>
                       <p>{profile.googleLinked ? '連携済みです' : '連携すると次回からGoogleでログインできます'}</p>
+                      {profile.googleLinked && profile.googleEmail && (
+                        <p className="google-link-card__email">{profile.googleEmail}</p>
+                      )}
                     </div>
                     {profile.googleLinked ? (
                       canUnlinkGoogle ? (
@@ -546,12 +556,14 @@ export function ProfileSheet({
                       </button>
                     )}
                   </div>
-                  {profile.googleLinked && (
-                    <p className="google-link-card__note">
-                      Google側でアクセス権を取り消した場合も、ことづて側の登録は残ります。完全に解除するにはこの画面の「連携解除」を使用してください。
-                    </p>
-                  )}
                   {googleLinkError && <p className="profile-card__link-error">{googleLinkError}</p>}
+
+                  {showEmailSettings && (
+                    <RecoveryEmailForm
+                      registerRecoveryEmail={registerRecoveryEmail}
+                      currentEmail={profile.emailVerified ? profile.email : undefined}
+                    />
+                  )}
 
                   <div className="profile-card__actions">
                     <button
@@ -564,6 +576,7 @@ export function ProfileSheet({
                 </div>
               )}
             </div>
+
         </div>
 
         <div className="friends-tab">

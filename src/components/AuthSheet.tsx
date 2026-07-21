@@ -8,15 +8,17 @@ interface AuthSheetProps {
   onClose: () => void
 }
 
-type AuthMode = 'login' | 'signup'
+type AuthMode = 'login' | 'signup' | 'recovery'
 
 export function AuthSheet({ onClose }: AuthSheetProps) {
-  const { login, loginWithGoogle, signUp, error, clearError } = useAuth()
+  const { login, loginWithGoogle, signUp, requestPasswordReset, error, clearError } = useAuth()
   const [mode, setMode] = useState<AuthMode>('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [displayName, setDisplayName] = useState('')
+  const [recoveryEmail, setRecoveryEmail] = useState('')
+  const [recoverySent, setRecoverySent] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
 
@@ -28,6 +30,26 @@ export function AuthSheet({ onClose }: AuthSheetProps) {
     setDisplayName('')
     setLocalError(null)
     clearError()
+  }
+
+  const handleRecoverySubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLocalError(null)
+    clearError()
+    const email = recoveryEmail.trim().toLowerCase()
+    if (!email) {
+      setLocalError('メールアドレスを入力してください')
+      return
+    }
+    setSubmitting(true)
+    try {
+      await requestPasswordReset(email)
+      setRecoverySent(true)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,8 +106,62 @@ export function AuthSheet({ onClose }: AuthSheetProps) {
     }
   }
 
-  const title = mode === 'login' ? 'ログイン' : 'アカウント作成'
+  const title = mode === 'login' ? 'ログイン' : mode === 'signup' ? 'アカウント作成' : 'パスワード再設定'
   const displayError = localError || error
+
+  if (mode === 'recovery') {
+    return (
+      <Sheet title={title} onClose={onClose}>
+        <form className="auth-form" onSubmit={handleRecoverySubmit}>
+          <p className="auth-form__intro">
+            登録済みのメールアドレスへ、パスワード再設定用のリンクを送信します。
+          </p>
+          {displayError && <div className="auth-form__error">{displayError}</div>}
+          {recoverySent ? (
+            <div className="auth-form__success" role="status">
+              登録済みのアドレスであれば、再設定メールが届きます。メール内のリンクを開いてください。
+            </div>
+          ) : (
+            <>
+              <div className="auth-form__group">
+                <label className="auth-form__label" htmlFor="recovery-email-request">
+                  メールアドレス
+                </label>
+                <input
+                  className="auth-form__input"
+                  id="recovery-email-request"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  value={recoveryEmail}
+                  onChange={(e) => setRecoveryEmail(e.target.value)}
+                  disabled={submitting}
+                  required
+                  autoFocus
+                />
+              </div>
+              <button className="btn btn--primary btn--block" type="submit" disabled={submitting}>
+                {submitting ? '送信中…' : '再設定メールを送信'}
+              </button>
+            </>
+          )}
+          <button
+            className="auth-form__switch-btn"
+            type="button"
+            onClick={() => {
+              setMode('login')
+              setRecoverySent(false)
+              setLocalError(null)
+              clearError()
+            }}
+            disabled={submitting}
+          >
+            ログインに戻る
+          </button>
+        </form>
+      </Sheet>
+    )
+  }
 
   return (
     <Sheet title={title} onClose={onClose}>
@@ -172,6 +248,21 @@ export function AuthSheet({ onClose }: AuthSheetProps) {
             </button>
           </div>
         </div>
+
+        {mode === 'login' && (
+          <button
+            className="auth-form__forgot-btn"
+            type="button"
+            onClick={() => {
+              setMode('recovery')
+              setLocalError(null)
+              clearError()
+            }}
+            disabled={submitting}
+          >
+            パスワードを忘れた方
+          </button>
+        )}
 
         <button
           className="btn btn--primary btn--block"

@@ -1,0 +1,114 @@
+.recovery-email {
+  margin-top: var(--sp-4);
+  padding: var(--sp-4);
+  border: 1px solid rgba(51, 48, 43, 0.12);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+}
+
+.recovery-email__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.recovery-email__heading strong,
+.recovery-email__heading p,
+.recovery-email__field label {
+  font-family: var(--font-sans);
+}
+
+.recovery-email__heading p {
+  margin: 4px 0 0;
+  color: var(--c-ink-3);
+  font-size: 0.78rem;
+}
+
+.recovery-email__form {
+  display: grid;
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-4);
+  border-top: 1px solid rgba(51, 48, 43, 0.1);
+}
+
+.recovery-email__field {
+  display: grid;
+  gap: var(--sp-1);
+}
+
+.recovery-email__field label {
+  color: var(--c-ink-2);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.recovery-email__field input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid rgba(51, 48, 43, 0.18);
+  border-radius: var(--r-md);
+  background: var(--c-washi-2);
+  font-size: 1rem;
+}
+
+.recovery-email__field input:focus {
+  outline: none;
+  border-color: var(--c-amber);
+  box-shadow: 0 0 0 3px var(--c-amber-soft);
+}
+
+.recovery-email__password-wrap {
+  position: relative;
+}
+
+.recovery-email__password-wrap input {
+  padding-right: 52px;
+}
+
+.recovery-email__toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--c-ink-2);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.recovery-email__toggle:hover {
+  background: rgba(51, 48, 43, 0.08);
+}
+
+.recovery-email__toggle:focus-visible {
+  outline: 2px solid var(--c-amber);
+  outline-offset: 1px;
+}
+
+.recovery-email__toggle svg {
+  width: 21px;
+  height: 21px;
+}
+
+.recovery-email__message {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.recovery-email__message--error {
+  color: var(--c-danger);
+}
+
+.recovery-email__message--success {
+  color: var(--c-moss-deep);
+}
