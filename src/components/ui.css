@@ -146,6 +146,7 @@
   padding-bottom: calc(var(--safe-bottom) + var(--sp-4));
   animation: sheet-up var(--dur-3) var(--ease-out);
   overflow: hidden;
+  overflow-x: hidden;
   transition: transform var(--dur-2) var(--ease-out);
 }
 
@@ -201,8 +202,12 @@
 
 .sheet__body {
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 0 var(--sp-5) var(--sp-4);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .icon-btn {
