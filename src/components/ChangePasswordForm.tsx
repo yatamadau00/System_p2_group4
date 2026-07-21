@@ -111,14 +111,14 @@ export function ChangePasswordForm({ changePassword }: ChangePasswordFormProps) 
         </div>
         <button
           type="button"
-          className="btn btn--soft"
+          className={`btn ${expanded ? 'btn--soft' : 'btn--primary'}`}
           onClick={() => {
             if (expanded) resetForm()
             setExpanded((current) => !current)
           }}
           aria-expanded={expanded}
         >
-          {expanded ? '閉じる' : '変更する'}
+          {expanded ? '閉じる' : 'パスワード変更'}
         </button>
       </div>
 
